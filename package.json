@@ -4,6 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "deploy": "wrangler deploy",
+    "preview": "wrangler dev",
     "test": "node --test"
+  },
+  "devDependencies": {
+    "wrangler": "^4.108.0"
   }
 }
