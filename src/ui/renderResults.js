@@ -1,7 +1,7 @@
 import { getConfidence } from "../core/matching.js";
 import { round } from "../core/math.js";
 import { clearErrorStatus } from "./errors.js";
-import { renderPeakTable } from "./renderPeaks.js";
+import { renderAnalysisPeakTable, renderPeakTable } from "./renderPeaks.js";
 
 export function renderResults(elements, state, detected, options) {
   clearErrorStatus(elements);
@@ -37,7 +37,7 @@ export function renderResults(elements, state, detected, options) {
       .join("");
   }
 
-  renderGroupedPeaks(elements, state);
+  renderAnalysisPeakTable(elements, state);
   renderPeakTable(elements, state);
 }
 
@@ -52,25 +52,8 @@ function renderAnalysisConclusion(elements, state, options) {
     .map((item) => `${item.symbol} — ${getConfidence(item).label.toLowerCase()}`)
     .join(", ");
   elements.analysisConclusion.innerHTML = `
-    В образце вероятно обнаружены: <strong>${symbols}</strong>.<br>
-    Наиболее уверенные совпадения: <strong>${confident}</strong>.<br>
-    Использованы параметры: порог ${Number(options.sigma)}, допуск ${options.tolerance} нм, сглаживание ${Number(options.smoothing)}, расстояние ${Number(options.distance)} точек.
+    <strong>Обнаружены элементы:</strong> ${symbols}.<br>
+    <strong>Наиболее уверенные совпадения:</strong> ${confident}.<br>
+    <span>Параметры: порог ${Number(options.sigma)}, допуск ${options.tolerance} нм, сглаживание ${Number(options.smoothing)}, расстояние ${Number(options.distance)} точек.</span>
   `;
-}
-
-function renderGroupedPeaks(elements, state) {
-  if (!state.matches.length) {
-    elements.groupedPeaks.innerHTML = '<p class="empty-state">Группировка появится после сопоставления пиков.</p>';
-    return;
-  }
-  elements.groupedPeaks.innerHTML = state.matches
-    .map(
-      (item) => `
-        <div class="group-row">
-          <strong>${item.symbol} · ${item.name}</strong>
-          <span>${item.peaks.map((peak) => `${round(peak.wavelength, 2)} нм`).join(", ")}</span>
-        </div>
-      `,
-    )
-    .join("");
 }

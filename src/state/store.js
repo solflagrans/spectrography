@@ -9,8 +9,11 @@ export const state = {
   hoverPeak: null,
   showPeakLabels: true,
   databaseMode: "view",
+  dataSourceLabel: "Пресет",
+  updatedAt: null,
   threshold: null,
   sort: { key: "wavelength", direction: "asc" },
+  analysisPeakSort: "intensity-desc",
 };
 
 export function setDatasetState(wavelengths, intensities) {

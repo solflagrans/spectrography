@@ -7,36 +7,37 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <header class="topbar">
-      <div class="title-block">
-        <p class="eyebrow">Спектральный анализ</p>
-        <h1>Определение состава образца</h1>
-        <p>Поиск пиков и сопоставление со спектральными линиями элементов</p>
+    <header class="app-header">
+      <div class="app-brand" aria-label="Спектральный анализ">
+        <span class="brand-mark" aria-hidden="true">S</span>
+        <div>
+          <div class="brand-title">Спектральный анализ</div>
+        </div>
       </div>
       <nav class="app-tabs" aria-label="Разделы приложения">
         <button class="app-tab is-active" data-app-view="analysis" type="button">Анализ</button>
         <button class="app-tab" data-app-view="peaks" type="button">Пики</button>
         <button class="app-tab" data-app-view="settings" type="button">Настройки</button>
       </nav>
+      <div class="app-actions">
+        <button id="downloadResults" class="header-button" type="button">
+          <span class="button-icon" aria-hidden="true">↓</span>
+          Экспорт отчёта
+        </button>
+        <button id="settingsShortcut" class="icon-button" type="button" aria-label="Открыть настройки">⚙</button>
+      </div>
     </header>
 
     <div class="app-shell">
-      <aside class="panel data-panel" aria-labelledby="data-title">
-        <div class="panel-head">
-          <div>
-            <h2 id="data-title">Рабочая панель</h2>
-            <p>Данные, параметры и действия анализа</p>
-          </div>
-        </div>
-
-        <section class="panel-section" data-collapsible>
+      <aside class="data-panel" aria-label="Рабочая панель">
+        <section class="sidebar-card" data-collapsible>
           <button
             class="section-label section-toggle"
             type="button"
             aria-expanded="true"
             aria-controls="sourceSection"
           >
-            Источник данных
+            <span class="section-title"><span aria-hidden="true">▣</span> Источник данных</span>
           </button>
           <div id="sourceSection" class="section-content">
             <div class="segmented" role="tablist" aria-label="Источник данных">
@@ -89,34 +90,30 @@
           </div>
         </section>
 
-        <section class="panel-section summary-section">
-          <div class="section-label">Сводка данных</div>
-          <div class="data-summary">
-            <div>
-              <span>Точек</span>
-              <strong id="pointCountStat">0</strong>
-            </div>
-            <div>
-              <span>Диапазон λ</span>
-              <strong id="rangeStat">—</strong>
-            </div>
-            <div>
-              <span>Средняя интенсивность</span>
-              <strong id="avgStat">—</strong>
-            </div>
-          </div>
-        </section>
-
-        <section class="panel-section parameters-section" data-collapsible>
+        <section class="sidebar-card parameters-section" data-collapsible>
           <button
             class="section-label section-toggle"
             type="button"
             aria-expanded="true"
             aria-controls="parametersSection"
           >
-            Параметры анализа
+            <span class="section-title"><span aria-hidden="true">≡</span> Параметры анализа</span>
           </button>
           <div id="parametersSection" class="section-content">
+            <div class="data-summary compact-summary">
+              <div>
+                <span>Диапазон λ</span>
+                <strong id="rangeStat">—</strong>
+              </div>
+              <div>
+                <span>Точек</span>
+                <strong id="pointCountStat">0</strong>
+              </div>
+              <div>
+                <span>Средняя интенсивность</span>
+                <strong id="avgStat">—</strong>
+              </div>
+            </div>
             <div class="control-grid">
               <label class="field compact">
                 <span>Порог поиска пиков</span>
@@ -139,15 +136,34 @@
                 <input id="prominenceInput" type="number" min="0" step="0.01" value="0.06" />
               </label>
             </div>
+            <div class="action-grid">
+              <button id="analyzeButton" class="primary-button" type="button">Анализировать</button>
+              <button id="resetButton" class="ghost-button" type="button">Сбросить параметры</button>
+            </div>
           </div>
         </section>
 
-        <section class="panel-section action-section">
-          <div class="section-label">Действия</div>
-          <div class="action-grid">
-            <button id="analyzeButton" class="primary-button" type="button">Анализировать</button>
-            <button id="resetButton" class="ghost-button" type="button">Сбросить</button>
-            <button id="downloadResults" class="ghost-button" type="button">Скачать отчет</button>
+        <section class="sidebar-card current-data-section">
+          <div class="section-label static-label">
+            <span class="section-title"><span aria-hidden="true">✓</span> Текущие данные</span>
+          </div>
+          <div class="data-summary">
+            <div>
+              <span>Источник</span>
+              <strong id="currentSourceStat">Пресет</strong>
+            </div>
+            <div>
+              <span>Диапазон</span>
+              <strong id="currentRangeStat">—</strong>
+            </div>
+            <div>
+              <span>Точек</span>
+              <strong id="currentPointCountStat">0</strong>
+            </div>
+            <div>
+              <span>Обновлено</span>
+              <strong id="updatedStat">—</strong>
+            </div>
           </div>
         </section>
       </aside>
@@ -155,12 +171,60 @@
       <main class="main-area">
         <section class="app-view is-active" data-app-panel="analysis">
           <section class="panel chart-panel" aria-labelledby="chart-title">
-            <div class="panel-head">
+            <div class="panel-head chart-head">
               <div>
                 <h2 id="chart-title">Спектр</h2>
                 <p id="datasetMeta">0 точек</p>
               </div>
-              <div class="status-pill error-pill" id="qualityStatus" hidden></div>
+              <div class="chart-actions">
+                <div class="popover-shell">
+                  <button id="chartFiltersButton" class="ghost-button compact-button" type="button" aria-expanded="false" aria-controls="chartFiltersPopover">
+                    <span aria-hidden="true">⌁</span> Фильтры
+                  </button>
+                  <div id="chartFiltersPopover" class="filter-popover" hidden>
+                    <label class="check-field">
+                      <input id="filterMatchedOnlyInput" type="checkbox" />
+                      <span>Только сопоставленные пики</span>
+                    </label>
+                    <label class="check-field">
+                      <input id="filterPeakLabelsInput" type="checkbox" checked />
+                      <span>Показывать подписи пиков</span>
+                    </label>
+                    <label class="field compact">
+                      <span>Элемент</span>
+                      <select id="filterElementInput">
+                        <option value="all">Все элементы</option>
+                      </select>
+                    </label>
+                    <div class="filter-grid">
+                      <label class="field compact">
+                        <span>λ от</span>
+                        <input id="filterMinInput" type="number" step="0.01" placeholder="нм" />
+                      </label>
+                      <label class="field compact">
+                        <span>λ до</span>
+                        <input id="filterMaxInput" type="number" step="0.01" placeholder="нм" />
+                      </label>
+                    </div>
+                    <label class="field compact">
+                      <span>Мин. интенсивность</span>
+                      <input id="filterIntensityInput" type="number" step="0.01" placeholder="0" />
+                    </label>
+                    <label class="field compact">
+                      <span>Уверенность</span>
+                      <select id="filterConfidenceInput">
+                        <option value="all">Любая</option>
+                        <option value="high">Высокая</option>
+                        <option value="medium">Средняя</option>
+                        <option value="low">Низкая</option>
+                      </select>
+                    </label>
+                    <p class="filter-note">Фильтры подготовлены для следующего этапа; сейчас подключены сопоставленные пики и подписи.</p>
+                  </div>
+                </div>
+                <button class="icon-button compact-icon" type="button" aria-label="Дополнительные действия">…</button>
+                <div class="status-pill error-pill" id="qualityStatus" hidden></div>
+              </div>
             </div>
             <div class="chart-toolbar">
               <div class="chart-legend" aria-label="Легенда графика">
@@ -168,7 +232,7 @@
                 <span><i class="legend-line threshold"></i>Порог</span>
                 <span><i class="legend-dot"></i>Найденные пики</span>
               </div>
-              <label class="check-field compact-toggle">
+              <label class="toggle-chip">
                 <input id="peakLabelsToggle" type="checkbox" checked />
                 <span>Подписи пиков</span>
               </label>
@@ -177,20 +241,56 @@
               <canvas id="spectrumCanvas" width="1200" height="560"></canvas>
               <div id="tooltip" class="tooltip" hidden></div>
             </div>
+            <div class="chart-footer">
+              <span>Перетащите для масштабирования</span>
+              <button id="resetZoom" class="ghost-button compact-button" type="button">Сбросить масштаб</button>
+            </div>
           </section>
 
           <section class="panel results-panel" aria-labelledby="results-title">
             <div class="panel-head">
               <div>
-                <h2 id="results-title">Итог анализа</h2>
+                <h2 id="results-title">Итоги анализа</h2>
                 <p id="analysisSummary">Пики еще не рассчитаны</p>
               </div>
             </div>
             <div id="analysisConclusion" class="analysis-conclusion"></div>
             <div id="elementResults" class="element-list"></div>
-            <div class="grouped-peaks">
-              <h3>Пики по элементам</h3>
-              <div id="groupedPeaks"></div>
+            <div class="analysis-peaks">
+              <div class="table-section-head">
+                <div>
+                  <h3>Найденные пики</h3>
+                  <p id="analysisPeakCount">0 пиков</p>
+                </div>
+                <div class="table-actions">
+                  <label class="field compact sort-field">
+                    <span>Сортировка</span>
+                    <select id="analysisPeakSort">
+                      <option value="intensity-desc">По интенсивности</option>
+                      <option value="wavelength-asc">По длине волны</option>
+                      <option value="element-asc">По элементу</option>
+                      <option value="confidence-desc">По уверенности</option>
+                    </select>
+                  </label>
+                  <button id="exportPeakTable" class="ghost-button compact-button" type="button">Экспорт таблицы</button>
+                </div>
+              </div>
+              <div class="table-wrap analysis-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>№</th>
+                      <th>λ найдено, нм</th>
+                      <th>Интенсивность</th>
+                      <th>Элемент</th>
+                      <th>λ справочно, нм</th>
+                      <th>Разница, нм</th>
+                      <th>Уверенность</th>
+                    </tr>
+                  </thead>
+                  <tbody id="analysisPeakTable"></tbody>
+                </table>
+              </div>
             </div>
           </section>
         </section>

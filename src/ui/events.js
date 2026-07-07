@@ -10,7 +10,7 @@ import { showError } from "./errors.js";
 import { syncInputs, syncManualScroll, updateManualRowNumbers } from "./manualInputs.js";
 import { updateMeta } from "./meta.js";
 import { readDatabaseEditor, renderDatabaseEditor, syncDatabaseInput } from "./renderDatabase.js";
-import { renderPeakTable } from "./renderPeaks.js";
+import { createPeakTableCsv, renderAnalysisPeakTable, renderPeakTable } from "./renderPeaks.js";
 import { renderResults } from "./renderResults.js";
 
 export function bindEvents(elements, state) {
@@ -19,7 +19,10 @@ export function bindEvents(elements, state) {
     elements.peakLabelsToggle.checked = false;
   }
   state.showPeakLabels = elements.peakLabelsToggle.checked;
-  const setDataset = (wavelengths, intensities, shouldAnalyze = true) => {
+  elements.filterPeakLabelsInput.checked = elements.peakLabelsToggle.checked;
+  const setDataset = (wavelengths, intensities, shouldAnalyze = true, sourceLabel = state.dataSourceLabel) => {
+    state.dataSourceLabel = sourceLabel;
+    state.updatedAt = new Date();
     setDatasetState(wavelengths, intensities);
     syncInputs(elements, state);
     updateMeta(elements, state);
@@ -37,18 +40,14 @@ export function bindEvents(elements, state) {
   });
 
   document.querySelectorAll(".app-tab").forEach((button) => {
-    button.addEventListener("click", () => {
-      document.querySelectorAll(".app-tab").forEach((item) => item.classList.remove("is-active"));
-      document.querySelectorAll(".app-view").forEach((item) => item.classList.remove("is-active"));
-      button.classList.add("is-active");
-      document.querySelector(`[data-app-panel="${button.dataset.appView}"]`).classList.add("is-active");
-      requestAnimationFrame(() => drawChart(elements, state));
-    });
+    button.addEventListener("click", () => activateAppView(button.dataset.appView, state, elements));
   });
+
+  elements.settingsShortcut.addEventListener("click", () => activateAppView("settings", state, elements));
 
   document.querySelector("#loadPreset").addEventListener("click", () => {
     const preset = presets[elements.presetSelect.value];
-    setDataset(preset.wavelengths, preset.intensities);
+    setDataset(preset.wavelengths, preset.intensities, true, "Пресет");
   });
 
   document.querySelector("#resetButton").addEventListener("click", () => {
@@ -64,14 +63,14 @@ export function bindEvents(elements, state) {
     elements.peakMaxInput.value = "";
     elements.matchedOnlyInput.checked = false;
     const preset = presets.solar;
-    setDataset(preset.wavelengths, preset.intensities);
+    setDataset(preset.wavelengths, preset.intensities, true, "Пресет");
   });
 
   document.querySelector("#importJson").addEventListener("click", () => {
     try {
       const payload = parseJsonPayload(elements.jsonInput.value);
       validateDataset(payload.wavelengths, payload.intensities);
-      setDataset(payload.wavelengths, payload.intensities);
+      setDataset(payload.wavelengths, payload.intensities, true, "JSON");
     } catch (error) {
       showError(elements, error.message);
     }
@@ -90,7 +89,7 @@ export function bindEvents(elements, state) {
       elements.jsonInput.value = text;
       const payload = parseJsonPayload(text);
       validateDataset(payload.wavelengths, payload.intensities);
-      setDataset(payload.wavelengths, payload.intensities);
+      setDataset(payload.wavelengths, payload.intensities, true, "JSON");
     } catch (error) {
       showError(elements, error.message);
     } finally {
@@ -105,7 +104,7 @@ export function bindEvents(elements, state) {
         elements.intensityInput.value,
       );
       validateDataset(wavelengths, intensities);
-      setDataset(wavelengths, intensities);
+      setDataset(wavelengths, intensities, true, "Массивы");
     } catch (error) {
       showError(elements, error.message);
     }
@@ -156,6 +155,17 @@ export function bindEvents(elements, state) {
     downloadJson("spectral-analysis-report.json", createReport(state));
   });
 
+  elements.exportPeakTable.addEventListener("click", () => {
+    const csv = createPeakTableCsv(state);
+    const blob = new Blob([`\ufeff${csv}`], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "spectral-peaks.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  });
+
   [elements.wavelengthInput, elements.intensityInput].forEach((element) => {
     element.addEventListener("input", () => updateManualRowNumbers(elements));
     element.addEventListener("scroll", () => syncManualScroll(elements, element));
@@ -170,6 +180,11 @@ export function bindEvents(elements, state) {
   ].forEach((element) => {
     element.addEventListener("input", () => renderPeakTable(elements, state));
     element.addEventListener("change", () => renderPeakTable(elements, state));
+  });
+
+  elements.analysisPeakSort.addEventListener("change", () => {
+    state.analysisPeakSort = elements.analysisPeakSort.value;
+    renderAnalysisPeakTable(elements, state);
   });
 
   document.querySelectorAll("th[data-sort]").forEach((header) => {
@@ -189,8 +204,28 @@ export function bindEvents(elements, state) {
 
   elements.peakLabelsToggle.addEventListener("change", () => {
     state.showPeakLabels = elements.peakLabelsToggle.checked;
+    elements.filterPeakLabelsInput.checked = elements.peakLabelsToggle.checked;
     drawChart(elements, state);
   });
+
+  elements.filterPeakLabelsInput.addEventListener("change", () => {
+    elements.peakLabelsToggle.checked = elements.filterPeakLabelsInput.checked;
+    state.showPeakLabels = elements.filterPeakLabelsInput.checked;
+    drawChart(elements, state);
+  });
+
+  elements.filterMatchedOnlyInput.addEventListener("change", () => {
+    elements.matchedOnlyInput.checked = elements.filterMatchedOnlyInput.checked;
+    renderPeakTable(elements, state);
+  });
+
+  elements.chartFiltersButton.addEventListener("click", () => {
+    const expanded = elements.chartFiltersButton.getAttribute("aria-expanded") === "true";
+    elements.chartFiltersButton.setAttribute("aria-expanded", String(!expanded));
+    elements.chartFiltersPopover.hidden = expanded;
+  });
+
+  elements.resetZoom.addEventListener("click", () => drawChart(elements, state));
 
   ["sigmaInput", "prominenceInput", "distanceInput", "toleranceInput", "smoothingInput"].forEach((key) => {
     elements[key].addEventListener("change", analyze);
@@ -219,8 +254,27 @@ function analyzeDataset(elements, state) {
     });
     setAnalysisState(result);
     renderResults(elements, state, result.detected, options);
+    updateFilterElementOptions(elements, state);
     drawChart(elements, state);
   } catch (error) {
     showError(elements, error.message);
   }
+}
+
+function activateAppView(view, state, elements) {
+  document.querySelectorAll(".app-tab").forEach((item) => item.classList.toggle("is-active", item.dataset.appView === view));
+  document.querySelectorAll(".app-view").forEach((item) => item.classList.remove("is-active"));
+  document.querySelector(`[data-app-panel="${view}"]`).classList.add("is-active");
+  requestAnimationFrame(() => drawChart(elements, state));
+}
+
+function updateFilterElementOptions(elements, state) {
+  const current = elements.filterElementInput.value;
+  elements.filterElementInput.innerHTML = `
+    <option value="all">Все элементы</option>
+    ${state.matches.map((item) => `<option value="${item.symbol}">${item.symbol} · ${item.name}</option>`).join("")}
+  `;
+  elements.filterElementInput.value = [...elements.filterElementInput.options].some((option) => option.value === current)
+    ? current
+    : "all";
 }
