@@ -29,99 +29,127 @@
           </div>
         </div>
 
-        <div class="section-label">Источник данных</div>
-        <div class="segmented" role="tablist" aria-label="Источник данных">
-          <button class="segment is-active" data-source="preset" type="button">Пресеты</button>
-          <button class="segment" data-source="json" type="button">JSON</button>
-          <button class="segment" data-source="manual" type="button">Массивы</button>
-        </div>
-
-        <div class="source-view is-active" data-view="preset">
-          <label class="field">
-            <span>Предустановленный спектр</span>
-            <select id="presetSelect">
-              <option value="solar">Солнечный спектр: H, Na, Mg, Ca, Fe</option>
-              <option value="lamp">Лампа: Hg, Ne, Ar</option>
-              <option value="alloy">Сплав: Fe, Cu, Al, Ni</option>
-            </select>
-          </label>
-          <button id="loadPreset" class="primary-button" type="button">Загрузить пресет</button>
-        </div>
-
-        <div class="source-view" data-view="json">
-          <label class="field">
-            <span>JSON</span>
-            <textarea id="jsonInput" spellcheck="false" rows="9"></textarea>
-          </label>
-          <div class="button-row">
-            <button id="importJson" class="primary-button" type="button">Применить JSON</button>
-            <button id="loadJsonFile" class="ghost-button" type="button">Загрузить файл</button>
-            <input id="jsonFileInput" type="file" accept="application/json,.json" hidden />
-          </div>
-        </div>
-
-        <div class="source-view" data-view="manual">
-          <div class="paired-inputs">
-            <div class="row-number-cell" aria-hidden="true">
-              <span>№</span>
-              <div id="manualRowNumbers" class="row-number-list"></div>
+        <section class="panel-section" data-collapsible>
+          <button
+            class="section-label section-toggle"
+            type="button"
+            aria-expanded="true"
+            aria-controls="sourceSection"
+          >
+            Источник данных
+          </button>
+          <div id="sourceSection" class="section-content">
+            <div class="segmented" role="tablist" aria-label="Источник данных">
+              <button class="segment is-active" data-source="preset" type="button">Пресеты</button>
+              <button class="segment" data-source="json" type="button">JSON</button>
+              <button class="segment" data-source="manual" type="button">Массивы</button>
             </div>
-            <label class="paired-cell" for="wavelengthInput">
-              <span>Длины волн, нм</span>
-              <textarea id="wavelengthInput" spellcheck="false" rows="10" placeholder="486.13&#10;589.59"></textarea>
-            </label>
-            <label class="paired-cell" for="intensityInput">
-              <span>Интенсивности</span>
-              <textarea id="intensityInput" spellcheck="false" rows="10" placeholder="72.4&#10;91.8"></textarea>
-            </label>
-          </div>
-          <button id="applyArrays" class="primary-button" type="button">Применить массивы</button>
-        </div>
 
-        <div class="data-summary">
-          <div>
-            <span>Точек</span>
-            <strong id="pointCountStat">0</strong>
-          </div>
-          <div>
-            <span>Диапазон λ</span>
-            <strong id="rangeStat">—</strong>
-          </div>
-          <div>
-            <span>Средняя интенсивность</span>
-            <strong id="avgStat">—</strong>
-          </div>
-        </div>
+            <div class="source-view is-active" data-view="preset">
+              <label class="field">
+                <span>Предустановленный спектр</span>
+                <select id="presetSelect">
+                  <option value="solar">Солнечный спектр: H, Na, Mg, Ca, Fe</option>
+                  <option value="lamp">Лампа: Hg, Ne, Ar</option>
+                  <option value="alloy">Сплав: Fe, Cu, Al, Ni</option>
+                </select>
+              </label>
+              <button id="loadPreset" class="secondary-button" type="button">Загрузить пресет</button>
+            </div>
 
-        <div class="section-label">Параметры анализа</div>
-        <div class="control-grid">
-          <label class="field compact">
-            <span>Порог поиска пиков</span>
-            <input id="sigmaInput" type="number" min="0" max="5" step="0.1" value="1" />
-          </label>
-          <label class="field compact">
-            <span>Допуск совпадения, нм</span>
-            <input id="toleranceInput" type="number" min="0.01" max="10" step="0.01" value="0.35" />
-          </label>
-          <label class="field compact">
-            <span>Сглаживание</span>
-            <input id="smoothingInput" type="number" min="1" max="31" step="2" value="1" />
-          </label>
-          <label class="field compact">
-            <span>Мин. расстояние пиков</span>
-            <input id="distanceInput" type="number" min="1" max="500" step="1" value="8" />
-          </label>
-          <label class="field compact full-span">
-            <span>Минимальная высота пика</span>
-            <input id="prominenceInput" type="number" min="0" step="0.01" value="0.06" />
-          </label>
-        </div>
+            <div class="source-view" data-view="json">
+              <label class="field">
+                <span>JSON</span>
+                <textarea id="jsonInput" spellcheck="false" rows="9"></textarea>
+              </label>
+              <div class="button-row">
+                <button id="importJson" class="secondary-button" type="button">Применить JSON</button>
+                <button id="loadJsonFile" class="ghost-button" type="button">Загрузить файл</button>
+                <input id="jsonFileInput" type="file" accept="application/json,.json" hidden />
+              </div>
+            </div>
 
-        <div class="action-grid">
-          <button id="analyzeButton" class="primary-button" type="button">Анализировать</button>
-          <button id="resetButton" class="ghost-button" type="button">Сбросить</button>
-          <button id="downloadResults" class="ghost-button" type="button">Скачать отчет</button>
-        </div>
+            <div class="source-view" data-view="manual">
+              <div class="paired-inputs">
+                <div class="row-number-cell" aria-hidden="true">
+                  <span>№</span>
+                  <div id="manualRowNumbers" class="row-number-list"></div>
+                </div>
+                <label class="paired-cell" for="wavelengthInput">
+                  <span>Длины волн, нм</span>
+                  <textarea id="wavelengthInput" spellcheck="false" rows="10" placeholder="486.13&#10;589.59"></textarea>
+                </label>
+                <label class="paired-cell" for="intensityInput">
+                  <span>Интенсивности</span>
+                  <textarea id="intensityInput" spellcheck="false" rows="10" placeholder="72.4&#10;91.8"></textarea>
+                </label>
+              </div>
+              <button id="applyArrays" class="secondary-button" type="button">Применить массивы</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel-section summary-section">
+          <div class="section-label">Сводка данных</div>
+          <div class="data-summary">
+            <div>
+              <span>Точек</span>
+              <strong id="pointCountStat">0</strong>
+            </div>
+            <div>
+              <span>Диапазон λ</span>
+              <strong id="rangeStat">—</strong>
+            </div>
+            <div>
+              <span>Средняя интенсивность</span>
+              <strong id="avgStat">—</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel-section parameters-section" data-collapsible>
+          <button
+            class="section-label section-toggle"
+            type="button"
+            aria-expanded="true"
+            aria-controls="parametersSection"
+          >
+            Параметры анализа
+          </button>
+          <div id="parametersSection" class="section-content">
+            <div class="control-grid">
+              <label class="field compact">
+                <span>Порог поиска пиков</span>
+                <input id="sigmaInput" type="number" min="0" max="5" step="0.1" value="1" />
+              </label>
+              <label class="field compact">
+                <span>Допуск совпадения, нм</span>
+                <input id="toleranceInput" type="number" min="0.01" max="10" step="0.01" value="0.35" />
+              </label>
+              <label class="field compact">
+                <span>Сглаживание</span>
+                <input id="smoothingInput" type="number" min="1" max="31" step="2" value="1" />
+              </label>
+              <label class="field compact">
+                <span>Мин. расстояние пиков</span>
+                <input id="distanceInput" type="number" min="1" max="500" step="1" value="8" />
+              </label>
+              <label class="field compact full-span">
+                <span>Минимальная высота пика</span>
+                <input id="prominenceInput" type="number" min="0" step="0.01" value="0.06" />
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel-section action-section">
+          <div class="section-label">Действия</div>
+          <div class="action-grid">
+            <button id="analyzeButton" class="primary-button" type="button">Анализировать</button>
+            <button id="resetButton" class="ghost-button" type="button">Сбросить</button>
+            <button id="downloadResults" class="ghost-button" type="button">Скачать отчет</button>
+          </div>
+        </section>
       </aside>
 
       <main class="main-area">
@@ -134,10 +162,16 @@
               </div>
               <div class="status-pill error-pill" id="qualityStatus" hidden></div>
             </div>
-            <div class="chart-legend" aria-label="Легенда графика">
-              <span><i class="legend-line spectrum"></i>Спектр</span>
-              <span><i class="legend-line threshold"></i>Порог</span>
-              <span><i class="legend-dot"></i>Найденные пики</span>
+            <div class="chart-toolbar">
+              <div class="chart-legend" aria-label="Легенда графика">
+                <span><i class="legend-line spectrum"></i>Спектр</span>
+                <span><i class="legend-line threshold"></i>Порог</span>
+                <span><i class="legend-dot"></i>Найденные пики</span>
+              </div>
+              <label class="check-field compact-toggle">
+                <input id="peakLabelsToggle" type="checkbox" checked />
+                <span>Подписи пиков</span>
+              </label>
             </div>
             <div class="chart-wrap">
               <canvas id="spectrumCanvas" width="1200" height="560"></canvas>
@@ -218,11 +252,14 @@
             <h2 id="database-title">База спектральных линий</h2>
             <p>Редактируйте элементы и опорные спектральные линии</p>
           </div>
-          <button id="applyDatabase" class="ghost-button" type="button">Обновить базу</button>
+          <div class="database-toolbar">
+            <button id="editDatabase" class="secondary-button" type="button">Редактировать базу</button>
+            <button id="applyDatabase" class="primary-button" type="button" hidden>Обновить базу</button>
+          </div>
         </div>
         <div class="database-editor" id="databaseEditor" aria-label="Редактор базы спектральных линий"></div>
         <div class="button-row database-actions">
-          <button id="addDatabaseRow" class="ghost-button" type="button">Добавить элемент</button>
+          <button id="addDatabaseRow" class="ghost-button" type="button" hidden>Добавить элемент</button>
         </div>
         <textarea id="databaseInput" spellcheck="false" rows="9" hidden></textarea>
       </section>

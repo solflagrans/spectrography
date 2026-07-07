@@ -19,16 +19,17 @@ export function parseDatabase(text) {
   });
 }
 
-export function renderDatabaseEditor(elements, database) {
-  elements.databaseEditor.innerHTML = `
-    <div class="database-grid">
-      <div class="database-head">Символ</div>
-      <div class="database-head">Название</div>
-      <div class="database-head">Линии, нм</div>
-      <div class="database-head"></div>
-      ${database.map((item, index) => renderDatabaseRow(item, index)).join("")}
-    </div>
-  `;
+export function renderDatabaseEditor(elements, database, mode = "view") {
+  const isEdit = mode === "edit";
+  elements.editDatabase.hidden = isEdit;
+  elements.applyDatabase.hidden = !isEdit;
+  elements.addDatabaseRow.hidden = !isEdit;
+  elements.databaseEditor.dataset.mode = mode;
+  elements.databaseEditor.setAttribute(
+    "aria-label",
+    isEdit ? "Редактор базы спектральных линий" : "База спектральных линий",
+  );
+  elements.databaseEditor.innerHTML = isEdit ? renderEditableDatabase(database) : renderDatabaseView(database);
 }
 
 export function readDatabaseEditor(elements) {
@@ -69,8 +70,48 @@ function renderDatabaseRow(item, index) {
       <input class="db-lines" data-index="${index}" value="${escapeHtml(item.lines.join(", "))}" aria-label="Спектральные линии элемента ${index + 1}" />
     </div>
     <div>
-      <button class="delete-row" data-index="${index}" type="button" title="Удалить элемент">×</button>
+      <button class="delete-row" data-index="${index}" type="button" aria-label="Удалить элемент ${escapeHtml(item.symbol)}">
+        Удалить
+      </button>
     </div>
+  `;
+}
+
+function renderEditableDatabase(database) {
+  return `
+    <div class="database-grid database-grid-edit">
+      <div class="database-head">Символ</div>
+      <div class="database-head">Название</div>
+      <div class="database-head">Линии, нм</div>
+      <div class="database-head"></div>
+      ${database.map((item, index) => renderDatabaseRow(item, index)).join("")}
+    </div>
+  `;
+}
+
+function renderDatabaseView(database) {
+  return `
+    <div class="database-grid database-grid-view">
+      <div class="database-head">Элемент</div>
+      <div class="database-head">Название</div>
+      <div class="database-head">Линий</div>
+      <div class="database-head">Опорные линии, нм</div>
+      ${database.map((item) => renderDatabaseViewRow(item)).join("")}
+    </div>
+  `;
+}
+
+function renderDatabaseViewRow(item) {
+  const preview = item.lines
+    .slice(0, 7)
+    .map((line) => Number(line).toFixed(2))
+    .join(", ");
+  const suffix = item.lines.length > 7 ? ` +${item.lines.length - 7}` : "";
+  return `
+    <div><strong>${escapeHtml(item.symbol)}</strong></div>
+    <div>${escapeHtml(item.name)}</div>
+    <div><span class="line-count">${item.lines.length}</span></div>
+    <div class="line-preview">${escapeHtml(preview)}${suffix}</div>
   `;
 }
 

@@ -7,6 +7,8 @@ export const state = {
   matches: [],
   database: structuredClone(spectralDatabase),
   hoverPeak: null,
+  showPeakLabels: true,
+  databaseMode: "view",
   threshold: null,
   sort: { key: "wavelength", direction: "asc" },
 };

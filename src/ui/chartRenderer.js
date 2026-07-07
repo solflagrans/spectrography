@@ -37,12 +37,8 @@ export function drawChart(elements, state) {
 
   drawGrid(ctx, scale);
 
-  ctx.lineWidth = 2;
-  const gradient = ctx.createLinearGradient(scale.padding.left, 0, scale.padding.left + scale.plotW, 0);
-  gradient.addColorStop(0, "#005aaa");
-  gradient.addColorStop(0.75, "#ab3a8d");
-  gradient.addColorStop(1, "#e72b70");
-  ctx.strokeStyle = gradient;
+  ctx.lineWidth = 1.8;
+  ctx.strokeStyle = "#005aaa";
   ctx.beginPath();
   state.wavelengths.forEach((x, index) => {
     const px = scale.scaleX(x);
@@ -64,17 +60,20 @@ export function drawChart(elements, state) {
     ctx.setLineDash([]);
   }
 
+  const shouldDrawLabels = state.showPeakLabels && w >= 520;
+  let lastLabelX = Number.NEGATIVE_INFINITY;
   state.peaks.forEach((peak) => {
     const px = scale.scaleX(peak.wavelength);
     const py = scale.scaleY(peak.intensity);
-    ctx.fillStyle = peak.match ? "#ab3a8d" : "#b36b00";
+    ctx.fillStyle = peak.match ? "#005aaa" : "#b36b00";
     ctx.beginPath();
     ctx.arc(px, py, peak === state.hoverPeak ? 5 : 3.2, 0, Math.PI * 2);
     ctx.fill();
-    if (peak.match) {
+    if (shouldDrawLabels && peak.match && px - lastLabelX > 34) {
       ctx.fillStyle = "#141d2f";
       ctx.font = "700 10px system-ui";
       ctx.fillText(peak.match.symbol, px + 6, py - 7);
+      lastLabelX = px;
     }
   });
 }

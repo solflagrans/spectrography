@@ -8,5 +8,5 @@ const elements = getElements();
 const app = bindEvents(elements, state);
 
 syncDatabaseInput(elements, state);
-renderDatabaseEditor(elements, state.database);
+renderDatabaseEditor(elements, state.database, state.databaseMode);
 app.setDataset(presets.solar.wavelengths, presets.solar.intensities);

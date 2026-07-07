@@ -17,14 +17,20 @@ export function renderResults(elements, state, detected, options) {
         const confidence = getConfidence(item);
         return `
           <article class="element-card ${confidence.level}">
-            <strong>
-              <span>${item.symbol} · ${item.name}</span>
-              <span class="score">оценка ${item.score}</span>
-            </strong>
-            <p>${item.peaks.length} линий: ${item.peaks
+            <div class="element-card-head">
+              <div>
+                <strong class="element-title">${item.symbol}</strong>
+                <span class="element-name">${item.name}</span>
+              </div>
+              <span class="confidence ${confidence.level}">${confidence.label}</span>
+            </div>
+            <div class="element-metrics">
+              <span class="score">Оценка ${item.score}</span>
+              <span>${item.peaks.length} совпавших линий</span>
+            </div>
+            <p class="element-lines">${item.peaks
               .map((peak) => `${round(peak.wavelength, 2)} нм`)
               .join(", ")}</p>
-            <span class="confidence ${confidence.level}">${confidence.label}</span>
           </article>
         `;
       })

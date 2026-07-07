@@ -15,6 +15,10 @@ import { renderResults } from "./renderResults.js";
 
 export function bindEvents(elements, state) {
   const analyze = () => analyzeDataset(elements, state);
+  if (window.matchMedia("(max-width: 720px)").matches) {
+    elements.peakLabelsToggle.checked = false;
+  }
+  state.showPeakLabels = elements.peakLabelsToggle.checked;
   const setDataset = (wavelengths, intensities, shouldAnalyze = true) => {
     setDatasetState(wavelengths, intensities);
     syncInputs(elements, state);
@@ -111,21 +115,28 @@ export function bindEvents(elements, state) {
     try {
       state.database = readDatabaseEditor(elements);
       syncDatabaseInput(elements, state);
-      renderDatabaseEditor(elements, state.database);
+      state.databaseMode = "view";
+      renderDatabaseEditor(elements, state.database, state.databaseMode);
       analyze();
     } catch (error) {
       showError(elements, error.message);
     }
   });
 
+  elements.editDatabase.addEventListener("click", () => {
+    state.databaseMode = "edit";
+    renderDatabaseEditor(elements, state.database, state.databaseMode);
+  });
+
   document.querySelector("#addDatabaseRow").addEventListener("click", () => {
     try {
-      state.database = readDatabaseEditor(elements);
+      if (state.databaseMode === "edit") state.database = readDatabaseEditor(elements);
     } catch {
       state.database = structuredClone(state.database);
     }
     state.database.push({ symbol: "", name: "", lines: [] });
-    renderDatabaseEditor(elements, state.database);
+    state.databaseMode = "edit";
+    renderDatabaseEditor(elements, state.database, state.databaseMode);
   });
 
   elements.databaseEditor.addEventListener("click", (event) => {
@@ -137,7 +148,7 @@ export function bindEvents(elements, state) {
       state.database = structuredClone(state.database);
     }
     state.database.splice(Number(button.dataset.index), 1);
-    renderDatabaseEditor(elements, state.database);
+    renderDatabaseEditor(elements, state.database, state.databaseMode);
   });
 
   document.querySelector("#analyzeButton").addEventListener("click", analyze);
@@ -166,6 +177,19 @@ export function bindEvents(elements, state) {
       setSortState(header.dataset.sort);
       renderPeakTable(elements, state);
     });
+  });
+
+  document.querySelectorAll(".section-toggle").forEach((button) => {
+    button.addEventListener("click", () => {
+      const expanded = button.getAttribute("aria-expanded") === "true";
+      button.setAttribute("aria-expanded", String(!expanded));
+      document.getElementById(button.getAttribute("aria-controls")).hidden = expanded;
+    });
+  });
+
+  elements.peakLabelsToggle.addEventListener("change", () => {
+    state.showPeakLabels = elements.peakLabelsToggle.checked;
+    drawChart(elements, state);
   });
 
   ["sigmaInput", "prominenceInput", "distanceInput", "toleranceInput", "smoothingInput"].forEach((key) => {
