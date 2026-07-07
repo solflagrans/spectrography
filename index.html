@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Спектрографический калькулятор</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="title-block">
+        <p class="eyebrow">Спектральный анализ</p>
+        <h1>Определение состава образца</h1>
+        <p>Поиск пиков и сопоставление со спектральными линиями элементов</p>
+      </div>
+      <nav class="app-tabs" aria-label="Разделы приложения">
+        <button class="app-tab is-active" data-app-view="analysis" type="button">Анализ</button>
+        <button class="app-tab" data-app-view="peaks" type="button">Пики</button>
+        <button class="app-tab" data-app-view="settings" type="button">Настройки</button>
+      </nav>
+    </header>
+
+    <div class="app-shell">
+      <aside class="panel data-panel" aria-labelledby="data-title">
+        <div class="panel-head">
+          <div>
+            <h2 id="data-title">Рабочая панель</h2>
+            <p>Данные, параметры и действия анализа</p>
+          </div>
+        </div>
+
+        <div class="section-label">Источник данных</div>
+        <div class="segmented" role="tablist" aria-label="Источник данных">
+          <button class="segment is-active" data-source="preset" type="button">Пресеты</button>
+          <button class="segment" data-source="json" type="button">JSON</button>
+          <button class="segment" data-source="manual" type="button">Массивы</button>
+        </div>
+
+        <div class="source-view is-active" data-view="preset">
+          <label class="field">
+            <span>Предустановленный спектр</span>
+            <select id="presetSelect">
+              <option value="solar">Солнечный спектр: H, Na, Mg, Ca, Fe</option>
+              <option value="lamp">Лампа: Hg, Ne, Ar</option>
+              <option value="alloy">Сплав: Fe, Cu, Al, Ni</option>
+            </select>
+          </label>
+          <button id="loadPreset" class="primary-button" type="button">Загрузить пресет</button>
+        </div>
+
+        <div class="source-view" data-view="json">
+          <label class="field">
+            <span>JSON</span>
+            <textarea id="jsonInput" spellcheck="false" rows="9"></textarea>
+          </label>
+          <div class="button-row">
+            <button id="importJson" class="primary-button" type="button">Применить JSON</button>
+            <button id="loadJsonFile" class="ghost-button" type="button">Загрузить файл</button>
+            <input id="jsonFileInput" type="file" accept="application/json,.json" hidden />
+          </div>
+        </div>
+
+        <div class="source-view" data-view="manual">
+          <div class="paired-inputs">
+            <div class="row-number-cell" aria-hidden="true">
+              <span>№</span>
+              <div id="manualRowNumbers" class="row-number-list"></div>
+            </div>
+            <label class="paired-cell" for="wavelengthInput">
+              <span>Длины волн, нм</span>
+              <textarea id="wavelengthInput" spellcheck="false" rows="10" placeholder="486.13&#10;589.59"></textarea>
+            </label>
+            <label class="paired-cell" for="intensityInput">
+              <span>Интенсивности</span>
+              <textarea id="intensityInput" spellcheck="false" rows="10" placeholder="72.4&#10;91.8"></textarea>
+            </label>
+          </div>
+          <button id="applyArrays" class="primary-button" type="button">Применить массивы</button>
+        </div>
+
+        <div class="data-summary">
+          <div>
+            <span>Точек</span>
+            <strong id="pointCountStat">0</strong>
+          </div>
+          <div>
+            <span>Диапазон λ</span>
+            <strong id="rangeStat">—</strong>
+          </div>
+          <div>
+            <span>Средняя интенсивность</span>
+            <strong id="avgStat">—</strong>
+          </div>
+        </div>
+
+        <div class="section-label">Параметры анализа</div>
+        <div class="control-grid">
+          <label class="field compact">
+            <span>Порог поиска пиков</span>
+            <input id="sigmaInput" type="number" min="0" max="5" step="0.1" value="1" />
+          </label>
+          <label class="field compact">
+            <span>Допуск совпадения, нм</span>
+            <input id="toleranceInput" type="number" min="0.01" max="10" step="0.01" value="0.35" />
+          </label>
+          <label class="field compact">
+            <span>Сглаживание</span>
+            <input id="smoothingInput" type="number" min="1" max="31" step="2" value="1" />
+          </label>
+          <label class="field compact">
+            <span>Мин. расстояние пиков</span>
+            <input id="distanceInput" type="number" min="1" max="500" step="1" value="8" />
+          </label>
+          <label class="field compact full-span">
+            <span>Минимальная высота пика</span>
+            <input id="prominenceInput" type="number" min="0" step="0.01" value="0.06" />
+          </label>
+        </div>
+
+        <div class="action-grid">
+          <button id="analyzeButton" class="primary-button" type="button">Анализировать</button>
+          <button id="resetButton" class="ghost-button" type="button">Сбросить</button>
+          <button id="downloadResults" class="ghost-button" type="button">Скачать отчет</button>
+        </div>
+      </aside>
+
+      <main class="main-area">
+        <section class="app-view is-active" data-app-panel="analysis">
+          <section class="panel chart-panel" aria-labelledby="chart-title">
+            <div class="panel-head">
+              <div>
+                <h2 id="chart-title">Спектр</h2>
+                <p id="datasetMeta">0 точек</p>
+              </div>
+              <div class="status-pill error-pill" id="qualityStatus" hidden></div>
+            </div>
+            <div class="chart-legend" aria-label="Легенда графика">
+              <span><i class="legend-line spectrum"></i>Спектр</span>
+              <span><i class="legend-line threshold"></i>Порог</span>
+              <span><i class="legend-dot"></i>Найденные пики</span>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="spectrumCanvas" width="1200" height="560"></canvas>
+              <div id="tooltip" class="tooltip" hidden></div>
+            </div>
+          </section>
+
+          <section class="panel results-panel" aria-labelledby="results-title">
+            <div class="panel-head">
+              <div>
+                <h2 id="results-title">Итог анализа</h2>
+                <p id="analysisSummary">Пики еще не рассчитаны</p>
+              </div>
+            </div>
+            <div id="analysisConclusion" class="analysis-conclusion"></div>
+            <div id="elementResults" class="element-list"></div>
+            <div class="grouped-peaks">
+              <h3>Пики по элементам</h3>
+              <div id="groupedPeaks"></div>
+            </div>
+          </section>
+        </section>
+
+        <section class="app-view" data-app-panel="peaks">
+          <section class="panel peaks-panel" aria-labelledby="peaks-title">
+            <div class="panel-head">
+              <div>
+                <h2 id="peaks-title">Найденные пики</h2>
+                <p>Фильтрация, сортировка и проверка совпадений</p>
+              </div>
+            </div>
+        <div class="peak-filters" aria-label="Фильтры найденных пиков">
+          <label class="field compact">
+            <span>Поиск</span>
+            <input id="peakSearch" type="search" placeholder="Элемент или линия" />
+          </label>
+          <label class="field compact">
+            <span>Тип</span>
+            <select id="peakMatchFilter">
+              <option value="all">Все пики</option>
+              <option value="matched">С элементом</option>
+              <option value="unmatched">Без элемента</option>
+            </select>
+          </label>
+          <label class="field compact">
+            <span>λ от</span>
+            <input id="peakMinInput" type="number" step="0.01" placeholder="нм" />
+          </label>
+          <label class="field compact">
+            <span>λ до</span>
+            <input id="peakMaxInput" type="number" step="0.01" placeholder="нм" />
+          </label>
+          <label class="check-field">
+            <input id="matchedOnlyInput" type="checkbox" />
+            <span>Только сопоставленные пики</span>
+          </label>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th data-sort="wavelength">λ, нм</th>
+                <th data-sort="intensity">Интенс.</th>
+                <th data-sort="element">Элемент</th>
+                <th data-sort="delta">Линия / Δ</th>
+              </tr>
+            </thead>
+            <tbody id="peakTable"></tbody>
+          </table>
+        </div>
+      </section>
+        </section>
+
+        <section class="app-view" data-app-panel="settings">
+          <section class="panel database-panel" aria-labelledby="database-title">
+        <div class="panel-head">
+          <div>
+            <h2 id="database-title">База спектральных линий</h2>
+            <p>Редактируйте элементы и опорные спектральные линии</p>
+          </div>
+          <button id="applyDatabase" class="ghost-button" type="button">Обновить базу</button>
+        </div>
+        <div class="database-editor" id="databaseEditor" aria-label="Редактор базы спектральных линий"></div>
+        <div class="button-row database-actions">
+          <button id="addDatabaseRow" class="ghost-button" type="button">Добавить элемент</button>
+        </div>
+        <textarea id="databaseInput" spellcheck="false" rows="9" hidden></textarea>
+      </section>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>
