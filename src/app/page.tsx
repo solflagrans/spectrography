@@ -1,3 +1,6 @@
+import type { Route } from "next";
+import { redirect } from "next/navigation";
+
 export default function HomePage() {
-  return <main aria-label="Рабочая область интерпретатора спектра" />;
+  redirect("/data" as Route);
 }

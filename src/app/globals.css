@@ -1,6 +1,5 @@
 :root {
   color-scheme: light;
-  background: #ffffff;
 }
 
 * {
@@ -14,9 +13,26 @@ body {
 }
 
 body {
-  background: #ffffff;
+  background: var(--color-background-canvas);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  text-rendering: optimizeLegibility;
 }
 
-main {
-  min-height: 100vh;
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-action-primary) 24%, transparent);
 }

@@ -1,0 +1,71 @@
+:root {
+  --color-primitive-canvas: #f4f5f7;
+  --color-primitive-surface: #ffffff;
+  --color-primitive-elevated: #eaecf0;
+  --color-primitive-text-primary: #1e2a3a;
+  --color-primitive-text-secondary: #546273;
+  --color-primitive-border: #dce0e5;
+  --color-primitive-primary: #4a6fa5;
+  --color-primitive-primary-hover: #3b5a8a;
+  --color-primitive-series-1: #5856d6;
+  --color-primitive-series-2: #0ea5c2;
+  --color-primitive-success: #2b8a3e;
+  --color-primitive-warning: #b86800;
+  --color-primitive-danger: #d63b4b;
+  --color-primitive-on-dark: #f5f7fa;
+
+  --color-background-canvas: var(--color-primitive-canvas);
+  --color-background-surface: var(--color-primitive-surface);
+  --color-background-elevated: var(--color-primitive-elevated);
+  --color-text-primary: var(--color-primitive-text-primary);
+  --color-text-secondary: var(--color-primitive-text-secondary);
+  --color-text-on-dark: var(--color-primitive-on-dark);
+  --color-border-default: var(--color-primitive-border);
+  --color-action-primary: var(--color-primitive-primary);
+  --color-action-primary-hover: var(--color-primitive-primary-hover);
+  --color-data-series-1: var(--color-primitive-series-1);
+  --color-data-series-2: var(--color-primitive-series-2);
+  --color-status-success: var(--color-primitive-success);
+  --color-status-warning: var(--color-primitive-warning);
+  --color-status-danger: var(--color-primitive-danger);
+
+  --font-family-sans: var(--font-inter), Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-family-mono: var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
+  --font-size-heading-large: 1.75rem;
+  --font-size-heading-medium: 1.125rem;
+  --font-size-body: 0.875rem;
+  --font-size-navigation: 0.8125rem;
+  --font-size-label: 0.75rem;
+  --font-size-data: 0.8125rem;
+  --line-height-heading-large: 2.125rem;
+  --line-height-heading-medium: 1.5rem;
+  --line-height-body: 1.3125rem;
+  --line-height-navigation: 1.125rem;
+  --line-height-label: 1rem;
+  --line-height-data: 1.125rem;
+  --letter-spacing-heading-large: -0.025rem;
+  --letter-spacing-heading-medium: -0.00625rem;
+  --letter-spacing-label: 0.021875rem;
+
+  --spacing-2xs: 0.25rem;
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 0.75rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+
+  --radius-xs: 0.125rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-full: 999px;
+
+  --shadow-surface: 0 0.5rem 1.375rem rgb(21 34 55 / 7%);
+  --transition-fast: 140ms ease;
+
+  --layout-top-bar-height: 3.5rem;
+  --layout-navigation-height: 3.125rem;
+  --layout-left-panel-width: 15rem;
+  --layout-right-panel-width: 17.5rem;
+  --layout-content-max-width: 90rem;
+}
