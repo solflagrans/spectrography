@@ -31,6 +31,25 @@ export function makeSpectrumFixture(options: SpectrumFixtureOptions): SpectrumDa
 }
 
 export const demoSpectra = {
+  fe12: makeSpectrumFixture({
+    start: 380,
+    end: 780,
+    points: 1_024,
+    baseline: 8,
+    noise: 0.45,
+    peaks: [
+      [393.37, 74, 0.48],
+      [396.85, 68, 0.48],
+      [404.58, 88, 0.52],
+      [438.35, 73, 0.55],
+      [520.84, 42, 0.58],
+      [527.04, 64, 0.55],
+      [532.8, 58, 0.58],
+      [613.66, 51, 0.62],
+      [630.41, 36, 0.64],
+      [640, 47, 0.62],
+    ],
+  }),
   solar: makeSpectrumFixture({
     start: 360,
     end: 720,
