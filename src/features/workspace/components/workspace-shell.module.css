@@ -224,8 +224,6 @@
   line-height: var(--line-height-data);
 }
 
-<<<<<<< Updated upstream
-=======
 .panelDetails {
   display: flex;
   flex-direction: column;
@@ -252,7 +250,6 @@
   line-height: var(--line-height-data);
 }
 
->>>>>>> Stashed changes
 .canvas {
   min-width: 0;
   padding: 1.25rem;

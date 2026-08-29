@@ -1,8 +1,3 @@
-<<<<<<< Updated upstream
-import { Activity, CloudOff } from "lucide-react";
-import type { ReactNode } from "react";
-
-=======
 "use client";
 
 import { Activity, CloudOff } from "lucide-react";
@@ -10,16 +5,12 @@ import type { ReactNode } from "react";
 
 import { useDemoAnalysis } from "@/features/demo-analysis/model/demo-analysis-context";
 
->>>>>>> Stashed changes
 import { WorkspaceNavigation } from "./workspace-navigation";
 import styles from "./workspace-shell.module.css";
 
 export function WorkspaceShell({ children }: Readonly<{ children: ReactNode }>) {
-<<<<<<< Updated upstream
-=======
   const { analysis } = useDemoAnalysis();
 
->>>>>>> Stashed changes
   return (
     <div className={styles.shell}>
       <header className={styles.topBar}>
@@ -28,16 +19,6 @@ export function WorkspaceShell({ children }: Readonly<{ children: ReactNode }>) 
             <Activity size={17} strokeWidth={1.8} />
           </span>
           <span className={styles.contextDivider} aria-hidden="true" />
-<<<<<<< Updated upstream
-          <span className={styles.contextLabel}>Локальная рабочая сессия</span>
-        </div>
-
-        <div className={styles.sessionStatus} aria-label="Состояние сессии">
-          <span className={styles.draftBadge}>Черновик</span>
-          <span className={styles.localOnlyNote}>
-            <CloudOff size={14} strokeWidth={1.8} aria-hidden="true" />
-            Данные остаются в браузере
-=======
           <span className={styles.contextLabel}>
             {analysis?.title ?? "Локальная рабочая сессия"}
           </span>
@@ -48,7 +29,6 @@ export function WorkspaceShell({ children }: Readonly<{ children: ReactNode }>) 
           <span className={styles.localOnlyNote}>
             <CloudOff size={14} strokeWidth={1.8} aria-hidden="true" />
             {analysis ? "Состояние не сохраняется" : "Данные остаются в браузере"}
->>>>>>> Stashed changes
           </span>
         </div>
       </header>
@@ -57,17 +37,6 @@ export function WorkspaceShell({ children }: Readonly<{ children: ReactNode }>) 
 
       <div className={styles.workspace}>
         <aside className={styles.leftPanel} aria-label="Параметры текущего раздела">
-<<<<<<< Updated upstream
-          <div className={styles.panelHeader}>
-            <span>Параметры этапа</span>
-            <span className={styles.panelMeta}>Не настроены</span>
-          </div>
-          <div className={styles.parameterList} aria-hidden="true">
-            <div className={styles.parameterPlaceholder} />
-            <div className={styles.parameterPlaceholder} />
-            <div className={styles.parameterPlaceholderShort} />
-          </div>
-=======
           {analysis ? (
             <>
               <div className={styles.panelHeader}>
@@ -93,7 +62,6 @@ export function WorkspaceShell({ children }: Readonly<{ children: ReactNode }>) 
               </div>
             </>
           )}
->>>>>>> Stashed changes
         </aside>
 
         <main className={styles.canvas} aria-label="Рабочая область">
@@ -105,17 +73,6 @@ export function WorkspaceShell({ children }: Readonly<{ children: ReactNode }>) 
           <dl className={styles.summaryList}>
             <div>
               <dt>Источник данных</dt>
-<<<<<<< Updated upstream
-              <dd>—</dd>
-            </div>
-            <div>
-              <dt>Точек спектра</dt>
-              <dd>—</dd>
-            </div>
-            <div>
-              <dt>Статус анализа</dt>
-              <dd>Не начат</dd>
-=======
               <dd>{analysis?.source.format ?? "—"}</dd>
             </div>
             <div>
@@ -129,7 +86,6 @@ export function WorkspaceShell({ children }: Readonly<{ children: ReactNode }>) 
             <div>
               <dt>Найдено пиков</dt>
               <dd>{analysis?.peaks.length ?? "—"}</dd>
->>>>>>> Stashed changes
             </div>
           </dl>
         </aside>

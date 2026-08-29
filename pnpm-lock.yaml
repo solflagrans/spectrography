@@ -8,16 +8,6 @@ importers:
 
   .:
     dependencies:
-<<<<<<< Updated upstream
-      clsx:
-        specifier: ^2.1.1
-        version: 2.1.1
-      lucide-react:
-        specifier: ^1.35.0
-        version: 1.35.0(react@19.2.8)
-=======
-<<<<<<< Updated upstream
-=======
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -27,8 +17,6 @@ importers:
       lucide-react:
         specifier: ^1.35.0
         version: 1.35.0(react@19.2.8)
->>>>>>> Stashed changes
->>>>>>> Stashed changes
       next:
         specifier: 16.3.3
         version: 16.3.3(@babel/core@7.29.7(supports-color@7.2.0))(@types/node@26.4.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
