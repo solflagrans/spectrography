@@ -18,19 +18,12 @@
   background: var(--color-background-surface);
 }
 
-.sessionContext,
-.sessionStatus,
-.localOnlyNote {
+.logo {
   display: flex;
   align-items: center;
 }
 
-.sessionContext {
-  min-width: 0;
-  gap: var(--spacing-sm);
-}
-
-.contextMark {
+.logoMark {
   display: grid;
   width: 1.875rem;
   height: 1.875rem;
@@ -41,43 +34,13 @@
   color: var(--color-action-primary);
 }
 
-.contextDivider {
-  width: 1px;
-  height: 0.875rem;
-  background: var(--color-border-default);
-}
-
-.contextLabel {
-  overflow: hidden;
+.topSummary {
+  margin: 0;
   color: var(--color-text-secondary);
   font-size: var(--font-size-navigation);
   font-weight: 500;
   line-height: var(--line-height-navigation);
-  text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.sessionStatus {
-  flex: 0 0 auto;
-  gap: var(--spacing-sm);
-}
-
-.draftBadge {
-  padding: var(--spacing-2xs) var(--spacing-xs);
-  border-radius: var(--radius-xs);
-  background: var(--color-background-elevated);
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-label);
-  font-weight: 600;
-  letter-spacing: var(--letter-spacing-label);
-  line-height: var(--line-height-label);
-}
-
-.localOnlyNote {
-  gap: var(--spacing-xs);
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-label);
-  line-height: var(--line-height-label);
 }
 
 .navigation {
@@ -142,22 +105,18 @@
   display: grid;
   width: 100%;
   min-height: 0;
-  grid-template-columns: var(--layout-left-panel-width) minmax(0, 1fr) var(--layout-right-panel-width);
+  grid-template-columns: minmax(0, 1fr);
 }
 
-.leftPanel,
-.rightPanel {
-  min-width: 0;
-  padding: var(--spacing-md);
-  background: var(--color-background-surface);
+.workspaceWithPanel {
+  grid-template-columns: var(--layout-left-panel-width) minmax(0, 1fr);
 }
 
 .leftPanel {
+  min-width: 0;
+  padding: var(--spacing-md);
+  background: var(--color-background-surface);
   border-right: 1px solid var(--color-border-default);
-}
-
-.rightPanel {
-  border-left: 1px solid var(--color-border-default);
 }
 
 .panelHeader {
@@ -346,12 +305,8 @@
 }
 
 @media (max-width: 70rem) {
-  .workspace {
+  .workspaceWithPanel {
     grid-template-columns: var(--layout-left-panel-width) minmax(0, 1fr);
-  }
-
-  .rightPanel {
-    display: none;
   }
 }
 
@@ -378,8 +333,7 @@
     display: block;
   }
 
-  .leftPanel,
-  .rightPanel {
+  .leftPanel {
     display: none;
   }
 
@@ -393,9 +347,7 @@
 }
 
 @media (max-width: 35rem) {
-  .contextDivider,
-  .contextLabel,
-  .localOnlyNote {
+  .topSummary {
     display: none;
   }
 

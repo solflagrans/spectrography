@@ -29,6 +29,12 @@ interface SpectrumChartProps {
   readonly threshold?: number;
   readonly referenceLines?: readonly ReferenceLine[];
   readonly compact?: boolean;
+  readonly fill?: boolean;
+}
+
+interface TooltipParameter {
+  readonly axisValue?: unknown;
+  readonly value?: unknown;
 }
 
 export function SpectrumChart({
@@ -38,6 +44,7 @@ export function SpectrumChart({
   threshold,
   referenceLines = [],
   compact = false,
+  fill = false,
 }: SpectrumChartProps) {
   const chartElement = useRef<HTMLDivElement>(null);
 
@@ -58,7 +65,7 @@ export function SpectrumChart({
   return (
     <div
       ref={chartElement}
-      className={compact ? styles.chartCompact : styles.chart}
+      className={fill ? styles.chartFill : compact ? styles.chartCompact : styles.chart}
       role="img"
       aria-label={label}
     />
@@ -100,7 +107,8 @@ function createOption(
     grid: { left: 54, right: 18, top: 22, bottom: 38 },
     tooltip: {
       trigger: "axis",
-      valueFormatter: (value: unknown) => Number(value).toFixed(3),
+      axisPointer: { type: "line", snap: true },
+      formatter: (parameters: unknown) => formatTooltip(parameters, dataset, peaks, primary, success),
     },
     xAxis: {
       type: "value",
@@ -134,6 +142,7 @@ function createOption(
       ...(peaks.length
         ? [{
             type: "scatter" as const,
+            name: "Пик",
             data: peaks.map((peak) => [peak.wavelength, peak.intensity]),
             symbolSize: 8,
             itemStyle: { color: success, borderColor: "#ffffff", borderWidth: 1.5 },
@@ -142,4 +151,49 @@ function createOption(
         : []),
     ],
   };
+}
+
+function formatTooltip(
+  parameters: unknown,
+  dataset: SpectrumDataset,
+  peaks: readonly MatchedPeak[],
+  signalColor: string,
+  peakColor: string,
+): string {
+  const parameter = (Array.isArray(parameters) ? parameters[0] : parameters) as TooltipParameter | undefined;
+  const coordinates = Array.isArray(parameter?.value) ? parameter.value : [];
+  const wavelength = toFiniteNumber(parameter?.axisValue) ?? toFiniteNumber(coordinates[0]);
+
+  if (wavelength === null) return "";
+
+  const sampleIndex = findNearestSampleIndex(dataset.wavelengths, wavelength);
+  const sampleWavelength = dataset.wavelengths[sampleIndex];
+  const peak = peaks.find((candidate) => candidate.wavelength === sampleWavelength);
+  const intensity = peak?.intensity ?? dataset.intensities[sampleIndex];
+  const color = peak ? peakColor : signalColor;
+
+  return [
+    `<strong>${sampleWavelength.toFixed(2)} нм</strong>`,
+    `<span style="display:inline-block;width:8px;height:8px;margin-right:8px;border-radius:50%;background:${color}"></span>${intensity.toFixed(3)}`,
+  ].join("<br>");
+}
+
+function findNearestSampleIndex(wavelengths: readonly number[], target: number): number {
+  let nearestIndex = 0;
+  let nearestDistance = Number.POSITIVE_INFINITY;
+
+  wavelengths.forEach((wavelength, index) => {
+    const distance = Math.abs(wavelength - target);
+    if (distance < nearestDistance) {
+      nearestDistance = distance;
+      nearestIndex = index;
+    }
+  });
+
+  return nearestIndex;
+}
+
+function toFiniteNumber(value: unknown): number | null {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }

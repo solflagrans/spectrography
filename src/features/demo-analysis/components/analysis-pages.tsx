@@ -7,6 +7,7 @@ import {
   Database,
   FlaskConical,
   Link2,
+  Ruler,
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
@@ -14,7 +15,6 @@ import type { ReactNode } from "react";
 
 import type {
   DemoAnalysis,
-  DemoElementHypothesis,
   DemoHypothesisStatus,
 } from "@/application/demo-analysis/create-demo-analysis";
 import type { MatchedPeak } from "@/domain/spectrum";
@@ -54,7 +54,7 @@ export function DataAnalysisPage() {
   }
 
   return (
-    <AnalysisPage title="Данные" description="Исходный набор без скрытых преобразований.">
+    <AnalysisPage title="Данные">
       <Card
         title="Обзор исходного спектра"
         accessory={<Tag tone="neutral">Сырой сигнал</Tag>}
@@ -82,7 +82,7 @@ export function DataAnalysisPage() {
             ]}
           />
         </Card>
-        <Card title="Проверка целостности" accessory={<Tag tone="success">Готово</Tag>}>
+        <Card title="Проверка целостности">
           <div className={styles.checkList}>
             <CheckRow>Массивы длин волн и интенсивностей согласованы</CheckRow>
             <CheckRow>Значения конечны и упорядочены по длине волны</CheckRow>
@@ -99,38 +99,10 @@ export function ProcessingAnalysisPage() {
   if (!analysis) return <AnalysisUnavailable section="Обработка" />;
 
   return (
-    <AnalysisPage title="Обработка" description="Параметры уже применены к демонстрационному примеру.">
-      <div className={styles.processingGrid}>
-        <Card title="Применённые параметры" accessory={<Tag tone="success">Выполнено</Tag>}>
-          <div className={styles.transformationList}>
-            {analysis.transformations.map((transformation, index) => (
-              <div className={styles.transformation} key={transformation.id}>
-                <span className={styles.stepNumber}>{index + 1}</span>
-                <div>
-                  <h3>{transformation.label}</h3>
-                  <strong>{transformation.value}</strong>
-                  <p>{transformation.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-        <Card title="Параметры поиска пиков">
-          <DefinitionList
-            items={[
-              ["Коэффициент порога", analysis.options.sigma.toFixed(2)],
-              ["Мин. выраженность", analysis.options.prominence.toFixed(3)],
-              ["Мин. расстояние", `${analysis.options.distance} точек`],
-              ["Допуск сопоставления", `±${analysis.options.tolerance.toFixed(2)} нм`],
-            ]}
-          />
-        </Card>
-      </div>
-      <Card
-        title="Подготовленный спектр"
-        accessory={<Tag tone="neutral">Нормированная интенсивность</Tag>}
-      >
+    <AnalysisPage title="Обработка">
+      <Card title="Подготовленный спектр" accessory={<Tag tone="neutral">Предпросмотр</Tag>}>
         <SpectrumChart
+          fill
           dataset={analysis.preparedDataset}
           label="Подготовленный демонстрационный спектр"
         />
@@ -146,7 +118,6 @@ export function PeaksAnalysisPage() {
   return (
     <AnalysisPage
       title="Пики"
-      description={`${analysis.peaks.length} пиков выше расчётного порога.`}
     >
       <Card
         title="Спектральная кривая и найденные пики"
@@ -172,10 +143,7 @@ export function IdentificationAnalysisPage() {
   const leading = analysis.hypotheses[0];
 
   return (
-    <AnalysisPage
-      title="Идентификация"
-      description="Гипотезы ранжированы эвристикой и подтверждаются наблюдаемыми линиями."
-    >
+    <AnalysisPage title="Идентификация">
       {leading ? (
         <Card
           title={`Линии гипотезы: ${leading.name} (${leading.symbol})`}
@@ -194,16 +162,35 @@ export function IdentificationAnalysisPage() {
         </Card>
       ) : null}
 
-      <Card title="Гипотезы по элементам">
-        <div className={styles.hypothesisList}>
-          {analysis.hypotheses.map((hypothesis) => (
-            <HypothesisCard key={hypothesis.symbol} hypothesis={hypothesis} />
-          ))}
-        </div>
-        <p className={styles.heuristicNote}>
-          Число ранжирования — сравнительная эвристика для этого набора, а не вероятность
-          присутствия элемента.
-        </p>
+      <Card title="Гипотезы совпадений">
+        {analysis.hypotheses.length ? (
+          <div className={styles.tableScroll}>
+            <table className={`${styles.table} ${styles.hypothesisTable}`}>
+              <thead>
+                <tr>
+                  <th>Элемент</th>
+                  <th>Статус оценки</th>
+                  <th>Найдено линий</th>
+                  <th>Ранжирование</th>
+                  <th>Пояснение</th>
+                </tr>
+              </thead>
+              <tbody>
+                {analysis.hypotheses.map((hypothesis) => (
+                  <tr key={hypothesis.symbol}>
+                    <td><strong>{hypothesis.symbol}</strong> · {hypothesis.name}</td>
+                    <td><StatusTag status={hypothesis.status} /></td>
+                    <td><code>{hypothesis.evidence.length}</code></td>
+                    <td><code>{hypothesis.heuristicScore.toFixed(2)}</code></td>
+                    <td className={styles.hypothesisExplanation}>{hypothesis.explanation}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <InlineEmptyState>При текущих параметрах совпадений со справочными линиями нет.</InlineEmptyState>
+        )}
       </Card>
     </AnalysisPage>
   );
@@ -214,7 +201,7 @@ export function ResultAnalysisPage() {
   if (!analysis) return <AnalysisUnavailable section="Результат" />;
 
   return (
-    <AnalysisPage title="Результат" description="Заключение и цепочка подтверждающих данных.">
+    <AnalysisPage title="Результат">
       <section className={styles.conclusion}>
         <div className={styles.conclusionIcon} aria-hidden="true">
           <FlaskConical size={22} />
@@ -249,7 +236,10 @@ export function ResultAnalysisPage() {
                     <span>Пик {line.peakWavelength.toFixed(2)} нм</span>
                     <ArrowRight size={13} aria-hidden="true" />
                     <span>{line.ion} {line.referenceWavelength.toFixed(2)} нм</span>
-                    <code>Δ {formatDelta(line.delta)} нм</code>
+                    <span className={styles.deviationValue}>
+                      <Ruler size={13} aria-hidden="true" />
+                      {formatDelta(line.delta)} нм
+                    </span>
                   </div>
                 ))}
               </div>
@@ -283,22 +273,30 @@ export function ResultAnalysisPage() {
 
 function AnalysisPage({
   title,
-  description,
   children,
-}: Readonly<{ title: string; description: string; children: ReactNode }>) {
+}: Readonly<{ title: string; children: ReactNode }>) {
+  const { calculationStatus, parameterError } = useDemoAnalysis();
+  const accessory = calculationStatus === "calculating"
+    ? <Tag tone="info">Пересчёт…</Tag>
+    : parameterError
+      ? <Tag tone="danger">Проверьте параметры</Tag>
+      : <Tag tone="neutral">Интерактивный анализ</Tag>;
+
   return (
     <div className={styles.page}>
       <header className={styles.pageHeader}>
         <div>
-          <span className={styles.eyebrow}>Демонстрационный анализ</span>
           <h1>{title}</h1>
-          <p>{description}</p>
         </div>
-        <Tag tone="neutral">Только просмотр</Tag>
+        {accessory}
       </header>
       {children}
     </div>
   );
+}
+
+function InlineEmptyState({ children }: Readonly<{ children: ReactNode }>) {
+  return <p className={styles.inlineEmpty}>{children}</p>;
 }
 
 function AnalysisUnavailable({ section }: Readonly<{ section: string }>) {
@@ -375,6 +373,10 @@ function CheckRow({ children }: Readonly<{ children: ReactNode }>) {
 }
 
 function PeakTable({ peaks }: Readonly<{ peaks: readonly (MatchedPeak & { readonly id: string })[] }>) {
+  if (!peaks.length) {
+    return <InlineEmptyState>При текущих параметрах пики не обнаружены.</InlineEmptyState>;
+  }
+
   return (
     <div className={styles.tableScroll}>
       <table className={styles.table}>
@@ -400,38 +402,6 @@ function PeakTable({ peaks }: Readonly<{ peaks: readonly (MatchedPeak & { readon
         </tbody>
       </table>
     </div>
-  );
-}
-
-function HypothesisCard({ hypothesis }: Readonly<{ hypothesis: DemoElementHypothesis }>) {
-  return (
-    <article className={styles.hypothesisCard}>
-      <header>
-        <div>
-          <h3>{hypothesis.symbol}</h3>
-          <span>{hypothesis.name}</span>
-        </div>
-        <StatusTag status={hypothesis.status} />
-      </header>
-      <p>{hypothesis.explanation}</p>
-      <dl>
-        <div>
-          <dt>Связанных линий</dt>
-          <dd>{hypothesis.evidence.length}</dd>
-        </div>
-        <div>
-          <dt>Эвристика ранжирования</dt>
-          <dd>{hypothesis.heuristicScore.toFixed(2)}</dd>
-        </div>
-      </dl>
-      <div className={styles.lineChips}>
-        {hypothesis.evidence.map((line) => (
-          <code key={`${line.peakId}-${line.referenceWavelength}`}>
-            {line.ion} {line.referenceWavelength.toFixed(2)} · Δ {formatDelta(line.delta)}
-          </code>
-        ))}
-      </div>
-    </article>
   );
 }
 

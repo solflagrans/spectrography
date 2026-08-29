@@ -16,8 +16,19 @@ describe("createDemoAnalysis", () => {
     for (const hypothesis of analysis.hypotheses) {
       for (const evidence of hypothesis.evidence) {
         expect(peakIds.has(evidence.peakId)).toBe(true);
-        expect(evidence.delta).toBeLessThanOrEqual(analysis.options.tolerance);
+        expect(evidence.delta).toBeLessThanOrEqual(analysis.parameters.peakSearch.tolerance);
       }
     }
+  });
+
+  it("recalculates dependent results when the peak threshold changes", () => {
+    const defaultAnalysis = createDemoAnalysis();
+    const stricterAnalysis = createDemoAnalysis({
+      ...defaultAnalysis.parameters,
+      peakSearch: { ...defaultAnalysis.parameters.peakSearch, threshold: 0.9 },
+    });
+
+    expect(stricterAnalysis.peaks.length).toBeLessThan(defaultAnalysis.peaks.length);
+    expect(stricterAnalysis.conclusion).not.toBe(defaultAnalysis.conclusion);
   });
 });
