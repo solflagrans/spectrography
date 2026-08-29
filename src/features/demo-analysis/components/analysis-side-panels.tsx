@@ -2,12 +2,12 @@
 
 import { CircleAlert, LoaderCircle, RotateCcw } from "lucide-react";
 
-import type { DemoHypothesisStatus } from "@/application/demo-analysis/create-demo-analysis";
-import { useDemoAnalysis } from "@/features/demo-analysis/model/demo-analysis-context";
+import type { AnalysisHypothesisStatus } from "@/application/analysis/create-working-analysis";
+import { useAnalysisWorkspace } from "@/features/demo-analysis/model/analysis-workspace-context";
 
 import styles from "./analysis-page.module.css";
 
-const statusLabels: Record<DemoHypothesisStatus, string> = {
+const statusLabels: Record<AnalysisHypothesisStatus, string> = {
   confirmed: "Подтверждён",
   possible: "Возможен",
   review: "Требует проверки",
@@ -20,7 +20,7 @@ export function ProcessingSettingsPanel() {
     parameterError,
     resetProcessingParameters,
     updateProcessingParameters,
-  } = useDemoAnalysis();
+  } = useAnalysisWorkspace();
 
   return (
     <div className={styles.sidePanelContent}>
@@ -71,7 +71,7 @@ export function PeakSettingsPanel() {
     parameterError,
     resetPeakSearchParameters,
     updatePeakSearchParameters,
-  } = useDemoAnalysis();
+  } = useAnalysisWorkspace();
 
   return (
     <div className={styles.sidePanelContent}>
@@ -133,7 +133,7 @@ export function PeakSettingsPanel() {
 }
 
 export function IdentificationLinesPanel() {
-  const { analysis } = useDemoAnalysis();
+  const { analysis } = useAnalysisWorkspace();
   const leading = analysis?.hypotheses[0];
 
   if (!analysis || !leading) {
@@ -240,7 +240,7 @@ function CalculationFeedback({
   status,
   error,
 }: Readonly<{
-  status: ReturnType<typeof useDemoAnalysis>["calculationStatus"];
+  status: ReturnType<typeof useAnalysisWorkspace>["calculationStatus"];
   error: string | null;
 }>) {
   if (error) {
@@ -257,7 +257,7 @@ function CalculationFeedback({
   return null;
 }
 
-function SideStatus({ status }: Readonly<{ status: DemoHypothesisStatus }>) {
+function SideStatus({ status }: Readonly<{ status: AnalysisHypothesisStatus }>) {
   const tone = status === "confirmed" ? "success" : status === "possible" ? "info" : "warning";
   return <span className={`${styles.tag} ${styles[`tag_${tone}`]}`}>{statusLabels[status]}</span>;
 }

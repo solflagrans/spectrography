@@ -1,5 +1,11 @@
-export { analyzeSpectrum, DEFAULT_ANALYSIS_OPTIONS, detectPeaks, smoothValues } from "./analysis";
-export { MAX_POINTS, normalizeDataset, parseFiniteNumber, validateDataset } from "./dataset";
+export {
+  isDatasetSortedByWavelength,
+  MAX_POINTS,
+  MIN_POINTS,
+  parseFiniteNumber,
+  sortDatasetByWavelength,
+  validateDataset,
+} from "./dataset";
 export {
   DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS,
   detectInteractivePeaks,
@@ -9,7 +15,6 @@ export {
   validateInteractiveAnalysisParameters,
 } from "./interactive-analysis";
 export type {
-  AnalysisOptions,
   AnalysisEvidenceLine,
   DetectedPeak,
   ElementHypothesis,
@@ -19,9 +24,7 @@ export type {
   InteractiveSpectrumAnalysis,
   MatchedPeak,
   PeakSearchParameters,
-  PeakDetectionResult,
   SpectralLineMatch,
-  SpectrumAnalysisResult,
   SpectrumDataset,
   SpectrumNormalizationMethod,
   SpectrumProcessingParameters,

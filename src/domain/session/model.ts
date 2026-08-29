@@ -1,6 +1,10 @@
 import { BUILTIN_LIBRARY_VERSION } from "@/domain/spectral-library/builtin-library";
-import { DEFAULT_ANALYSIS_OPTIONS } from "@/domain/spectrum";
-import type { AnalysisOptions, SpectrumAnalysisResult, SpectrumDataset } from "@/domain/spectrum";
+import { DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS } from "@/domain/spectrum";
+import type {
+  InteractiveAnalysisParameters,
+  InteractiveSpectrumAnalysis,
+  SpectrumDataset,
+} from "@/domain/spectrum";
 
 export const ANALYSIS_SESSION_SCHEMA_VERSION = 1 as const;
 
@@ -13,8 +17,8 @@ export interface AnalysisSession {
   readonly updatedAt: string;
   readonly status: AnalysisSessionStatus;
   readonly dataset: SpectrumDataset | null;
-  readonly analysisOptions: AnalysisOptions;
-  readonly analysisResult: SpectrumAnalysisResult | null;
+  readonly analysisOptions: InteractiveAnalysisParameters;
+  readonly analysisResult: InteractiveSpectrumAnalysis | null;
   readonly spectralLibraryVersion: string;
 }
 
@@ -34,7 +38,7 @@ export function createAnalysisSession({ id, now = new Date() }: CreateAnalysisSe
     updatedAt: timestamp,
     status: "empty",
     dataset: null,
-    analysisOptions: DEFAULT_ANALYSIS_OPTIONS,
+    analysisOptions: DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS,
     analysisResult: null,
     spectralLibraryVersion: BUILTIN_LIBRARY_VERSION,
   };

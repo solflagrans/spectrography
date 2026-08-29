@@ -125,6 +125,158 @@
   font-size: var(--font-size-label);
 }
 
+.importPanel {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.welcome .importPanel {
+  max-width: 42rem;
+  margin-top: var(--spacing-xl);
+}
+
+.importPanelCompact {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+}
+
+.dropZone {
+  display: flex;
+  min-width: 0;
+  min-height: 5rem;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-background-surface);
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.dropZoneActive {
+  border-color: var(--color-action-primary);
+  background: color-mix(in srgb, var(--color-action-primary) 6%, white);
+}
+
+.dropZoneIcon {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--color-background-elevated);
+  color: var(--color-action-primary);
+}
+
+.dropZoneCopy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spacing-2xs);
+  text-align: left;
+}
+
+.dropZoneCopy strong {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+.dropZoneCopy span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-label);
+  line-height: var(--line-height-label);
+}
+
+.fileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.fileButton,
+.demoImportAction button {
+  display: inline-flex;
+  min-height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: var(--font-size-navigation);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fileButton {
+  flex: 0 0 auto;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: 1px solid var(--color-action-primary);
+  background: var(--color-action-primary);
+  color: var(--color-text-on-dark);
+}
+
+.demoImportAction {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-background-surface);
+  color: var(--color-text-secondary);
+}
+
+.demoImportAction button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-primary);
+}
+
+.fileButton:disabled,
+.demoImportAction button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.fileButton:focus-visible,
+.demoImportAction button:focus-visible {
+  outline: 2px solid var(--color-action-primary);
+  outline-offset: 2px;
+}
+
+.importError {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: flex-start;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid color-mix(in srgb, var(--color-status-danger) 25%, var(--color-border-default));
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-status-danger) 6%, white);
+  color: var(--color-status-danger);
+  font-size: var(--font-size-navigation);
+  line-height: var(--line-height-body);
+  text-align: left;
+}
+
+.importError svg {
+  flex: 0 0 auto;
+  margin-top: 0.125rem;
+}
+
 .card,
 .metricCard,
 .conclusion {
@@ -172,6 +324,21 @@
 
 .chartFill {
   height: clamp(16rem, 33vh, 22rem);
+}
+
+.preparationNotice {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin: var(--spacing-md) 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-navigation);
+  line-height: var(--line-height-body);
+}
+
+.preparationNotice svg {
+  flex: 0 0 auto;
+  color: var(--color-status-success);
 }
 
 .sidePanelContent {
@@ -949,6 +1116,10 @@
   .hypothesisList {
     grid-template-columns: 1fr;
   }
+
+  .importPanelCompact {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 51.25rem) {
@@ -964,6 +1135,15 @@
 
   .card {
     padding: var(--spacing-md);
+  }
+
+  .dropZone {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .fileButton {
+    width: 100%;
   }
 
   .chart {

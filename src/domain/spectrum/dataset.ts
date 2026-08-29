@@ -1,6 +1,7 @@
 import type { SpectrumDataset } from "./types";
 
 export const MAX_POINTS = 10_000;
+export const MIN_POINTS = 3;
 
 export function parseFiniteNumber(value: unknown, location: string): number {
   const number = Number(value);
@@ -22,6 +23,9 @@ export function validateDataset(dataset: SpectrumDataset): void {
   if (wavelengths.length > MAX_POINTS) {
     throw new Error(`Максимум ${MAX_POINTS} точек в каждом массиве.`);
   }
+  if (wavelengths.length < MIN_POINTS) {
+    throw new Error(`Для анализа требуется минимум ${MIN_POINTS} точки.`);
+  }
 
   const invalidWavelength = wavelengths.findIndex((value) => !Number.isFinite(value));
   if (invalidWavelength !== -1) {
@@ -32,9 +36,18 @@ export function validateDataset(dataset: SpectrumDataset): void {
   if (invalidIntensity !== -1) {
     throw new Error(`Интенсивности: значение ${invalidIntensity + 1} не является числом.`);
   }
+
+  const seenWavelengths = new Set<number>();
+  for (let index = 0; index < wavelengths.length; index += 1) {
+    const wavelength = wavelengths[index];
+    if (seenWavelengths.has(wavelength)) {
+      throw new Error(`Длины волн: значение ${wavelength} повторяется в позиции ${index + 1}.`);
+    }
+    seenWavelengths.add(wavelength);
+  }
 }
 
-export function normalizeDataset(dataset: SpectrumDataset): SpectrumDataset {
+export function sortDatasetByWavelength(dataset: SpectrumDataset): SpectrumDataset {
   validateDataset(dataset);
 
   const points = dataset.wavelengths
@@ -45,4 +58,10 @@ export function normalizeDataset(dataset: SpectrumDataset): SpectrumDataset {
     wavelengths: points.map((point) => point.wavelength),
     intensities: points.map((point) => point.intensity),
   };
+}
+
+export function isDatasetSortedByWavelength(dataset: SpectrumDataset): boolean {
+  return dataset.wavelengths.every((wavelength, index) => (
+    index === 0 || dataset.wavelengths[index - 1] < wavelength
+  ));
 }

@@ -1,6 +1,6 @@
 import type { SpectralElement } from "@/domain/spectral-library/types";
 
-import { normalizeDataset } from "./dataset";
+import { sortDatasetByWavelength } from "./dataset";
 import { getSpectrumStats, round } from "./math";
 import { matchPeaks } from "./matching";
 import type {
@@ -59,7 +59,7 @@ export function prepareSpectrum(
   parameters: SpectrumProcessingParameters,
 ): { readonly dataset: SpectrumDataset; readonly baseline: number } {
   validateProcessingParameters(parameters);
-  const normalizedDataset = normalizeDataset(dataset);
+  const normalizedDataset = sortDatasetByWavelength(dataset);
   const smoothed = savitzkyGolaySmooth(
     normalizedDataset.intensities,
     parameters.smoothingWindow,
@@ -116,7 +116,7 @@ export function detectInteractivePeaks(
   parameters: PeakSearchParameters,
 ): { readonly peaks: readonly DetectedPeak[]; readonly threshold: number; readonly stats: ReturnType<typeof getSpectrumStats> } {
   validatePeakSearchParameters(parameters);
-  const normalizedDataset = normalizeDataset(dataset);
+  const normalizedDataset = sortDatasetByWavelength(dataset);
   const { wavelengths, intensities } = normalizedDataset;
   const stats = getSpectrumStats(intensities);
   const range = stats.maximum - stats.minimum;

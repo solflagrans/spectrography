@@ -7,30 +7,33 @@ import {
   Database,
   FlaskConical,
   Link2,
+  LoaderCircle,
   Ruler,
   Sparkles,
+  Upload,
 } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useRef, useState } from "react";
+import type { ChangeEvent, DragEvent, ReactNode } from "react";
 
 import type {
-  DemoAnalysis,
-  DemoHypothesisStatus,
-} from "@/application/demo-analysis/create-demo-analysis";
+  AnalysisHypothesisStatus,
+  WorkingAnalysis,
+} from "@/application/analysis/create-working-analysis";
 import type { MatchedPeak } from "@/domain/spectrum";
-import { useDemoAnalysis } from "@/features/demo-analysis/model/demo-analysis-context";
+import { useAnalysisWorkspace } from "@/features/demo-analysis/model/analysis-workspace-context";
 
 import styles from "./analysis-page.module.css";
 import { SpectrumChart } from "./spectrum-chart";
 
-const statusLabels: Record<DemoHypothesisStatus, string> = {
+const statusLabels: Record<AnalysisHypothesisStatus, string> = {
   confirmed: "Подтверждён",
   possible: "Возможен",
   review: "Требует проверки",
 };
 
 export function DataAnalysisPage() {
-  const { analysis, openDemoAnalysis } = useDemoAnalysis();
+  const { analysis } = useAnalysisWorkspace();
 
   if (!analysis) {
     return (
@@ -38,32 +41,43 @@ export function DataAnalysisPage() {
         <div className={styles.welcomeIcon} aria-hidden="true">
           <Database size={27} strokeWidth={1.65} />
         </div>
-        <span className={styles.eyebrow}>Первый сценарий</span>
         <h1 id="data-empty-title">Данные спектра ещё не открыты</h1>
         <p>
-          Откройте встроенный пример, чтобы просмотреть готовый анализ и пройти весь путь
-          от исходного сигнала до заключения.
+          Выберите JSON-, XLSX- или RAW8-файл либо откройте встроенный пример, чтобы запустить
+          интерактивный анализ.
         </p>
-        <button className={styles.primaryButton} type="button" onClick={openDemoAnalysis}>
-          <Sparkles size={16} aria-hidden="true" />
-          Открыть демонстрационный спектр
-        </button>
+        <SpectrumImportControls />
         <span className={styles.transientNote}>Состояние сбросится после перезагрузки страницы</span>
       </section>
     );
   }
 
+  const datasetDetails: Array<readonly [string, string]> = [
+    ["Файл", analysis.source.fileName],
+    ["Источник", analysis.source.kind],
+    ["Формат", analysis.source.format],
+    ["Единицы", analysis.source.units],
+  ];
+  if (analysis.instrumentMetadata) {
+    datasetDetails.push(
+      ["Серийный номер", analysis.instrumentMetadata.serialNumber || "Не указан"],
+      ["Время интеграции", `${formatNumber(analysis.instrumentMetadata.integrationTimeMs)} мс`],
+      ["Усреднений", String(analysis.instrumentMetadata.averages)],
+    );
+  }
+
   return (
     <AnalysisPage title="Данные">
+      <SpectrumImportControls compact />
       <Card
         title="Обзор исходного спектра"
         accessory={<Tag tone="neutral">Сырой сигнал</Tag>}
       >
-        <SpectrumChart dataset={analysis.rawDataset} label="Исходный спектр образца Fe-12" />
+        <SpectrumChart dataset={analysis.rawDataset} label={`Исходный спектр ${analysis.source.fileName}`} />
       </Card>
 
       <MetricGrid>
-        <Metric label="Диапазон" value={`${analysis.rawDataset.wavelengths[0]}–${analysis.rawDataset.wavelengths.at(-1)} нм`} />
+        <Metric label="Диапазон" value={`${formatNumber(analysis.wavelengthRange.minimum)}–${formatNumber(analysis.wavelengthRange.maximum)} нм`} />
         <Metric label="Точек" value={String(analysis.rawDataset.wavelengths.length)} />
         <Metric label="Минимум" value={analysis.rawStats.minimum.toFixed(2)} />
         <Metric label="Максимум" value={analysis.rawStats.maximum.toFixed(2)} />
@@ -73,20 +87,16 @@ export function DataAnalysisPage() {
 
       <div className={styles.twoColumns}>
         <Card title="Сведения о наборе">
-          <DefinitionList
-            items={[
-              ["Название", analysis.title],
-              ["Источник", analysis.source.kind],
-              ["Формат", analysis.source.format],
-              ["Единицы", analysis.source.units],
-            ]}
-          />
+          <DefinitionList items={datasetDetails} />
         </Card>
         <Card title="Проверка целостности">
           <div className={styles.checkList}>
             <CheckRow>Массивы длин волн и интенсивностей согласованы</CheckRow>
-            <CheckRow>Значения конечны и упорядочены по длине волны</CheckRow>
+            <CheckRow>Значения конечны, длины волн не дублируются</CheckRow>
             <CheckRow>Исходный набор сохранён отдельно от подготовленного</CheckRow>
+            {analysis.auxiliaryData ? (
+              <CheckRow>Массивы dark и reference сохранены без применения к сигналу</CheckRow>
+            ) : null}
           </div>
         </Card>
       </div>
@@ -94,9 +104,95 @@ export function DataAnalysisPage() {
   );
 }
 
+function SpectrumImportControls({ compact = false }: Readonly<{ compact?: boolean }>) {
+  const {
+    importError,
+    importSpectrumFile,
+    importStatus,
+    openDemoAnalysis,
+  } = useAnalysisWorkspace();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const isReading = importStatus === "reading";
+
+  const acceptFile = (file: File | undefined) => {
+    if (!file || isReading) return;
+    void importSpectrumFile(file);
+  };
+
+  const handleInput = (event: ChangeEvent<HTMLInputElement>) => {
+    acceptFile(event.target.files?.[0]);
+    event.target.value = "";
+  };
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragging(false);
+    acceptFile(event.dataTransfer.files[0]);
+  };
+
+  return (
+    <section className={`${styles.importPanel} ${compact ? styles.importPanelCompact : ""}`} aria-label="Импорт спектра">
+      <div
+        className={`${styles.dropZone} ${isDragging ? styles.dropZoneActive : ""}`}
+        role="group"
+        aria-label="Область загрузки файла"
+        onDragEnter={(event) => {
+          event.preventDefault();
+          setIsDragging(true);
+        }}
+        onDragOver={(event) => event.preventDefault()}
+        onDragLeave={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setIsDragging(false);
+        }}
+        onDrop={handleDrop}
+        aria-busy={isReading}
+      >
+        <span className={styles.dropZoneIcon} aria-hidden="true">
+          {isReading ? <LoaderCircle className={styles.spinner} size={20} /> : <Upload size={20} />}
+        </span>
+        <div className={styles.dropZoneCopy}>
+          <strong>{isReading ? "Читаем и проверяем файл…" : "Перетащите спектр сюда"}</strong>
+          <span>JSON, XLSX или RAW8 · до 10 000 точек</span>
+        </div>
+        <input
+          ref={inputRef}
+          className={styles.fileInput}
+          type="file"
+          accept=".json,.xlsx,.raw8,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          onChange={handleInput}
+          aria-label="Файл спектра"
+          disabled={isReading}
+        />
+        <button
+          className={styles.fileButton}
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={isReading}
+        >
+          Выбрать файл
+        </button>
+      </div>
+      <div className={styles.demoImportAction}>
+        <button type="button" onClick={openDemoAnalysis} disabled={isReading}>
+          <Sparkles size={15} aria-hidden="true" />
+          Открыть демонстрационный спектр
+        </button>
+      </div>
+      {importError ? (
+        <div className={styles.importError} role="alert">
+          <CircleAlert size={16} aria-hidden="true" />
+          <span>{importError}</span>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 export function ProcessingAnalysisPage() {
   const analysis = useRequiredAnalysis();
   if (!analysis) return <AnalysisUnavailable section="Обработка" />;
+  const sortingOperation = analysis.transformations.find((operation) => operation.id === "sorting");
 
   return (
     <AnalysisPage title="Обработка">
@@ -104,8 +200,14 @@ export function ProcessingAnalysisPage() {
         <SpectrumChart
           fill
           dataset={analysis.preparedDataset}
-          label="Подготовленный демонстрационный спектр"
+          label={`Подготовленный спектр ${analysis.source.fileName}`}
         />
+        {sortingOperation ? (
+          <p className={styles.preparationNotice}>
+            <Check size={14} aria-hidden="true" />
+            {sortingOperation.description}
+          </p>
+        ) : null}
       </Card>
     </AnalysisPage>
   );
@@ -275,7 +377,7 @@ function AnalysisPage({
   title,
   children,
 }: Readonly<{ title: string; children: ReactNode }>) {
-  const { calculationStatus, parameterError } = useDemoAnalysis();
+  const { calculationStatus, parameterError } = useAnalysisWorkspace();
   const accessory = calculationStatus === "calculating"
     ? <Tag tone="info">Пересчёт…</Tag>
     : parameterError
@@ -405,7 +507,7 @@ function PeakTable({ peaks }: Readonly<{ peaks: readonly (MatchedPeak & { readon
   );
 }
 
-function StatusTag({ status }: Readonly<{ status: DemoHypothesisStatus }>) {
+function StatusTag({ status }: Readonly<{ status: AnalysisHypothesisStatus }>) {
   const tone = status === "confirmed" ? "success" : status === "possible" ? "info" : "warning";
   return <Tag tone={tone}>{statusLabels[status]}</Tag>;
 }
@@ -417,10 +519,14 @@ function Tag({
   return <span className={`${styles.tag} ${styles[`tag_${tone}`]}`}>{children}</span>;
 }
 
-function useRequiredAnalysis(): DemoAnalysis | null {
-  return useDemoAnalysis().analysis;
+function useRequiredAnalysis(): WorkingAnalysis | null {
+  return useAnalysisWorkspace().analysis;
 }
 
 function formatDelta(delta: number): string {
   return delta === 0 ? "0.000" : `+${delta.toFixed(3)}`;
+}
+
+function formatNumber(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(2);
 }

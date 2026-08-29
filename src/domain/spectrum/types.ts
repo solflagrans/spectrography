@@ -29,14 +29,6 @@ export interface InteractiveAnalysisParameters {
   readonly peakSearch: PeakSearchParameters;
 }
 
-export interface AnalysisOptions {
-  readonly sigma: number;
-  readonly prominence: number;
-  readonly distance: number;
-  readonly tolerance: number;
-  readonly smoothing: number;
-}
-
 export interface SpectrumStats {
   readonly mean: number;
   readonly standardDeviation: number;
@@ -68,18 +60,6 @@ export interface ElementHypothesis {
   /** A relative ranking heuristic, not a calibrated probability. */
   readonly heuristicScore: number;
   readonly peaks: readonly MatchedPeak[];
-}
-
-export interface PeakDetectionResult {
-  readonly peaks: readonly DetectedPeak[];
-  readonly threshold: number;
-  readonly stats: SpectrumStats;
-}
-
-export interface SpectrumAnalysisResult {
-  readonly detection: PeakDetectionResult;
-  readonly peaks: readonly MatchedPeak[];
-  readonly hypotheses: readonly ElementHypothesis[];
 }
 
 export type ElementInterpretationStatus = "confirmed" | "possible" | "review";
