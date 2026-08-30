@@ -29,33 +29,33 @@ describe("AvaSoft RAW8 import", () => {
   it("rejects an invalid signature", () => {
     const data = createRaw8Fixture();
     new DataView(data).setUint8(0, "X".charCodeAt(0));
-    expect(() => parseAvaSoftRaw8(data)).toThrow(/неверная сигнатура/);
+    expect(() => parseAvaSoftRaw8(data)).toThrow(/сигнатура AVS84 не найдена/);
   });
 
   it("rejects an unsupported container version", () => {
     const data = createRaw8Fixture();
     new DataView(data).setUint8(4, "3".charCodeAt(0));
-    expect(() => parseAvaSoftRaw8(data)).toThrow(/версия контейнера «AVS83»/);
+    expect(() => parseAvaSoftRaw8(data)).toThrow(/неподдерживаемой версии RAW8 \(AVS83\)/);
   });
 
   it("rejects multiple channels", () => {
     const data = createRaw8Fixture();
     new DataView(data).setUint8(5, 2);
-    expect(() => parseAvaSoftRaw8(data)).toThrow(/поддерживается только один канал/);
+    expect(() => parseAvaSoftRaw8(data)).toThrow(/только с одним каналом/);
   });
 
   it("rejects a non-scope measurement variant", () => {
-    expect(() => parseAvaSoftRaw8(createRaw8Fixture({ measurementMode: 2 }))).toThrow(/RWD8 пока не поддерживается/);
+    expect(() => parseAvaSoftRaw8(createRaw8Fixture({ measurementMode: 2 }))).toThrow(/режим RWD8/);
   });
 
   it("rejects non-finite channel values", () => {
     const data = createRaw8Fixture();
     new DataView(data).setFloat32(328 + 4 * Float32Array.BYTES_PER_ELEMENT, Number.NaN, true);
-    expect(() => parseAvaSoftRaw8(data)).toThrow(/массив scope, значение 1/);
+    expect(() => parseAvaSoftRaw8(data)).toThrow(/исходной интенсивности.*позиции 1/);
   });
 
   it("rejects a truncated file", () => {
     const data = createRaw8Fixture();
-    expect(() => parseAvaSoftRaw8(data.slice(0, data.byteLength - 24))).toThrow(/файл обрезан/);
+    expect(() => parseAvaSoftRaw8(data.slice(0, data.byteLength - 24))).toThrow(/повреждён или загружен не полностью/);
   });
 });

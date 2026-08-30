@@ -13,7 +13,13 @@ import { PeakSettingsPanel } from "./analysis-side-panels";
 import { DataAnalysisPage, ProcessingAnalysisPage } from "./analysis-pages";
 
 vi.mock("./spectrum-chart", () => ({
-  SpectrumChart: () => <div data-testid="spectrum-chart" />,
+  SpectrumChart: (props: { showLayerControls?: boolean; preparedDataset?: unknown }) => (
+    <div
+      data-testid="spectrum-chart"
+      data-layer-controls={String(props.showLayerControls ?? true)}
+      data-has-prepared={String(Boolean(props.preparedDataset))}
+    />
+  ),
 }));
 
 afterEach(() => {
@@ -56,7 +62,7 @@ describe("interactive demo analysis", () => {
 
     fireEvent.change(screen.getByLabelText("Порог обнаружения"), { target: { value: "0.9" } });
 
-    expect(screen.getByText(/Пересчитываем анализ/).textContent).toContain("Пересчитываем");
+    expect(screen.getByText(/Обновляем графики и результаты/)).toBeTruthy();
     expect(screen.getByTestId("calculation-status").textContent).toBe("calculating");
 
     await act(async () => vi.advanceTimersByTime(181));
@@ -76,7 +82,8 @@ describe("interactive demo analysis", () => {
 
     await act(async () => vi.advanceTimersByTime(181));
 
-    expect(screen.getByRole("alert").textContent).toContain("Минимальное расстояние должно быть больше 0 нм");
+    expect(screen.getByRole("alert").textContent).toContain("Укажите минимальное расстояние больше 0 нм");
+    expect(screen.getByRole("alert").textContent).toContain("Последний корректный результат сохранён");
     expect(screen.getByTestId("peak-count").textContent).toBe(validPeakCount);
     expect(screen.getByTestId("calculation-status").textContent).toBe("error");
   });
@@ -100,7 +107,8 @@ describe("interactive demo analysis", () => {
       target: { files: [createFile("replacement.csv", "500,1")] },
     });
 
-    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("только файлы JSON, XLSX и RAW8"));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("Выберите файл JSON, XLSX или RAW8"));
+    expect(screen.getByRole("alert").textContent).toContain("Открытый анализ сохранён");
     expect(screen.getByTestId("file-name").textContent).toBe("sample.json");
     expect(screen.getByTestId("point-count").textContent).toBe("5");
   });
@@ -154,7 +162,10 @@ describe("interactive demo analysis", () => {
     expect(screen.getByText("2107079U2")).toBeTruthy();
     expect(screen.getByText("4 мс")).toBeTruthy();
     expect(screen.getByText("нм / отсчёты прибора")).toBeTruthy();
-    expect(screen.getByText(/dark и reference сохранены/)).toBeTruthy();
+    expect(screen.queryByText("Проверка целостности")).toBeNull();
+    const dataChart = screen.getAllByTestId("spectrum-chart")[0];
+    expect(dataChart.getAttribute("data-layer-controls")).toBe("false");
+    expect(dataChart.getAttribute("data-has-prepared")).toBe("false");
   });
 });
 

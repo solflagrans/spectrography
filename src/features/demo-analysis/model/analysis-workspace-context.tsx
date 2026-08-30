@@ -72,7 +72,9 @@ export function AnalysisWorkspaceProvider({ children }: Readonly<{ children: Rea
         setCalculationStatus("ready");
       } catch (error) {
         setParameterError(
-          error instanceof Error ? error.message : "Не удалось пересчитать анализ.",
+          error instanceof Error
+            ? error.message
+            : "Проверьте выбранные параметры и попробуйте снова.",
         );
         setCalculationStatus("error");
       }
@@ -129,7 +131,11 @@ export function AnalysisWorkspaceProvider({ children }: Readonly<{ children: Rea
       setImportStatus("idle");
     } catch (error) {
       if (requestId !== importRequest.current) return;
-      setImportError(error instanceof Error ? error.message : "Не удалось прочитать файл спектра.");
+      setImportError(
+        error instanceof Error
+          ? error.message
+          : "Браузер не смог прочитать файл. Выберите его ещё раз или попробуйте другой файл.",
+      );
       setImportStatus("error");
     }
   }, [activateSource]);

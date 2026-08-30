@@ -15,33 +15,33 @@ export function validateDataset(dataset: SpectrumDataset): void {
   const { wavelengths, intensities } = dataset;
 
   if (!wavelengths.length || !intensities.length) {
-    throw new Error("Оба массива должны содержать данные.");
+    throw new Error("В файле нет полного набора точек. Добавьте длины волн и соответствующие им значения интенсивности.");
   }
   if (wavelengths.length !== intensities.length) {
-    throw new Error("Массивы длин волн и интенсивностей должны быть одинаковой длины.");
+    throw new Error("Количество длин волн и значений интенсивности не совпадает. Оба массива должны быть одинаковой длины.");
   }
   if (wavelengths.length > MAX_POINTS) {
-    throw new Error(`Максимум ${MAX_POINTS} точек в каждом массиве.`);
+    throw new Error(`Файл содержит ${wavelengths.length} точек. Максимум для одного анализа — ${MAX_POINTS}; сократите набор и попробуйте снова.`);
   }
   if (wavelengths.length < MIN_POINTS) {
-    throw new Error(`Для анализа требуется минимум ${MIN_POINTS} точки.`);
+    throw new Error(`Для анализа требуется минимум ${MIN_POINTS} точки. Сейчас в файле: ${wavelengths.length}.`);
   }
 
   const invalidWavelength = wavelengths.findIndex((value) => !Number.isFinite(value));
   if (invalidWavelength !== -1) {
-    throw new Error(`Длины волн: значение ${invalidWavelength + 1} не является числом.`);
+    throw new Error(`Длина волны в позиции ${invalidWavelength + 1} указана некорректно. Замените её конечным числом.`);
   }
 
   const invalidIntensity = intensities.findIndex((value) => !Number.isFinite(value));
   if (invalidIntensity !== -1) {
-    throw new Error(`Интенсивности: значение ${invalidIntensity + 1} не является числом.`);
+    throw new Error(`Интенсивность в позиции ${invalidIntensity + 1} указана некорректно. Замените её конечным числом.`);
   }
 
   const seenWavelengths = new Set<number>();
   for (let index = 0; index < wavelengths.length; index += 1) {
     const wavelength = wavelengths[index];
     if (seenWavelengths.has(wavelength)) {
-      throw new Error(`Длины волн: значение ${wavelength} повторяется в позиции ${index + 1}.`);
+      throw new Error(`Длина волны ${wavelength} повторяется в позиции ${index + 1}. Удалите дубликат: приложение не объединяет такие точки автоматически.`);
     }
     seenWavelengths.add(wavelength);
   }

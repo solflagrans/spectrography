@@ -39,7 +39,9 @@ export async function parseSpectrumFile(
     try {
       dataset = parseJsonSpectrum(new TextDecoder("utf-8", { fatal: true }).decode(payload.data));
     } catch (error) {
-      if (error instanceof TypeError) throw new Error("JSON: файл должен быть сохранён в кодировке UTF-8.");
+      if (error instanceof TypeError) {
+        throw new Error("Не удалось прочитать JSON-файл. Сохраните его в кодировке UTF-8 и попробуйте снова.");
+      }
       throw error;
     }
   } else if (format === "XLSX") {
@@ -64,12 +66,13 @@ export function getSpectrumFileFormat(fileName: string): ImportedSpectrumFormat 
   if (extension === "xlsx") return "XLSX";
   if (extension === "raw8") return "RAW8";
   if (extension === "raw8x") {
-    throw new Error("RAW8x с несколькими каналами пока не поддерживается. Выберите одноканальный RAW8.");
+    throw new Error("Этот RAW8x-файл содержит несколько каналов. Сейчас можно открыть только одноканальный файл RAW8.");
   }
   if (["rwd8", "abs8", "trm8", "rfl8", "irr8", "rir8", "str8"].includes(extension ?? "")) {
-    throw new Error(`Формат ${extension?.toUpperCase()} пока не поддерживается. Выберите Scope-файл RAW8.`);
+    throw new Error(`Файлы ${extension?.toUpperCase()} пока нельзя открыть. Экспортируйте измерение Scope в формате RAW8.`);
   }
-  throw new Error("Поддерживаются только файлы JSON, XLSX и RAW8.");
+  const displayedExtension = extension ? `.${extension.toUpperCase()}` : "без расширения";
+  throw new Error(`Файл ${displayedExtension} открыть нельзя. Выберите файл JSON, XLSX или RAW8.`);
 }
 
 export function parseJsonSpectrum(text: string): SpectrumDataset {
@@ -91,7 +94,7 @@ export function parseJsonSpectrum(text: string): SpectrumDataset {
     if (!result.success) throwJsonValidationError(result.error);
     dataset = result.data;
   } else {
-    throw new Error("JSON должен быть объектом { wavelengths, intensities } или массивом [[], []].");
+    throw new Error("В JSON не найдены данные спектра. Используйте поля «wavelengths» и «intensities» или два массива: сначала длины волн, затем интенсивности.");
   }
 
   validateImportedDataset(dataset, "JSON");
@@ -105,12 +108,12 @@ export async function parseXlsxSpectrum(data: ArrayBuffer): Promise<SpectrumData
   try {
     workbook = read(data, { type: "array", dense: true });
   } catch {
-    throw new Error("Не удалось прочитать XLSX-файл. Проверьте, что файл не повреждён.");
+    throw new Error("Не удалось открыть XLSX-файл. Проверьте, что он не повреждён и сохранён в формате .xlsx.");
   }
 
   const firstSheetName = workbook.SheetNames[0];
   const firstSheet = firstSheetName ? workbook.Sheets[firstSheetName] : undefined;
-  if (!firstSheet) throw new Error("XLSX: в книге нет доступных листов.");
+  if (!firstSheet) throw new Error("В XLSX-файле нет листа с данными. Добавьте лист со спектром и попробуйте снова.");
 
   const rows = utils.sheet_to_json<unknown[]>(firstSheet, {
     header: 1,
@@ -124,7 +127,7 @@ export async function parseXlsxSpectrum(data: ArrayBuffer): Promise<SpectrumData
   ));
 
   if (firstDataRow === -1) {
-    throw new Error("XLSX: в первых семи строках не найдена строка с числами в колонках A и B.");
+    throw new Error("Не удалось найти начало данных на первом листе. В одной из первых семи строк укажите длину волны в колонке A и интенсивность в колонке B.");
   }
 
   let lastContentRow = rows.length - 1;
@@ -150,15 +153,19 @@ function validateImportedDataset(dataset: SpectrumDataset, format: ImportedSpect
   try {
     validateDataset(dataset);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "набор данных не прошёл проверку";
-    throw new Error(`${format}: ${message}`);
+    const message = error instanceof Error
+      ? error.message
+      : "Проверьте содержимое файла и попробуйте снова.";
+    throw new Error(`Не удалось использовать данные из ${format}. ${message}`);
   }
 }
 
 function readNumericCell(value: unknown, row: number, column: "A" | "B", label: string): number {
   if (!isFiniteNumber(value)) {
-    const displayed = isBlankCell(value) ? "пустая ячейка" : `значение «${String(value)}»`;
-    throw new Error(`XLSX: строка ${row}, колонка ${column} (${label}): ${displayed} не является конечным числом.`);
+    if (isBlankCell(value)) {
+      throw new Error(`В строке ${row} ячейка ${column} (${label}) пуста. Заполните пропуск числом или удалите строку, если она находится после данных.`);
+    }
+    throw new Error(`В строке ${row} ячейка ${column} (${label}) содержит «${String(value)}». Замените значение конечным числом.`);
   }
   return value;
 }
@@ -184,35 +191,45 @@ function copyDataset(dataset: SpectrumDataset): SpectrumDataset {
 
 function formatZodPath(path: readonly PropertyKey[]): string {
   return path.reduce<string>((result, part) => (
-    typeof part === "number" ? `${result}[${part}]` : result ? `${result}.${String(part)}` : String(part)
+    typeof part === "number"
+      ? `${result}, значение ${part + 1}`
+      : result
+        ? `${result}.${String(part)}`
+        : part === "wavelengths"
+          ? "длины волн"
+          : part === "intensities"
+            ? "интенсивности"
+            : String(part)
   ), "");
 }
 
 function throwJsonValidationError(error: z.ZodError): never {
   const issue = error.issues[0];
-  const location = issue.path.length ? `, поле ${formatZodPath(issue.path)}` : "";
-  throw new Error(`JSON: некорректные данные${location}: ${formatJsonIssue(issue)}.`);
+  const location = issue.path.length ? ` в поле «${formatZodPath(issue.path)}»` : "";
+  throw new Error(`В JSON обнаружено некорректное значение${location}: ${formatJsonIssue(issue)}.`);
 }
 
 function formatJsonIssue(issue: z.core.$ZodIssue): string {
   if (issue.code === "invalid_type") {
     return typeof issue.path.at(-1) === "number"
-      ? "ожидается конечное число"
-      : "ожидается массив конечных чисел";
+      ? "укажите конечное число"
+      : "укажите массив чисел";
   }
-  if (issue.code === "unrecognized_keys") return "дополнительные поля не поддерживаются";
+  if (issue.code === "unrecognized_keys") return "удалите неподдерживаемые дополнительные поля";
   if (issue.code === "custom") return issue.message;
   return "структура не соответствует поддерживаемому формату";
 }
 
 function enrichJsonSyntaxError(text: string, error: unknown): Error {
-  const message = error instanceof Error ? error.message : "некорректный JSON";
+  const message = error instanceof Error ? error.message : "";
   const positionMatch = message.match(/position (\d+)/i);
-  if (!positionMatch) return new Error(`JSON: ${message}`);
+  if (!positionMatch) {
+    return new Error("В JSON есть синтаксическая ошибка. Проверьте запятые, кавычки и скобки.");
+  }
 
   const position = Number(positionMatch[1]);
   const before = text.slice(0, position);
   const line = before.split("\n").length;
   const column = before.length - before.lastIndexOf("\n");
-  return new Error(`JSON: синтаксическая ошибка, строка ${line}, колонка ${column}.`);
+  return new Error(`В JSON есть синтаксическая ошибка: строка ${line}, колонка ${column}. Проверьте запятые, кавычки и скобки.`);
 }

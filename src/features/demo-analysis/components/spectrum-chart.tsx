@@ -2,198 +2,214 @@
 
 import { LineChart, ScatterChart } from "echarts/charts";
 import {
+  DataZoomInsideComponent,
+  DataZoomSliderComponent,
   GridComponent,
   MarkLineComponent,
   TooltipComponent,
 } from "echarts/components";
 import { init, use as registerCharts } from "echarts/core";
-import type { EChartsCoreOption } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
-import { useEffect, useRef } from "react";
+import { RotateCcw } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { MatchedPeak, SpectrumDataset } from "@/domain/spectrum";
 
 import styles from "./analysis-page.module.css";
+import {
+  createSpectrumChartOption,
+  FULL_SPECTRUM_ZOOM,
+  preserveZoomForSource,
+  readZoomRange,
+} from "./spectrum-chart-option";
+import type {
+  SpectrumChartData,
+  SpectrumChartLayer,
+  SpectrumChartPalette,
+  SpectrumReferenceLine,
+  SpectrumZoomRange,
+} from "./spectrum-chart-option";
 
-registerCharts([LineChart, ScatterChart, GridComponent, MarkLineComponent, TooltipComponent, CanvasRenderer]);
-
-interface ReferenceLine {
-  readonly label: string;
-  readonly wavelength: number;
-}
+registerCharts([
+  LineChart,
+  ScatterChart,
+  GridComponent,
+  MarkLineComponent,
+  TooltipComponent,
+  DataZoomInsideComponent,
+  DataZoomSliderComponent,
+  CanvasRenderer,
+]);
 
 interface SpectrumChartProps {
-  readonly dataset: SpectrumDataset;
+  readonly rawDataset?: SpectrumDataset;
+  readonly preparedDataset?: SpectrumDataset;
   readonly label: string;
+  readonly sourceKey: string;
+  readonly defaultVisibleLayers: readonly SpectrumChartLayer[];
   readonly peaks?: readonly MatchedPeak[];
   readonly threshold?: number;
-  readonly referenceLines?: readonly ReferenceLine[];
+  readonly referenceLines?: readonly SpectrumReferenceLine[];
+  readonly showLayerControls?: boolean;
   readonly compact?: boolean;
   readonly fill?: boolean;
 }
 
-interface TooltipParameter {
-  readonly axisValue?: unknown;
-  readonly value?: unknown;
-}
+const layerLabels: Record<SpectrumChartLayer, string> = {
+  raw: "Исходный",
+  prepared: "Подготовленный",
+  threshold: "Порог",
+  peaks: "Пики",
+  referenceLines: "Линии",
+};
 
 export function SpectrumChart({
-  dataset,
+  rawDataset,
+  preparedDataset,
   label,
-  peaks = [],
+  sourceKey,
+  defaultVisibleLayers,
+  peaks,
   threshold,
-  referenceLines = [],
+  referenceLines,
+  showLayerControls = true,
   compact = false,
   fill = false,
 }: SpectrumChartProps) {
   const chartElement = useRef<HTMLDivElement>(null);
+  const chartInstance = useRef<ReturnType<typeof init> | null>(null);
+  const previousSourceKey = useRef<string | undefined>(undefined);
+  const zoomRange = useRef<SpectrumZoomRange>(FULL_SPECTRUM_ZOOM);
+  const [visibleLayers, setVisibleLayers] = useState<ReadonlySet<SpectrumChartLayer>>(
+    () => new Set(defaultVisibleLayers),
+  );
+  const chartData: SpectrumChartData = useMemo(() => ({
+    rawDataset,
+    preparedDataset,
+    peaks,
+    threshold,
+    referenceLines,
+  }), [peaks, preparedDataset, rawDataset, referenceLines, threshold]);
+  const availableLayers = getAvailableLayers(chartData);
 
   useEffect(() => {
     if (!chartElement.current) return;
 
     const chart = init(chartElement.current, undefined, { renderer: "canvas" });
-    chart.setOption(createOption(dataset, peaks, threshold, referenceLines));
-    const observer = new ResizeObserver(() => chart.resize());
-    observer.observe(chartElement.current);
+    chartInstance.current = chart;
+    const handleDataZoom = (event: unknown) => {
+      zoomRange.current = readZoomRange(event, zoomRange.current);
+    };
+    chart.on("datazoom", handleDataZoom);
+
+    const observer = typeof ResizeObserver === "undefined"
+      ? null
+      : new ResizeObserver(() => chart.resize());
+    observer?.observe(chartElement.current);
 
     return () => {
-      observer.disconnect();
+      observer?.disconnect();
+      chart.off("datazoom", handleDataZoom);
       chart.dispose();
+      chartInstance.current = null;
     };
-  }, [dataset, peaks, referenceLines, threshold]);
+  }, []);
+
+  useEffect(() => {
+    const chart = chartInstance.current;
+    if (!chart) return;
+
+    zoomRange.current = preserveZoomForSource(
+      zoomRange.current,
+      previousSourceKey.current,
+      sourceKey,
+    );
+    previousSourceKey.current = sourceKey;
+    chart.setOption(
+      createSpectrumChartOption(chartData, visibleLayers, getChartPalette(), zoomRange.current),
+      { replaceMerge: ["series", "yAxis", "dataZoom"] },
+    );
+  }, [chartData, sourceKey, visibleLayers]);
+
+  const toggleLayer = (layer: SpectrumChartLayer) => {
+    setVisibleLayers((current) => {
+      const next = new Set(current);
+      if (next.has(layer)) next.delete(layer);
+      else next.add(layer);
+      return next;
+    });
+  };
+
+  const resetZoom = () => {
+    zoomRange.current = FULL_SPECTRUM_ZOOM;
+    chartInstance.current?.dispatchAction({
+      type: "dataZoom",
+      start: FULL_SPECTRUM_ZOOM.start,
+      end: FULL_SPECTRUM_ZOOM.end,
+    });
+  };
 
   return (
-    <div
-      ref={chartElement}
-      className={fill ? styles.chartFill : compact ? styles.chartCompact : styles.chart}
-      role="img"
-      aria-label={label}
-    />
+    <div className={styles.chartWidget}>
+      <div className={`${styles.chartToolbar} ${showLayerControls ? "" : styles.chartToolbarEnd}`}>
+        {showLayerControls ? (
+          <div className={styles.layerToggles} role="group" aria-label="Слои графика">
+            {availableLayers.map((layer) => {
+              const active = visibleLayers.has(layer);
+              return (
+                <button
+                  key={layer}
+                  type="button"
+                  className={`${styles.layerToggle} ${active ? styles.layerToggleActive : ""}`}
+                  aria-pressed={active}
+                  onClick={() => toggleLayer(layer)}
+                >
+                  <span className={`${styles.layerSwatch} ${styles[`layerSwatch_${layer}`]}`} aria-hidden="true" />
+                  <span>{layerLabels[layer]}</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+        <button className={styles.zoomResetButton} type="button" onClick={resetZoom}>
+          <RotateCcw size={14} aria-hidden="true" />
+          <span>Сбросить масштаб</span>
+        </button>
+      </div>
+      <div
+        ref={chartElement}
+        className={fill ? styles.chartFill : compact ? styles.chartCompact : styles.chart}
+        role="img"
+        aria-label={label}
+      />
+    </div>
   );
 }
 
-function createOption(
-  dataset: SpectrumDataset,
-  peaks: readonly MatchedPeak[],
-  threshold: number | undefined,
-  referenceLines: readonly ReferenceLine[],
-): EChartsCoreOption {
-  const rootStyles = getComputedStyle(document.documentElement);
-  const primary = rootStyles.getPropertyValue("--color-action-primary").trim() || "#4a6fa5";
-  const success = rootStyles.getPropertyValue("--color-status-success").trim() || "#2b8a3e";
-  const warning = rootStyles.getPropertyValue("--color-status-warning").trim() || "#b86800";
-  const text = rootStyles.getPropertyValue("--color-text-secondary").trim() || "#546273";
-  const border = rootStyles.getPropertyValue("--color-border-default").trim() || "#dce0e5";
-  const data = dataset.wavelengths.map((wavelength, index) => [wavelength, dataset.intensities[index]]);
-  const markLineData = [
-    ...(threshold === undefined
-      ? []
-      : [{
-          name: `Порог ${threshold.toFixed(2)}`,
-          yAxis: threshold,
-          lineStyle: { color: warning, type: "dashed" as const },
-          label: { color: warning, formatter: "Порог {c}" },
-        }]),
-    ...referenceLines.map((line) => ({
-      name: line.label,
-      xAxis: line.wavelength,
-      lineStyle: { color: primary, opacity: 0.46, type: "dashed" as const },
-      label: { color: primary, formatter: line.label, position: "insideEndTop" as const },
-    })),
+function getAvailableLayers(data: SpectrumChartData): readonly SpectrumChartLayer[] {
+  return [
+    ...(data.rawDataset ? ["raw" as const] : []),
+    ...(data.preparedDataset ? ["prepared" as const] : []),
+    ...(data.threshold !== undefined ? ["threshold" as const] : []),
+    ...(data.peaks !== undefined ? ["peaks" as const] : []),
+    ...(data.referenceLines !== undefined ? ["referenceLines" as const] : []),
   ];
+}
+
+function getChartPalette(): SpectrumChartPalette {
+  const rootStyles = getComputedStyle(document.documentElement);
+  const token = (name: string, fallback: string) => (
+    rootStyles.getPropertyValue(name).trim() || fallback
+  );
 
   return {
-    animation: false,
-    grid: { left: 54, right: 18, top: 22, bottom: 38 },
-    tooltip: {
-      trigger: "axis",
-      axisPointer: { type: "line", snap: true },
-      formatter: (parameters: unknown) => formatTooltip(parameters, dataset, peaks, primary, success),
-    },
-    xAxis: {
-      type: "value",
-      name: "Длина волны, нм",
-      nameLocation: "middle",
-      nameGap: 27,
-      min: dataset.wavelengths[0],
-      max: dataset.wavelengths.at(-1),
-      axisLabel: { color: text, fontSize: 11 },
-      axisLine: { lineStyle: { color: border } },
-      splitLine: { show: false },
-    },
-    yAxis: {
-      type: "value",
-      axisLabel: { color: text, fontSize: 11 },
-      axisLine: { show: false },
-      splitLine: { lineStyle: { color: border, opacity: 0.58 } },
-    },
-    series: [
-      {
-        type: "line",
-        data,
-        showSymbol: false,
-        sampling: "lttb",
-        lineStyle: { color: primary, width: 1.5 },
-        itemStyle: { color: primary },
-        markLine: markLineData.length
-          ? { silent: true, symbol: ["none", "none"], data: markLineData }
-          : undefined,
-      },
-      ...(peaks.length
-        ? [{
-            type: "scatter" as const,
-            name: "Пик",
-            data: peaks.map((peak) => [peak.wavelength, peak.intensity]),
-            symbolSize: 8,
-            itemStyle: { color: success, borderColor: "#ffffff", borderWidth: 1.5 },
-            z: 4,
-          }]
-        : []),
-    ],
+    raw: token("--color-data-series-2", "#0ea5c2"),
+    prepared: token("--color-action-primary", "#4a6fa5"),
+    peak: token("--color-status-success", "#2b8a3e"),
+    threshold: token("--color-status-warning", "#b86800"),
+    reference: token("--color-data-series-1", "#5856d6"),
+    text: token("--color-text-secondary", "#546273"),
+    border: token("--color-border-default", "#dce0e5"),
+    surface: token("--color-background-surface", "#ffffff"),
   };
-}
-
-function formatTooltip(
-  parameters: unknown,
-  dataset: SpectrumDataset,
-  peaks: readonly MatchedPeak[],
-  signalColor: string,
-  peakColor: string,
-): string {
-  const parameter = (Array.isArray(parameters) ? parameters[0] : parameters) as TooltipParameter | undefined;
-  const coordinates = Array.isArray(parameter?.value) ? parameter.value : [];
-  const wavelength = toFiniteNumber(parameter?.axisValue) ?? toFiniteNumber(coordinates[0]);
-
-  if (wavelength === null) return "";
-
-  const sampleIndex = findNearestSampleIndex(dataset.wavelengths, wavelength);
-  const sampleWavelength = dataset.wavelengths[sampleIndex];
-  const peak = peaks.find((candidate) => candidate.wavelength === sampleWavelength);
-  const intensity = peak?.intensity ?? dataset.intensities[sampleIndex];
-  const color = peak ? peakColor : signalColor;
-
-  return [
-    `<strong>${sampleWavelength.toFixed(2)} нм</strong>`,
-    `<span style="display:inline-block;width:8px;height:8px;margin-right:8px;border-radius:50%;background:${color}"></span>${intensity.toFixed(3)}`,
-  ].join("<br>");
-}
-
-function findNearestSampleIndex(wavelengths: readonly number[], target: number): number {
-  let nearestIndex = 0;
-  let nearestDistance = Number.POSITIVE_INFINITY;
-
-  wavelengths.forEach((wavelength, index) => {
-    const distance = Math.abs(wavelength - target);
-    if (distance < nearestDistance) {
-      nearestDistance = distance;
-      nearestIndex = index;
-    }
-  });
-
-  return nearestIndex;
-}
-
-function toFiniteNumber(value: unknown): number | null {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : null;
 }

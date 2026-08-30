@@ -166,34 +166,34 @@ export function validateInteractiveAnalysisParameters(
 function validateProcessingParameters(parameters: SpectrumProcessingParameters): void {
   validateSmoothingWindow(parameters.smoothingWindow);
   if (parameters.normalization !== "maximum" && parameters.normalization !== "none") {
-    throw new Error("Выберите поддерживаемый метод нормирования.");
+    throw new Error("Выбранный способ нормализации недоступен. Выберите один из вариантов в списке.");
   }
 }
 
 function validateSmoothingWindow(windowSize: number): void {
   if (!Number.isFinite(windowSize) || !Number.isInteger(windowSize)) {
-    throw new Error("Окно сглаживания должно быть целым числом.");
+    throw new Error("Укажите размер окна сглаживания целым числом.");
   }
   if (windowSize < 1 || windowSize > 51 || windowSize % 2 === 0) {
-    throw new Error("Окно сглаживания должно быть нечётным числом от 1 до 51.");
+    throw new Error("Выберите нечётный размер окна сглаживания от 1 до 51.");
   }
 }
 
 function validatePeakSearchParameters(parameters: PeakSearchParameters): void {
   if (!Object.values(parameters).every(Number.isFinite)) {
-    throw new Error("Параметры поиска пиков должны быть конечными числами.");
+    throw new Error("Заполните все параметры поиска пиков числовыми значениями.");
   }
   if (parameters.threshold < 0 || parameters.threshold > 1) {
-    throw new Error("Порог обнаружения должен быть в диапазоне от 0 до 1.");
+    throw new Error("Укажите порог обнаружения от 0 до 1.");
   }
   if (parameters.prominence < 0 || parameters.prominence > 1) {
-    throw new Error("Минимальная выраженность должна быть в диапазоне от 0 до 1.");
+    throw new Error("Укажите минимальную выраженность от 0 до 1.");
   }
   if (parameters.minimumDistance <= 0) {
-    throw new Error("Минимальное расстояние должно быть больше 0 нм.");
+    throw new Error("Укажите минимальное расстояние больше 0 нм.");
   }
   if (parameters.tolerance <= 0 || parameters.tolerance > 5) {
-    throw new Error("Допуск сопоставления должен быть больше 0 и не превышать 5 нм.");
+    throw new Error("Укажите допуск сопоставления больше 0 и не более 5 нм.");
   }
 }
 

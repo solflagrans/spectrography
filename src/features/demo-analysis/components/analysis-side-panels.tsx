@@ -244,13 +244,22 @@ function CalculationFeedback({
   error: string | null;
 }>) {
   if (error) {
-    return <div className={styles.errorNotice} role="alert"><CircleAlert size={16} />{error}</div>;
+    return (
+      <div className={styles.errorNotice} role="alert">
+        <CircleAlert size={16} aria-hidden="true" />
+        <div className={styles.noticeContent}>
+          <strong>Не удалось обновить анализ</strong>
+          <span>{error}</span>
+          <small>Последний корректный результат сохранён.</small>
+        </div>
+      </div>
+    );
   }
   if (status === "calculating") {
     return (
       <div className={styles.calculationNotice} role="status" aria-live="polite">
         <LoaderCircle className={styles.spinner} size={16} aria-hidden="true" />
-        Пересчитываем анализ…
+        Обновляем графики и результаты…
       </div>
     );
   }

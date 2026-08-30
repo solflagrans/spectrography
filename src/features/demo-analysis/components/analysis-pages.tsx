@@ -47,7 +47,7 @@ export function DataAnalysisPage() {
           интерактивный анализ.
         </p>
         <SpectrumImportControls />
-        <span className={styles.transientNote}>Состояние сбросится после перезагрузки страницы</span>
+        <span className={styles.transientNote}>Анализ хранится только до перезагрузки страницы</span>
       </section>
     );
   }
@@ -73,7 +73,13 @@ export function DataAnalysisPage() {
         title="Обзор исходного спектра"
         accessory={<Tag tone="neutral">Сырой сигнал</Tag>}
       >
-        <SpectrumChart dataset={analysis.rawDataset} label={`Исходный спектр ${analysis.source.fileName}`} />
+        <SpectrumChart
+          rawDataset={analysis.rawDataset}
+          sourceKey={analysis.id}
+          defaultVisibleLayers={["raw"]}
+          showLayerControls={false}
+          label={`Спектр ${analysis.source.fileName}`}
+        />
       </Card>
 
       <MetricGrid>
@@ -85,27 +91,16 @@ export function DataAnalysisPage() {
         <Metric label="Шаг" value={`~${analysis.wavelengthStep} нм`} />
       </MetricGrid>
 
-      <div className={styles.twoColumns}>
-        <Card title="Сведения о наборе">
-          <DefinitionList items={datasetDetails} />
-        </Card>
-        <Card title="Проверка целостности">
-          <div className={styles.checkList}>
-            <CheckRow>Массивы длин волн и интенсивностей согласованы</CheckRow>
-            <CheckRow>Значения конечны, длины волн не дублируются</CheckRow>
-            <CheckRow>Исходный набор сохранён отдельно от подготовленного</CheckRow>
-            {analysis.auxiliaryData ? (
-              <CheckRow>Массивы dark и reference сохранены без применения к сигналу</CheckRow>
-            ) : null}
-          </div>
-        </Card>
-      </div>
+      <Card title="Сведения о наборе">
+        <DefinitionList items={datasetDetails} />
+      </Card>
     </AnalysisPage>
   );
 }
 
 function SpectrumImportControls({ compact = false }: Readonly<{ compact?: boolean }>) {
   const {
+    analysis,
     importError,
     importSpectrumFile,
     importStatus,
@@ -182,7 +177,15 @@ function SpectrumImportControls({ compact = false }: Readonly<{ compact?: boolea
       {importError ? (
         <div className={styles.importError} role="alert">
           <CircleAlert size={16} aria-hidden="true" />
-          <span>{importError}</span>
+          <div className={styles.noticeContent}>
+            <strong>Файл не открыт</strong>
+            <span>{importError}</span>
+            <small>
+              {analysis
+                ? "Открытый анализ сохранён. Исправьте файл или выберите другой."
+                : "Исправьте файл или выберите другой и попробуйте снова."}
+            </small>
+          </div>
         </div>
       ) : null}
     </section>
@@ -199,8 +202,13 @@ export function ProcessingAnalysisPage() {
       <Card title="Подготовленный спектр" accessory={<Tag tone="neutral">Предпросмотр</Tag>}>
         <SpectrumChart
           fill
-          dataset={analysis.preparedDataset}
-          label={`Подготовленный спектр ${analysis.source.fileName}`}
+          rawDataset={analysis.rawDataset}
+          preparedDataset={analysis.preparedDataset}
+          peaks={analysis.peaks}
+          threshold={analysis.threshold}
+          sourceKey={analysis.id}
+          defaultVisibleLayers={["raw", "prepared"]}
+          label={`Исходный и подготовленный спектры ${analysis.source.fileName}`}
         />
         {sortingOperation ? (
           <p className={styles.preparationNotice}>
@@ -226,9 +234,12 @@ export function PeaksAnalysisPage() {
         accessory={<Tag tone="neutral">Порог {analysis.threshold.toFixed(2)}</Tag>}
       >
         <SpectrumChart
-          dataset={analysis.preparedDataset}
+          rawDataset={analysis.rawDataset}
+          preparedDataset={analysis.preparedDataset}
           peaks={analysis.peaks}
           threshold={analysis.threshold}
+          sourceKey={analysis.id}
+          defaultVisibleLayers={["prepared", "threshold", "peaks"]}
           label="Подготовленный спектр с отмеченными пиками"
         />
       </Card>
@@ -253,12 +264,16 @@ export function IdentificationAnalysisPage() {
         >
           <SpectrumChart
             compact
-            dataset={analysis.preparedDataset}
+            rawDataset={analysis.rawDataset}
+            preparedDataset={analysis.preparedDataset}
             peaks={analysis.peaks.filter((peak) => peak.match?.elementSymbol === leading.symbol)}
+            threshold={analysis.threshold}
             referenceLines={leading.evidence.map((line) => ({
               label: `${line.ion} ${line.referenceWavelength.toFixed(2)}`,
               wavelength: line.referenceWavelength,
             }))}
+            sourceKey={analysis.id}
+            defaultVisibleLayers={["prepared", "peaks", "referenceLines"]}
             label={`Спектр и справочные линии ${leading.name}`}
           />
         </Card>
@@ -379,9 +394,9 @@ function AnalysisPage({
 }: Readonly<{ title: string; children: ReactNode }>) {
   const { calculationStatus, parameterError } = useAnalysisWorkspace();
   const accessory = calculationStatus === "calculating"
-    ? <Tag tone="info">Пересчёт…</Tag>
+    ? <Tag tone="info">Обновляем анализ…</Tag>
     : parameterError
-      ? <Tag tone="danger">Проверьте параметры</Tag>
+      ? <Tag tone="danger">Изменения не применены</Tag>
       : <Tag tone="neutral">Интерактивный анализ</Tag>;
 
   return (
@@ -406,7 +421,7 @@ function AnalysisUnavailable({ section }: Readonly<{ section: string }>) {
     <section className={styles.unavailable}>
       <Database size={28} aria-hidden="true" />
       <h1>{section}</h1>
-      <p>Сначала откройте встроенный пример в разделе «Данные».</p>
+      <p>Сначала откройте свой файл или демонстрационный спектр в разделе «Данные».</p>
       <Link className={styles.secondaryButton} href="/data">
         Перейти к данным
       </Link>
@@ -462,15 +477,6 @@ function DefinitionList({ items }: Readonly<{ items: readonly (readonly [string,
         </div>
       ))}
     </dl>
-  );
-}
-
-function CheckRow({ children }: Readonly<{ children: ReactNode }>) {
-  return (
-    <div>
-      <span aria-hidden="true"><Check size={13} /></span>
-      <p>{children}</p>
-    </div>
   );
 }
 

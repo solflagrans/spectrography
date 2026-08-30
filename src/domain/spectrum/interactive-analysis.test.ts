@@ -53,7 +53,7 @@ describe("interactive spectrum analysis", () => {
         ...DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.processing,
         smoothingWindow: 10,
       },
-    })).toThrow("Окно сглаживания должно быть нечётным числом от 1 до 51.");
+    })).toThrow("Выберите нечётный размер окна сглаживания от 1 до 51.");
   });
 
   it("returns a complete negative conclusion when no peak passes the parameters", () => {

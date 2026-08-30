@@ -31,26 +31,26 @@ export function parseAvaSoftRaw8(data: ArrayBuffer): ParsedRaw8Spectrum {
 
   if (signature !== RAW8_SIGNATURE) {
     if (signature.startsWith("AVS8")) {
-      throw new Error(`RAW8: версия контейнера «${signature}» пока не поддерживается; ожидается AVS84.`);
+      throw new Error(`Файл создан в неподдерживаемой версии RAW8 (${signature}). Сейчас можно открыть контейнер AVS84.`);
     }
-    throw new Error("RAW8: неверная сигнатура контейнера; ожидается AVS84.");
+    throw new Error("Файл не похож на RAW8 AvaSoft 8: сигнатура AVS84 не найдена.");
   }
 
   const channelCount = reader.readUint8("количество каналов");
   if (channelCount !== 1) {
-    throw new Error(`RAW8: найдено каналов: ${channelCount}. В этой версии поддерживается только один канал.`);
+    throw new Error(`В файле ${channelCount} спектрометрических каналов. Сейчас можно открыть RAW8 только с одним каналом.`);
   }
 
   const declaredLength = reader.readUint32("размер блока канала");
-  if (declaredLength === 0) throw new Error("RAW8: в заголовке указан пустой блок канала.");
+  if (declaredLength === 0) throw new Error("RAW8-файл повреждён: данные спектрометрического канала отсутствуют.");
   if (declaredLength + DECLARED_LENGTH_TRAILER_OFFSET > data.byteLength) {
-    throw new Error("RAW8: файл обрезан — объявленный блок канала выходит за границы файла.");
+    throw new Error("RAW8-файл повреждён или загружен не полностью: не удалось прочитать данные канала.");
   }
 
   reader.readUint8("порядковый номер спектра");
   const measurementMode = reader.readUint8("режим измерения");
   if (measurementMode !== 0) {
-    throw new Error(`RAW8: режим ${formatMeasurementMode(measurementMode)} пока не поддерживается; требуется Scope RAW8.`);
+    throw new Error(`Файл использует режим ${formatMeasurementMode(measurementMode)}. Сейчас поддерживаются только измерения Scope в контейнере RAW8.`);
   }
   reader.readUint8("разрядность");
   reader.readUint8("маркер SD");
@@ -62,24 +62,24 @@ export function parseAvaSoftRaw8(data: ArrayBuffer): ParsedRaw8Spectrum {
   const startPixel = reader.readUint16("StartPixel");
   const stopPixel = reader.readUint16("StopPixel");
   if (stopPixel < startPixel) {
-    throw new Error(`RAW8: некорректный диапазон пикселей ${startPixel}–${stopPixel}.`);
+    throw new Error(`В RAW8-файле указан некорректный диапазон пикселей: ${startPixel}–${stopPixel}. Повторно экспортируйте измерение из AvaSoft.`);
   }
 
   const pointCount = stopPixel - startPixel + 1;
   if (pointCount < MIN_POINTS) {
-    throw new Error(`RAW8: для анализа требуется минимум ${MIN_POINTS} точки.`);
+    throw new Error(`В RAW8-файле только ${pointCount} точки. Для анализа требуется минимум ${MIN_POINTS}.`);
   }
   if (pointCount > MAX_POINTS) {
-    throw new Error(`RAW8: количество точек ${pointCount} превышает допустимый максимум ${MAX_POINTS}.`);
+    throw new Error(`В RAW8-файле ${pointCount} точек. Допустимый максимум — ${MAX_POINTS}; сократите диапазон при экспорте.`);
   }
 
   const integrationTimeMs = reader.readFloat32("время интеграции");
   reader.readUint32("задержка интеграции");
   const averages = reader.readUint32("число усреднений");
   if (!Number.isFinite(integrationTimeMs) || integrationTimeMs <= 0) {
-    throw new Error("RAW8: время интеграции должно быть положительным конечным числом.");
+    throw new Error("В RAW8-файле некорректно указано время интеграции. Повторно экспортируйте измерение из AvaSoft.");
   }
-  if (averages < 1) throw new Error("RAW8: число усреднений должно быть не меньше одного.");
+  if (averages < 1) throw new Error("В RAW8-файле некорректно указано число усреднений. Повторно экспортируйте измерение из AvaSoft.");
 
   reader.skip(2, "настройки коррекции тёмного сигнала");
   reader.skip(4, "настройки сглаживания");
@@ -92,7 +92,7 @@ export function parseAvaSoftRaw8(data: ArrayBuffer): ParsedRaw8Spectrum {
   reader.skip(130, "комментарий");
 
   if (reader.offset !== RAW8_HEADER_SIZE) {
-    throw new Error("RAW8: внутренняя структура заголовка не соответствует AVS84.");
+    throw new Error("RAW8-файл повреждён: структура заголовка не соответствует формату AVS84.");
   }
 
   const wavelengths = reader.readFloat32Array(pointCount, "wavelength");
@@ -101,7 +101,7 @@ export function parseAvaSoftRaw8(data: ArrayBuffer): ParsedRaw8Spectrum {
   const reference = reader.readFloat32Array(pointCount, "reference");
 
   if (reader.offset > declaredLength + DECLARED_LENGTH_TRAILER_OFFSET) {
-    throw new Error("RAW8: массивы данных выходят за объявленную границу блока канала.");
+    throw new Error("RAW8-файл повреждён: данные спектра выходят за границы сохранённого блока.");
   }
 
   validateFiniteArray(wavelengths, "wavelength");
@@ -113,8 +113,10 @@ export function parseAvaSoftRaw8(data: ArrayBuffer): ParsedRaw8Spectrum {
   try {
     validateDataset(dataset);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "данные не прошли проверку";
-    throw new Error(`RAW8: ${message}`);
+    const message = error instanceof Error
+      ? error.message
+      : "Проверьте файл и попробуйте снова.";
+    throw new Error(`Не удалось использовать данные из RAW8. ${message}`);
   }
 
   return {
@@ -194,7 +196,7 @@ class BinaryReader {
 
   #require(length: number, label: string): void {
     if (this.offset + length > this.#view.byteLength) {
-      throw new Error(`RAW8: файл обрезан — не удалось прочитать ${label}.`);
+      throw new Error(`RAW8-файл повреждён или загружен не полностью: не удалось прочитать ${friendlyRaw8Label(label)}.`);
     }
   }
 }
@@ -202,8 +204,21 @@ class BinaryReader {
 function validateFiniteArray(values: readonly number[], label: string): void {
   const invalidIndex = values.findIndex((value) => !Number.isFinite(value));
   if (invalidIndex !== -1) {
-    throw new Error(`RAW8: массив ${label}, значение ${invalidIndex + 1} не является конечным числом.`);
+    throw new Error(`В данных ${friendlyRaw8Label(label)} обнаружено некорректное значение в позиции ${invalidIndex + 1}. Повторно экспортируйте измерение из AvaSoft.`);
   }
+}
+
+function friendlyRaw8Label(label: string): string {
+  const isArray = label.startsWith("массив ");
+  const key = isArray ? label.slice("массив ".length) : label;
+  const labels: Record<string, string> = {
+    wavelength: "длин волн",
+    scope: "исходной интенсивности",
+    dark: "тёмного сигнала (dark)",
+    reference: "опорного сигнала (reference)",
+  };
+  const translated = labels[key] ?? key;
+  return isArray ? `массив ${translated}` : translated;
 }
 
 function formatMeasurementMode(mode: number): string {

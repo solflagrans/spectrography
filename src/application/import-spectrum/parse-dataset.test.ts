@@ -25,9 +25,9 @@ describe("JSON spectrum import", () => {
   });
 
   it("reports malformed JSON and invalid external values", () => {
-    expect(() => parseJsonSpectrum('{"wavelengths": [420,')).toThrow(/JSON:/);
+    expect(() => parseJsonSpectrum('{"wavelengths": [420,')).toThrow(/В JSON есть синтаксическая ошибка/);
     expect(() => parseJsonSpectrum('{"wavelengths":[420,480,530],"intensities":[1,"bad",3]}')).toThrow(
-      /intensities\[1\]/,
+      /интенсивности, значение 2/,
     );
   });
 
@@ -42,9 +42,9 @@ describe("JSON spectrum import", () => {
 
   it("rejects unsupported file extensions", () => {
     expect(getSpectrumFileFormat("spectrum.Raw8")).toBe("RAW8");
-    expect(() => getSpectrumFileFormat("spectrum.csv")).toThrow("Поддерживаются только файлы JSON, XLSX и RAW8");
-    expect(() => getSpectrumFileFormat("spectrum.RAW8x")).toThrow(/несколькими каналами/);
-    expect(() => getSpectrumFileFormat("spectrum.RWD8")).toThrow(/пока не поддерживается/);
+    expect(() => getSpectrumFileFormat("spectrum.csv")).toThrow(/Выберите файл JSON, XLSX или RAW8/);
+    expect(() => getSpectrumFileFormat("spectrum.RAW8x")).toThrow(/несколько каналов/);
+    expect(() => getSpectrumFileFormat("spectrum.RWD8")).toThrow(/пока нельзя открыть/);
   });
 });
 
@@ -71,17 +71,17 @@ describe("XLSX spectrum import", () => {
       ["1"], ["2"], ["3"], ["4"], ["5"], ["6"], ["7"], [420, 1], [480, 2], [530, 3],
     ]);
 
-    await expect(parseXlsxSpectrum(data)).rejects.toThrow(/в первых семи строках/);
+    await expect(parseXlsxSpectrum(data)).rejects.toThrow(/первых семи строк/);
   });
 
   it("reports an empty row inside the dataset with its row and column", async () => {
     const data = createWorkbook([[420, 1], [], [530, 3]]);
-    await expect(parseXlsxSpectrum(data)).rejects.toThrow(/строка 2, колонка A/);
+    await expect(parseXlsxSpectrum(data)).rejects.toThrow(/строке 2 ячейка A/);
   });
 
   it("reports an invalid cell after data starts with its row and column", async () => {
     const data = createWorkbook([[420, 1], [480, "bad"], [530, 3]]);
-    await expect(parseXlsxSpectrum(data)).rejects.toThrow(/строка 2, колонка B/);
+    await expect(parseXlsxSpectrum(data)).rejects.toThrow(/строке 2 ячейка B/);
   });
 
   it("rejects duplicate wavelengths", async () => {
