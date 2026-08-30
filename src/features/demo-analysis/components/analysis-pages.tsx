@@ -13,24 +13,25 @@ import {
   Upload,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import type { ChangeEvent, DragEvent, ReactNode } from "react";
 
+import type { WorkingAnalysis } from "@/application/analysis/create-working-analysis";
 import type {
-  AnalysisHypothesisStatus,
-  WorkingAnalysis,
-} from "@/application/analysis/create-working-analysis";
-import type { AnalysisEvidenceLine, AnalyzedPeak, SpectralLineCandidate } from "@/domain/spectrum";
+  AnalysisEvidenceLine,
+  AnalyzedPeak,
+  ElementInterpretation,
+  SpectralLineCandidate,
+} from "@/domain/spectrum";
 import { useAnalysisWorkspace } from "@/features/demo-analysis/model/analysis-workspace-context";
+import {
+  diagnosticReasonLabels,
+  findIdentificationEntry,
+} from "@/features/demo-analysis/model/identification-ui";
 
 import styles from "./analysis-page.module.css";
 import { SpectrumChart } from "./spectrum-chart";
-
-const statusLabels: Record<AnalysisHypothesisStatus, string> = {
-  confirmed: "Подтверждён",
-  possible: "Возможен",
-  review: "Требует проверки",
-};
 
 export function DataAnalysisPage() {
   const { analysis } = useAnalysisWorkspace();
@@ -205,7 +206,7 @@ export function ProcessingAnalysisPage() {
           rawDataset={analysis.rawDataset}
           preparedDataset={analysis.preparedDataset}
           peaks={analysis.peaks}
-          threshold={analysis.threshold}
+          thresholdDataset={analysis.thresholdDataset}
           sourceKey={analysis.id}
           defaultVisibleLayers={["raw", "prepared"]}
           label={`Исходный и подготовленный спектры ${analysis.source.fileName}`}
@@ -231,7 +232,7 @@ export function PeaksAnalysisPage() {
     >
       <Card
         title="Спектральная кривая и найденные пики"
-        accessory={<Tag tone="neutral">Порог {analysis.threshold.toFixed(2)}</Tag>}
+        accessory={<Tag tone="neutral">SNR ≥ {analysis.parameters.peakSearch.minimumSnr.toFixed(1)}</Tag>}
       >
         <SpectrumChart
           rawDataset={analysis.rawDataset}
@@ -239,7 +240,7 @@ export function PeaksAnalysisPage() {
           peaks={analysis.peaks}
           selectedPeakId={selectedPeakId}
           onPeakSelect={selectPeak}
-          threshold={analysis.threshold}
+          thresholdDataset={analysis.thresholdDataset}
           sourceKey={analysis.id}
           defaultVisibleLayers={["prepared", "threshold", "peaks"]}
           label="Подготовленный спектр с отмеченными пиками"
@@ -257,65 +258,246 @@ export function PeaksAnalysisPage() {
 }
 
 export function IdentificationAnalysisPage() {
-  const analysis = useRequiredAnalysis();
+  const {
+    analysis,
+    hypothesisSelectionNotice,
+    selectedHypothesisId,
+    selectedIdentificationChannelId,
+    selectedPeakId,
+    selectIdentificationChannel,
+    selectPeak,
+  } = useAnalysisWorkspace();
+  const router = useRouter();
   if (!analysis) return <AnalysisUnavailable section="Идентификация" />;
-  const leading = analysis.hypotheses[0];
+  if (!analysis.peaks.length) {
+    return <AnalysisPage title="Идентификация"><InlineEmptyState>При текущих параметрах пики не найдены. Измените параметры поиска в разделе «Пики».</InlineEmptyState></AnalysisPage>;
+  }
+  if (analysis.peaks.every((peak) => peak.candidates.length === 0)) {
+    return <AnalysisPage title="Идентификация"><InlineEmptyState>Для найденных пиков нет кандидатов спектральных линий в пределах текущего допуска.</InlineEmptyState></AnalysisPage>;
+  }
+  const selectedEntry = findIdentificationEntry(analysis, selectedHypothesisId);
+  if (!selectedEntry) {
+    return (
+      <AnalysisPage title="Идентификация">
+        <InlineEmptyState>
+          {analysis.rejectedHypotheses.length
+            ? "Основные гипотезы отсутствуют, но диагностические совпадения доступны в левой панели."
+            : "Основные и диагностические гипотезы не сформированы."}
+        </InlineEmptyState>
+      </AnalysisPage>
+    );
+  }
+  const hypothesis = selectedEntry.hypothesis;
+  const channel = analysis.channels.find((item) => item.id === selectedIdentificationChannelId)
+    ?? analysis.channels[0];
+  if (!channel || !channel.usable) {
+    return <AnalysisPage title="Идентификация"><InlineEmptyState>Выбранный канал недоступен или непригоден для анализа.</InlineEmptyState></AnalysisPage>;
+  }
+  const channelEvidence = hypothesis.evidence.filter((line) => line.observations.some((observation) => observation.channelId === channel.id));
+  const supportingPeakIds = new Set(channelEvidence.flatMap((line) => line.observations.filter((observation) => observation.channelId === channel.id).map((observation) => observation.peakId)));
+  const supportingPeaks = channel.peaks.filter((peak) => supportingPeakIds.has(peak.id));
+  const missingReferenceLines = hypothesis.missingCharacteristicLines.filter((line) => (
+    line.wavelength >= channel.wavelengthRange.minimum && line.wavelength <= channel.wavelengthRange.maximum
+  ));
 
   return (
     <AnalysisPage title="Идентификация">
-      {leading ? (
-        <Card
-          title={`Линии гипотезы: ${leading.name} (${leading.symbol})`}
-          accessory={<StatusTag status={leading.status} />}
-        >
-          <SpectrumChart
-            compact
-            rawDataset={analysis.rawDataset}
-            preparedDataset={analysis.preparedDataset}
-            peaks={analysis.peaks.filter((peak) => peak.match?.elementSymbol === leading.symbol)}
-            threshold={analysis.threshold}
-            referenceLines={leading.evidence.map((line) => ({
-              label: `${formatEvidenceLabel(line)} ${line.referenceWavelength.toFixed(2)}`,
-              wavelength: line.referenceWavelength,
-            }))}
-            sourceKey={analysis.id}
-            defaultVisibleLayers={["prepared", "peaks", "referenceLines"]}
-            label={`Спектр и справочные линии ${leading.name}`}
-          />
-        </Card>
+      {hypothesisSelectionNotice ? (
+        <div className={styles.selectionNotice} role="status">Выбранная гипотеза больше недоступна после пересчёта. Открыта первая доступная.</div>
       ) : null}
 
-      <Card title="Гипотезы совпадений">
-        {analysis.hypotheses.length ? (
-          <div className={styles.tableScroll}>
-            <table className={`${styles.table} ${styles.hypothesisTable}`}>
-              <thead>
-                <tr>
-                  <th>Элемент</th>
-                  <th>Статус оценки</th>
-                  <th>Найдено линий</th>
-                  <th>Ранжирование</th>
-                  <th>Пояснение</th>
-                </tr>
-              </thead>
-              <tbody>
-                {analysis.hypotheses.map((hypothesis) => (
-                  <tr key={hypothesis.symbol}>
-                    <td><strong>{hypothesis.symbol}</strong> · {hypothesis.name}</td>
-                    <td><StatusTag status={hypothesis.status} /></td>
-                    <td><code>{hypothesis.evidence.length}</code></td>
-                    <td><code>{hypothesis.heuristicScore.toFixed(2)}</code></td>
-                    <td className={styles.hypothesisExplanation}>{hypothesis.explanation}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <section className={styles.hypothesisOverview} aria-labelledby="selected-hypothesis-title">
+        <div className={styles.hypothesisOverviewHeading}>
+          <span className={styles.rankBadge}>{selectedEntry.tab === "hypotheses" ? `#${selectedEntry.rank}` : "Диагностика"}</span>
+          <div>
+            <h2 id="selected-hypothesis-title">{hypothesis.name} ({hypothesis.symbol})</h2>
+            <p>{hypothesis.explanation}</p>
           </div>
-        ) : (
-          <InlineEmptyState>При текущих параметрах совпадений со справочными линиями нет.</InlineEmptyState>
-        )}
+        </div>
+        <div className={styles.identificationMetrics}>
+          <Metric label="Степени ионизации" value={hypothesis.ionizationStages.map(toRoman).join(", ") || "—"} />
+          <Metric label="Характерные линии" value={`${hypothesis.foundCharacteristicLineCount} / ${hypothesis.availableCharacteristicLineCount}`} />
+          <Metric label="Независимые совпадения" value={String(hypothesis.independentMatchedLineCount)} />
+          <Metric label="Среднее отклонение" value={`${hypothesis.meanAbsoluteDelta.toFixed(3)} нм`} />
+        </div>
+        {selectedEntry.rejectionReasons.length ? (
+          <div className={styles.diagnosticReasons} aria-label="Причины диагностического результата">
+            <strong>Не вошла в основной список</strong>
+            <ul>{selectedEntry.rejectionReasons.map((reason) => <li key={reason}>{diagnosticReasonLabels[reason]}</li>)}</ul>
+          </div>
+        ) : null}
+      </section>
+
+      <Card
+        title={`Спектр канала: ${channel.name}`}
+        accessory={analysis.channels.length > 1 ? (
+          <label className={styles.channelPicker} htmlFor="identification-channel">
+            <span>Канал</span>
+            <select id="identification-channel" value={channel.id} onChange={(event) => selectIdentificationChannel(event.target.value)}>
+              {analysis.channels.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+          </label>
+        ) : undefined}
+      >
+        <SpectrumChart
+          compact
+          preparedDataset={channel.preparedDataset}
+          peaks={supportingPeaks}
+          selectedPeakId={selectedPeakId}
+          onPeakSelect={selectPeak}
+          referenceLines={channelEvidence.map((line) => ({ label: `${formatEvidenceLabel(line)} ${line.referenceWavelength.toFixed(2)}`, wavelength: line.referenceWavelength }))}
+          missingReferenceLines={missingReferenceLines.map((line) => ({ label: `${hypothesis.symbol} ${line.ionizationLabel} ${line.wavelength.toFixed(2)}`, wavelength: line.wavelength }))}
+          sourceKey={`${analysis.id}:${channel.id}`}
+          defaultVisibleLayers={["prepared", "peaks", "referenceLines", "missingReferenceLines"]}
+          label={`Спектр канала ${channel.name} и линии гипотезы ${hypothesis.name}`}
+        />
+      </Card>
+
+      <div className={styles.identificationDetailGrid}>
+        <Card title="Основания ранжирования">
+          <ul className={styles.reasonList}>{hypothesis.rankingReasons.map((reason) => <li key={reason.code}><span>{reason.description}</span><code>{formatReasonValue(reason.code, reason.value)}</code></li>)}</ul>
+        </Card>
+        <Card title="Случайное согласование">
+          <dl className={styles.randomAgreementGrid}>
+            <div><dt>Наблюдалось</dt><dd>{hypothesis.randomAgreement.observedAgreements}</dd></div>
+            <div><dt>Эталонное ожидание</dt><dd>{hypothesis.randomAgreement.expectedAgreements.toFixed(2)}</dd></div>
+            <div><dt>Пиков в диапазоне</dt><dd>{hypothesis.randomAgreement.peakCount}</dd></div>
+            <div><dt>Плотность линий</dt><dd>{hypothesis.randomAgreement.characteristicLineDensityPerNm.toFixed(4)} / нм</dd></div>
+          </dl>
+          <p className={styles.detailNote}>Это диагностическое сравнение с равномерным случайным согласованием, а не вероятность присутствия элемента.</p>
+        </Card>
+      </div>
+
+      <Card title="Доказательства по степеням ионизации">
+        <div className={styles.ionizationGroups}>
+          {hypothesis.ionizationGroups.map((group) => (
+            <section key={group.ionizationStage}>
+              <h3>{hypothesis.symbol} {group.ionizationLabel}</h3>
+              <dl>
+                <div><dt>Найдено характерных</dt><dd>{group.foundCharacteristicLineIds.length}</dd></div>
+                <div><dt>Доступно характерных</dt><dd>{group.availableCharacteristicLines.length}</dd></div>
+                <div><dt>Согласованных линий</dt><dd>{group.evidence.length}</dd></div>
+              </dl>
+              <div className={styles.ionizationLineSummary}>
+                <div>
+                  <strong>Найденные характерные линии</strong>
+                  {group.evidence.length ? (
+                    <ul>{group.evidence.map((line) => <li key={line.lineId}>{line.referenceWavelength.toFixed(3)} нм</li>)}</ul>
+                  ) : <span>Нет найденных линий</span>}
+                </div>
+                <div>
+                  <strong>Без найденного пика</strong>
+                  {group.missingCharacteristicLines.length ? (
+                    <ul>{group.missingCharacteristicLines.map((line) => <li key={line.lineId}>{line.wavelength.toFixed(3)} нм</li>)}</ul>
+                  ) : <span>Нет пропущенных линий</span>}
+                </div>
+              </div>
+            </section>
+          ))}
+        </div>
+        <div className={styles.channelObservationList} aria-label="Наблюдения по каналам">
+          {hypothesis.observationsByChannel.map((summary) => (
+            <button key={summary.channelId} type="button" onClick={() => selectIdentificationChannel(summary.channelId)} aria-pressed={summary.channelId === channel.id}>
+              {analysis.channels.find((item) => item.id === summary.channelId)?.name ?? summary.channelId}
+              <span>{summary.observationCount} набл.</span>
+            </button>
+          ))}
+        </div>
+      </Card>
+
+      <Card title="Подтверждающие линии" accessory={<Tag tone="neutral">{hypothesis.evidence.length}</Tag>}>
+        <EvidenceTable
+          analysis={analysis}
+          hypothesis={hypothesis}
+          onObservationOpen={(peakId, channelId) => {
+            selectIdentificationChannel(channelId);
+            selectPeak(peakId);
+          }}
+          onPeakOpen={(peakId) => {
+            selectPeak(peakId);
+            router.push("/peaks");
+          }}
+        />
+      </Card>
+
+      <Card title="Характерные линии без найденного пика">
+        {hypothesis.availableCharacteristicLineCount === 0 ? (
+          <InlineEmptyState>Для этой гипотезы в покрываемом диапазоне нет данных для оценки характерных линий.</InlineEmptyState>
+        ) : hypothesis.missingCharacteristicLines.length ? (
+          <div className={styles.missingLineList}>
+            {hypothesis.missingCharacteristicLines.map((line) => (
+              <div key={line.lineId}><code>{line.wavelength.toFixed(3)} нм</code><span>{hypothesis.symbol} {line.ionizationLabel}</span><span>Отн. интенсивность {line.relativeIntensity}</span></div>
+            ))}
+          </div>
+        ) : <InlineEmptyState>Все доступные характерные линии имеют сопоставленное наблюдение.</InlineEmptyState>}
+        <p className={styles.detailNote}>Видимость линии зависит от условий измерения и чувствительности прибора; отсутствие пика само по себе не доказывает отсутствие элемента.</p>
       </Card>
     </AnalysisPage>
+  );
+}
+
+function EvidenceTable({
+  analysis,
+  hypothesis,
+  onObservationOpen,
+  onPeakOpen,
+}: Readonly<{
+  analysis: WorkingAnalysis;
+  hypothesis: ElementInterpretation;
+  onObservationOpen: (peakId: string, channelId: string) => void;
+  onPeakOpen: (peakId: string) => void;
+}>) {
+  if (!hypothesis.evidence.length) {
+    return <InlineEmptyState>У этой гипотезы нет согласованных линий.</InlineEmptyState>;
+  }
+
+  return (
+    <div className={styles.tableScroll}>
+      <table className={`${styles.table} ${styles.evidenceTable}`}>
+        <thead>
+          <tr>
+            <th>Линия</th>
+            <th>Справочная λ</th>
+            <th>Тип и среда</th>
+            <th>Наблюдения</th>
+            <th>Пик λ</th>
+            <th>Отклонение</th>
+            <th>SNR</th>
+            <th>Альтернативы</th>
+            <th><span className={styles.visuallyHidden}>Действия</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {hypothesis.evidence.map((line) => {
+            const alternatives = [...new Set(line.observations.flatMap((observation) => (
+              hypothesis.alternativeExplanations.find((item) => item.peakId === observation.peakId && item.channelId === observation.channelId)?.elementSymbols ?? []
+            )))].filter((symbol) => symbol !== hypothesis.symbol);
+            const firstObservation = line.observations[0];
+            return (
+              <tr key={line.lineId}>
+                <td><strong>{formatEvidenceLabel(line)}</strong></td>
+                <td><code>{line.referenceWavelength.toFixed(3)} нм</code></td>
+                <td>{formatWavelengthOrigin(line.wavelengthType)} · {formatWavelengthMedium(line.wavelengthMedium)}</td>
+                <td>
+                  <div className={styles.observationStack}>
+                    {line.observations.map((observation) => (
+                      <button key={`${observation.channelId}-${observation.peakId}`} type="button" onClick={() => onObservationOpen(observation.peakId, observation.channelId)}>
+                        {analysis.channels.find((item) => item.id === observation.channelId)?.name ?? observation.channelId}
+                      </button>
+                    ))}
+                  </div>
+                </td>
+                <td><div className={styles.valueStack}>{line.observations.map((observation) => <code key={`${observation.channelId}-${observation.peakId}`}>{observation.peakWavelength.toFixed(3)} нм</code>)}</div></td>
+                <td><div className={styles.valueStack}>{line.observations.map((observation) => <code key={`${observation.channelId}-${observation.peakId}`}>{formatSignedDelta(observation.delta)} нм</code>)}</div></td>
+                <td><div className={styles.valueStack}>{line.observations.map((observation) => <code key={`${observation.channelId}-${observation.peakId}`}>{Number.isFinite(observation.snr) ? observation.snr.toFixed(2) : "∞"}</code>)}</div></td>
+                <td>{alternatives.length ? alternatives.join(", ") : "—"}</td>
+                <td>{firstObservation ? <button className={styles.tableAction} type="button" onClick={() => onPeakOpen(firstObservation.peakId)}>Открыть пик</button> : null}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -350,7 +532,7 @@ export function ResultAnalysisPage() {
                   <h3>{hypothesis.name} ({hypothesis.symbol})</h3>
                   <p>{hypothesis.explanation}</p>
                 </div>
-                <StatusTag status={hypothesis.status} />
+                <Tag tone="info">Многолинейная гипотеза</Tag>
               </header>
               <div className={styles.evidenceList}>
                 {hypothesis.evidence.map((line) => (
@@ -540,11 +722,6 @@ function PeakTable({
   );
 }
 
-function StatusTag({ status }: Readonly<{ status: AnalysisHypothesisStatus }>) {
-  const tone = status === "confirmed" ? "success" : status === "possible" ? "info" : "warning";
-  return <Tag tone={tone}>{statusLabels[status]}</Tag>;
-}
-
 function Tag({
   tone,
   children,
@@ -571,6 +748,25 @@ function formatEvidenceLabel(line: AnalysisEvidenceLine): string {
   return line.ionizationLabel
     ? `${line.elementSymbol} ${line.ionizationLabel}`
     : line.elementSymbol;
+}
+
+function toRoman(stage: number): string {
+  const numerals: Record<number, string> = { 1: "I", 2: "II", 3: "III", 4: "IV", 5: "V" };
+  return numerals[stage] ?? String(stage);
+}
+
+function formatReasonValue(code: string, value: number): string {
+  if (code === "characteristic-completeness") return `${Math.round(value * 100)}%`;
+  if (code === "wavelength-agreement") return `${value.toFixed(3)} нм`;
+  return Number.isInteger(value) ? String(value) : value.toFixed(2);
+}
+
+function formatWavelengthOrigin(origin: "observed" | "ritz"): string {
+  return origin === "observed" ? "наблюдаемая" : "Ritz";
+}
+
+function formatWavelengthMedium(medium: "air" | "vacuum"): string {
+  return medium === "air" ? "воздух" : "вакуум";
 }
 
 function formatNumber(value: number): string {

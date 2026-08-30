@@ -50,8 +50,9 @@ interface SpectrumChartProps {
   readonly peaks?: readonly AnalyzedPeak[];
   readonly selectedPeakId?: string | null;
   readonly onPeakSelect?: (peakId: string) => void;
-  readonly threshold?: number;
+  readonly thresholdDataset?: SpectrumDataset;
   readonly referenceLines?: readonly SpectrumReferenceLine[];
+  readonly missingReferenceLines?: readonly SpectrumReferenceLine[];
   readonly showLayerControls?: boolean;
   readonly compact?: boolean;
   readonly fill?: boolean;
@@ -63,6 +64,7 @@ const layerLabels: Record<SpectrumChartLayer, string> = {
   threshold: "Порог",
   peaks: "Пики",
   referenceLines: "Линии",
+  missingReferenceLines: "Без пика",
 };
 
 export function SpectrumChart({
@@ -74,8 +76,9 @@ export function SpectrumChart({
   peaks,
   selectedPeakId,
   onPeakSelect,
-  threshold,
+  thresholdDataset,
   referenceLines,
+  missingReferenceLines,
   showLayerControls = true,
   compact = false,
   fill = false,
@@ -93,9 +96,10 @@ export function SpectrumChart({
     preparedDataset,
     peaks,
     selectedPeakId,
-    threshold,
+    thresholdDataset,
     referenceLines,
-  }), [peaks, preparedDataset, rawDataset, referenceLines, selectedPeakId, threshold]);
+    missingReferenceLines,
+  }), [missingReferenceLines, peaks, preparedDataset, rawDataset, referenceLines, selectedPeakId, thresholdDataset]);
   const availableLayers = getAvailableLayers(chartData);
 
   useEffect(() => {
@@ -217,9 +221,10 @@ function getAvailableLayers(data: SpectrumChartData): readonly SpectrumChartLaye
   return [
     ...(data.rawDataset ? ["raw" as const] : []),
     ...(data.preparedDataset ? ["prepared" as const] : []),
-    ...(data.threshold !== undefined ? ["threshold" as const] : []),
+    ...(data.thresholdDataset ? ["threshold" as const] : []),
     ...(data.peaks !== undefined ? ["peaks" as const] : []),
     ...(data.referenceLines !== undefined ? ["referenceLines" as const] : []),
+    ...(data.missingReferenceLines !== undefined ? ["missingReferenceLines" as const] : []),
   ];
 }
 
@@ -235,6 +240,7 @@ function getChartPalette(): SpectrumChartPalette {
     peak: token("--color-status-success", "#2b8a3e"),
     threshold: token("--color-status-warning", "#b86800"),
     reference: token("--color-data-series-1", "#5856d6"),
+    missingReference: token("--color-text-secondary", "#8a96a3"),
     text: token("--color-text-secondary", "#546273"),
     border: token("--color-border-default", "#dce0e5"),
     surface: token("--color-background-surface", "#ffffff"),

@@ -1,7 +1,7 @@
 import {
   BUILTIN_LIBRARY_LABEL,
   BUILTIN_LIBRARY_VERSION,
-  builtinSpectralLibrary,
+  builtinSpectralLibraryIndex,
 } from "@/domain/spectral-library/builtin-library";
 import {
   DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS,
@@ -11,9 +11,9 @@ import {
 } from "@/domain/spectrum";
 import { getSpectrumStats, round } from "@/domain/spectrum/math";
 import type {
-  ElementInterpretationStatus,
   InteractiveAnalysisParameters,
   InteractiveSpectrumAnalysis,
+  SpectrumChannelInput,
   SpectrumDataset,
   SpectrumStats,
 } from "@/domain/spectrum";
@@ -24,7 +24,6 @@ import type {
   Raw8InstrumentMetadata,
 } from "@/application/import-spectrum/parse-avasoft-raw8";
 
-export type AnalysisHypothesisStatus = ElementInterpretationStatus;
 export type AnalysisFileFormat = "CSV" | "JSON" | "XLSX" | "RAW8";
 
 export interface AnalysisSource {
@@ -65,6 +64,8 @@ export interface CreateWorkingAnalysisInput {
   readonly title: string;
   readonly source: AnalysisSource;
   readonly rawDataset: SpectrumDataset;
+  /** Optional unified multi-channel input; rawDataset remains the primary-channel compatibility alias. */
+  readonly channels?: readonly SpectrumChannelInput[];
   readonly auxiliaryData?: Raw8AuxiliaryData;
   readonly instrumentMetadata?: Raw8InstrumentMetadata;
 }
@@ -87,7 +88,10 @@ export function createWorkingAnalysis(
 ): WorkingAnalysis {
   validateDataset(input.rawDataset);
   const rawDataset = copyDataset(input.rawDataset);
-  const result = runInteractiveSpectrumAnalysis(rawDataset, builtinSpectralLibrary, parameters);
+  const channelInput = input.channels
+    ? { channels: input.channels.map((channel) => ({ ...channel, dataset: copyDataset(channel.dataset) })) }
+    : { channels: [{ id: "channel-1", name: "Канал 1", dataset: rawDataset }] };
+  const result = runInteractiveSpectrumAnalysis(channelInput, builtinSpectralLibraryIndex, parameters);
   const minimumWavelength = Math.min(...rawDataset.wavelengths);
   const maximumWavelength = Math.max(...rawDataset.wavelengths);
   const wasSorted = isDatasetSortedByWavelength(rawDataset);
@@ -127,8 +131,14 @@ export function createWorkingAnalysis(
       {
         id: "baseline",
         label: "Коррекция базовой линии",
-        value: `Вычитание минимума · ${round(result.baseline, 3)}`,
-        description: "Подготовленный сигнал приведён к нулевому базовому уровню.",
+        value: `Робастная AsLS-кривая · λ ${parameters.processing.baselineSmoothness}`,
+        description: "Гладкая базовая линия оценена с асимметричным взвешиванием, чтобы выраженные пики не смещали её вверх.",
+      },
+      {
+        id: "noise",
+        label: "Локальная оценка шума",
+        value: `MAD · окно ±${parameters.processing.noiseWindowNm} нм`,
+        description: "Шум оценён локально по остаточному сигналу; выраженные положительные пики исключены робастным отсечением.",
       },
       {
         id: "normalization",

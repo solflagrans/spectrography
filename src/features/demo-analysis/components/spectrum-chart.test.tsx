@@ -50,8 +50,13 @@ const preparedDataset: SpectrumDataset = {
   wavelengths: [400, 401, 402],
   intensities: [0.1, 0.8, 0.3],
 };
+const thresholdDataset: SpectrumDataset = {
+  wavelengths: [400, 401, 402],
+  intensities: [0.12, 0.15, 0.14],
+};
 const match = {
   lineId: "nist-fe-i-40105",
+  atomicNumber: 26,
   elementSymbol: "Fe",
   elementName: "Железо",
   ionizationStage: 1,
@@ -63,11 +68,15 @@ const match = {
 };
 const peak: AnalyzedPeak = {
   id: "peak-point-2",
+  channelId: "channel-1",
   sourceIndex: 1,
   index: 1,
   wavelength: 401,
+  rawIntensity: 240,
   intensity: 0.8,
   prominence: 0.62,
+  snr: 8,
+  widthNm: 0.8,
   candidates: [match],
   match,
 };
@@ -77,6 +86,7 @@ const palette: SpectrumChartPalette = {
   peak: "#2b8a3e",
   threshold: "#b86800",
   reference: "#5856d6",
+  missingReference: "#8a96a3",
   text: "#546273",
   border: "#dce0e5",
   surface: "#ffffff",
@@ -94,7 +104,7 @@ afterEach(() => {
 describe("spectrum chart configuration", () => {
   it("builds only visible layers and links simultaneous signals to two labelled axes", () => {
     const option = createSpectrumChartOption(
-      { rawDataset, preparedDataset, peaks: [peak], selectedPeakId: peak.id, threshold: 0.15 },
+      { rawDataset, preparedDataset, peaks: [peak], selectedPeakId: peak.id, thresholdDataset },
       new Set(["raw", "prepared", "threshold", "peaks"]),
       palette,
       FULL_SPECTRUM_ZOOM,
@@ -147,6 +157,31 @@ describe("spectrum chart configuration", () => {
     });
   });
 
+  it("renders found references as solid lines and missing characteristic lines as muted dashes", () => {
+    const option = createSpectrumChartOption(
+      {
+        preparedDataset,
+        referenceLines: [{ label: "Fe I 401.05", wavelength: 401.05 }],
+        missingReferenceLines: [{ label: "Fe I 402.10", wavelength: 402.1 }],
+      },
+      new Set(["prepared", "referenceLines", "missingReferenceLines"]),
+      palette,
+      FULL_SPECTRUM_ZOOM,
+    );
+    const series = option.series as Array<{
+      name: string;
+      markLine?: { data?: Array<{ lineStyle?: { type?: string; color?: string; opacity?: number } }> };
+    }>;
+
+    expect(series.map((item) => item.name)).toEqual([
+      "Подготовленный спектр",
+      "Справочные линии",
+      "Характерные линии без пика",
+    ]);
+    expect(series[1].markLine?.data?.[0].lineStyle).toMatchObject({ type: "solid", color: palette.reference });
+    expect(series[2].markLine?.data?.[0].lineStyle).toMatchObject({ type: "dashed", color: palette.missingReference, opacity: 0.34 });
+  });
+
   it("shows real values for every visible layer and peak evidence in the tooltip", () => {
     const tooltip = formatSpectrumTooltip(
       [{ axisValue: 401, value: [401, 0.8] }],
@@ -154,7 +189,7 @@ describe("spectrum chart configuration", () => {
         rawDataset,
         preparedDataset,
         peaks: [peak],
-        threshold: 0.15,
+        thresholdDataset,
         referenceLines: [{ label: "Fe 401.05", wavelength: 401.05 }],
       },
       new Set(["raw", "prepared", "threshold", "peaks", "referenceLines"]),
@@ -164,7 +199,7 @@ describe("spectrum chart configuration", () => {
     expect(tooltip).toContain("401.00 нм");
     expect(tooltip).toContain("Исходные отсчёты: <strong>240.000</strong>");
     expect(tooltip).toContain("Подготовленная интенсивность: <strong>0.8000</strong>");
-    expect(tooltip).toContain("Порог обнаружения: <strong>0.1500</strong>");
+    expect(tooltip).toContain("Локальный порог: <strong>0.1500</strong>");
     expect(tooltip).toContain("Выраженность: <strong>0.6200</strong>");
     expect(tooltip).toContain("Совпадение: <strong>Fe I · 401.05 нм (Δ -0.050 нм)</strong>");
     expect(tooltip).toContain("Справочная линия: <strong>Fe 401.05 · 401.05 нм</strong>");

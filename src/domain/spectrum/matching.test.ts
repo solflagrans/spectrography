@@ -34,13 +34,12 @@ describe("spectral line candidates", () => {
 
   it("keeps the nearest candidate as the automatic suggestion for hypotheses", () => {
     const result = matchPeaks([
-      { index: 4, wavelength: 500, intensity: 0.8, prominence: 0.4 },
+      { channelId: "c1", sourceIndex: 4, index: 4, wavelength: 500, rawIntensity: 8, intensity: 0.8, prominence: 0.4, snr: 9, widthNm: 0.2 },
     ], library, 0.25);
 
-    expect(result.peaks[0].candidates).toHaveLength(3);
-    expect(result.peaks[0].match).toEqual(result.peaks[0].candidates[0]);
-    expect(result.hypotheses[0].elementSymbol).toBe("B");
-    expect(result.hypotheses).toHaveLength(1);
+    expect(result[0].candidates).toHaveLength(3);
+    expect(result[0].match).toEqual(result[0].candidates[0]);
+    expect(result[0].match?.elementSymbol).toBe("B");
   });
 });
 

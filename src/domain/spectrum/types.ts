@@ -8,19 +8,21 @@ export interface SpectrumDataset {
 export type SpectrumNormalizationMethod = "maximum" | "none";
 
 export interface SpectrumProcessingParameters {
-  /** Odd number of samples used by the quadratic Savitzky-Golay filter. */
   readonly smoothingWindow: number;
+  readonly baselineSmoothness: number;
+  readonly baselineAsymmetry: number;
+  readonly baselineIterations: number;
+  readonly noiseWindowNm: number;
+  readonly noiseClippingSnr: number;
   readonly normalization: SpectrumNormalizationMethod;
 }
 
 export interface PeakSearchParameters {
-  /** Minimum relative signal level in the prepared spectrum, from 0 to 1. */
-  readonly threshold: number;
-  /** Minimum prominence relative to the prepared spectrum range, from 0 to 1. */
+  readonly minimumSnr: number;
   readonly prominence: number;
-  /** Minimum wavelength distance between selected peaks, in nanometres. */
+  readonly minimumWidth: number;
+  readonly maximumWidth: number;
   readonly minimumDistance: number;
-  /** Maximum wavelength delta for a reference-line match, in nanometres. */
   readonly tolerance: number;
 }
 
@@ -36,15 +38,32 @@ export interface SpectrumStats {
   readonly maximum: number;
 }
 
+export interface SpectrumChannelInput {
+  readonly id: string;
+  readonly name: string;
+  readonly dataset: SpectrumDataset;
+  readonly parameters?: InteractiveAnalysisParameters;
+}
+
+export interface MultiChannelSpectrumInput {
+  readonly channels: readonly SpectrumChannelInput[];
+}
+
 export interface DetectedPeak {
+  readonly channelId: string;
   readonly index: number;
+  readonly sourceIndex: number;
   readonly wavelength: number;
+  readonly rawIntensity: number;
   readonly intensity: number;
   readonly prominence: number;
+  readonly snr: number;
+  readonly widthNm: number;
 }
 
 export interface SpectralLineCandidate {
   readonly lineId: SpectralLine["id"];
+  readonly atomicNumber: number;
   readonly elementSymbol: SpectralLine["element"]["symbol"];
   readonly elementName: SpectralLine["element"]["name"];
   readonly ionizationStage: number;
@@ -52,66 +71,146 @@ export interface SpectralLineCandidate {
   readonly line: number;
   readonly wavelengthType: PreferredWavelengthOrigin;
   readonly wavelengthMedium: WavelengthMedium;
-  /** Observed wavelength minus reference wavelength, in nanometres. */
   readonly delta: number;
 }
 
 export type SpectralLineMatch = SpectralLineCandidate;
 
 export interface MatchedPeak extends DetectedPeak {
-  /** All library lines inside the configured tolerance, nearest first. */
   readonly candidates: readonly SpectralLineCandidate[];
-  /** Automatically suggested nearest candidate. */
   readonly match: SpectralLineMatch | null;
 }
 
 export interface AnalyzedPeak extends MatchedPeak {
   readonly id: string;
-  /** Position of the point in the untouched source dataset. */
-  readonly sourceIndex: number;
 }
 
-export interface ElementHypothesis {
-  readonly elementSymbol: SpectralLine["element"]["symbol"];
-  readonly elementName: SpectralLine["element"]["name"];
-  /** A relative ranking heuristic, not a calibrated probability. */
-  readonly heuristicScore: number;
-  readonly peaks: readonly MatchedPeak[];
+export interface ChannelPreparationResult {
+  readonly id: string;
+  readonly name: string;
+  readonly rawDataset: SpectrumDataset;
+  readonly preparedDataset: SpectrumDataset;
+  readonly baselineDataset: SpectrumDataset;
+  readonly noiseDataset: SpectrumDataset;
+  readonly thresholdDataset: SpectrumDataset;
+  readonly preparedStats: SpectrumStats;
+  readonly parameters: InteractiveAnalysisParameters;
+  readonly peaks: readonly AnalyzedPeak[];
+  readonly wavelengthRange: { readonly minimum: number; readonly maximum: number };
+  readonly usable: boolean;
+  readonly transformations: readonly string[];
 }
 
-export type ElementInterpretationStatus = "confirmed" | "possible" | "review";
+export interface EvidenceObservation {
+  readonly channelId: string;
+  readonly peakId: string;
+  readonly peakWavelength: number;
+  readonly peakIntensity: number;
+  readonly snr: number;
+  readonly delta: number;
+}
 
 export interface AnalysisEvidenceLine {
   readonly lineId: string;
-  readonly peakId: string;
-  readonly peakWavelength: number;
-  readonly observedWavelength: number;
   readonly referenceWavelength: number;
-  readonly delta: number;
   readonly elementSymbol: string;
+  readonly elementName: string;
   readonly ionizationStage: number;
   readonly ionizationLabel: string;
   readonly wavelengthType: PreferredWavelengthOrigin;
   readonly wavelengthMedium: WavelengthMedium;
+  readonly observations: readonly EvidenceObservation[];
+  readonly peakId: string;
+  readonly peakWavelength: number;
+  readonly observedWavelength: number;
+  readonly delta: number;
 }
 
-export interface ElementInterpretation {
-  readonly symbol: string;
-  readonly name: string;
-  readonly status: ElementInterpretationStatus;
-  /** A relative ranking heuristic, not a calibrated probability. */
-  readonly heuristicScore: number;
-  readonly explanation: string;
+export interface CharacteristicLineSummary {
+  readonly lineId: string;
+  readonly wavelength: number;
+  readonly ionizationStage: number;
+  readonly ionizationLabel: string;
+  readonly relativeIntensity: number;
+}
+
+export interface IonizationEvidenceGroup {
+  readonly ionizationStage: number;
+  readonly ionizationLabel: string;
+  readonly availableCharacteristicLines: readonly CharacteristicLineSummary[];
+  readonly foundCharacteristicLineIds: readonly string[];
+  readonly missingCharacteristicLines: readonly CharacteristicLineSummary[];
   readonly evidence: readonly AnalysisEvidenceLine[];
 }
 
+export interface ChannelEvidenceSummary {
+  readonly channelId: string;
+  readonly observationCount: number;
+  readonly peakIds: readonly string[];
+}
+
+export interface AlternativePeakExplanation {
+  readonly peakId: string;
+  readonly channelId: string;
+  readonly elementSymbols: readonly string[];
+}
+
+export type HypothesisRankingReasonCode = "characteristic-lines" | "characteristic-completeness" | "independent-lines" | "wavelength-agreement";
+
+export interface HypothesisRankingReason {
+  readonly code: HypothesisRankingReasonCode;
+  readonly value: number;
+  readonly description: string;
+}
+
+export interface RandomAgreementEstimate {
+  readonly expectedAgreements: number;
+  readonly observedAgreements: number;
+  readonly coveredWidthNm: number;
+  readonly peakCount: number;
+  readonly characteristicLineDensityPerNm: number;
+  readonly distinguishableFromRandom: boolean;
+}
+
+export interface ElementInterpretation {
+  readonly id: string;
+  readonly atomicNumber: number;
+  readonly symbol: string;
+  readonly name: string;
+  readonly independentMatchedLineCount: number;
+  readonly foundCharacteristicLineCount: number;
+  readonly availableCharacteristicLineCount: number;
+  readonly characteristicCompleteness: number;
+  readonly missingCharacteristicLines: readonly CharacteristicLineSummary[];
+  readonly meanAbsoluteDelta: number;
+  readonly maximumAbsoluteDelta: number;
+  readonly ionizationStages: readonly number[];
+  readonly ionizationGroups: readonly IonizationEvidenceGroup[];
+  readonly evidence: readonly AnalysisEvidenceLine[];
+  readonly observationsByChannel: readonly ChannelEvidenceSummary[];
+  readonly alternativeExplanations: readonly AlternativePeakExplanation[];
+  readonly rankingReasons: readonly HypothesisRankingReason[];
+  readonly randomAgreement: RandomAgreementEstimate;
+  readonly explanation: string;
+}
+
+export type RejectedHypothesisReason = "single-match" | "random-like-agreement" | "insufficient-characteristic-lines" | "missing-key-characteristic-lines";
+
+export interface RejectedElementHypothesis {
+  readonly hypothesis: ElementInterpretation;
+  readonly reasons: readonly RejectedHypothesisReason[];
+}
+
 export interface InteractiveSpectrumAnalysis {
+  readonly channels: readonly ChannelPreparationResult[];
   readonly preparedDataset: SpectrumDataset;
   readonly preparedStats: SpectrumStats;
-  readonly baseline: number;
-  readonly threshold: number;
+  readonly baselineDataset: SpectrumDataset;
+  readonly noiseDataset: SpectrumDataset;
+  readonly thresholdDataset: SpectrumDataset;
   readonly peaks: readonly AnalyzedPeak[];
   readonly hypotheses: readonly ElementInterpretation[];
+  readonly rejectedHypotheses: readonly RejectedElementHypothesis[];
   readonly unmatchedPeaks: readonly AnalyzedPeak[];
   readonly conclusion: string;
 }

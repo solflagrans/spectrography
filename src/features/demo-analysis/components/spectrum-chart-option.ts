@@ -2,7 +2,7 @@ import type { EChartsCoreOption } from "echarts/core";
 
 import type { AnalyzedPeak, SpectrumDataset } from "@/domain/spectrum";
 
-export type SpectrumChartLayer = "raw" | "prepared" | "threshold" | "peaks" | "referenceLines";
+export type SpectrumChartLayer = "raw" | "prepared" | "threshold" | "peaks" | "referenceLines" | "missingReferenceLines";
 
 export interface SpectrumReferenceLine {
   readonly label: string;
@@ -14,8 +14,9 @@ export interface SpectrumChartData {
   readonly preparedDataset?: SpectrumDataset;
   readonly peaks?: readonly AnalyzedPeak[];
   readonly selectedPeakId?: string | null;
-  readonly threshold?: number;
+  readonly thresholdDataset?: SpectrumDataset;
   readonly referenceLines?: readonly SpectrumReferenceLine[];
+  readonly missingReferenceLines?: readonly SpectrumReferenceLine[];
 }
 
 export interface SpectrumChartPalette {
@@ -24,6 +25,7 @@ export interface SpectrumChartPalette {
   readonly peak: string;
   readonly threshold: string;
   readonly reference: string;
+  readonly missingReference: string;
   readonly text: string;
   readonly border: string;
   readonly surface: string;
@@ -42,6 +44,7 @@ export const SPECTRUM_SERIES_NAMES = {
   threshold: "Порог обнаружения",
   peaks: "Найденные пики",
   referenceLines: "Справочные линии",
+  missingReferenceLines: "Характерные линии без пика",
 } as const;
 
 export function createSpectrumChartOption(
@@ -52,10 +55,11 @@ export function createSpectrumChartOption(
 ): EChartsCoreOption {
   const rawVisible = visibleLayers.has("raw") && Boolean(data.rawDataset);
   const preparedVisible = visibleLayers.has("prepared") && Boolean(data.preparedDataset);
-  const thresholdVisible = visibleLayers.has("threshold") && data.threshold !== undefined;
+  const thresholdVisible = visibleLayers.has("threshold") && Boolean(data.thresholdDataset);
   const peaksVisible = visibleLayers.has("peaks") && data.peaks !== undefined;
   const referenceLinesVisible = visibleLayers.has("referenceLines") && data.referenceLines !== undefined;
-  const preparedAxisRequired = preparedVisible || thresholdVisible || peaksVisible || referenceLinesVisible;
+  const missingReferenceLinesVisible = visibleLayers.has("missingReferenceLines") && data.missingReferenceLines !== undefined;
+  const preparedAxisRequired = preparedVisible || thresholdVisible || peaksVisible || referenceLinesVisible || missingReferenceLinesVisible;
   const dualAxis = rawVisible && preparedAxisRequired;
   const preparedAxisIndex = dualAxis ? 1 : 0;
   const [minimumWavelength, maximumWavelength] = getWavelengthExtent(data);
@@ -92,12 +96,12 @@ export function createSpectrumChartOption(
     });
   }
 
-  if (thresholdVisible && data.threshold !== undefined) {
+  if (thresholdVisible && data.thresholdDataset) {
     series.push({
       id: "detection-threshold",
       name: SPECTRUM_SERIES_NAMES.threshold,
       type: "line",
-      data: [[minimumWavelength, data.threshold], [maximumWavelength, data.threshold]],
+      data: toSeriesData(data.thresholdDataset),
       yAxisIndex: preparedAxisIndex,
       showSymbol: false,
       silent: true,
@@ -152,7 +156,7 @@ export function createSpectrumChartOption(
         data: data.referenceLines.map((line) => ({
           name: line.label,
           xAxis: line.wavelength,
-          lineStyle: { color: palette.reference, opacity: 0.58, type: "dashed" },
+          lineStyle: { color: palette.reference, opacity: 0.72, type: "solid", width: 1.25 },
           label: {
             color: palette.reference,
             formatter: line.label,
@@ -162,6 +166,30 @@ export function createSpectrumChartOption(
         })),
       },
       z: 2,
+    });
+  }
+
+  if (missingReferenceLinesVisible && data.missingReferenceLines) {
+    series.push({
+      id: "missing-reference-lines",
+      name: SPECTRUM_SERIES_NAMES.missingReferenceLines,
+      type: "line",
+      data: [],
+      yAxisIndex: preparedAxisIndex,
+      showSymbol: false,
+      silent: true,
+      lineStyle: { opacity: 0 },
+      markLine: {
+        silent: true,
+        symbol: ["none", "none"],
+        data: data.missingReferenceLines.map((line) => ({
+          name: line.label,
+          xAxis: line.wavelength,
+          lineStyle: { color: palette.missingReference, opacity: 0.34, type: "dashed", width: 1 },
+          label: { show: false },
+        })),
+      },
+      z: 1,
     });
   }
 
@@ -258,8 +286,9 @@ export function formatSpectrumTooltip(
     rows.push(formatTooltipRow(palette.prepared, "Подготовленная интенсивность", data.preparedDataset.intensities[index], 4));
   }
 
-  if (visibleLayers.has("threshold") && data.threshold !== undefined) {
-    rows.push(formatTooltipRow(palette.threshold, "Порог обнаружения", data.threshold, 4));
+  if (visibleLayers.has("threshold") && data.thresholdDataset) {
+    const index = findNearestSampleIndex(data.thresholdDataset.wavelengths, wavelength);
+    rows.push(formatTooltipRow(palette.threshold, "Локальный порог", data.thresholdDataset.intensities[index], 4));
   }
 
   if (visibleLayers.has("peaks") && data.peaks?.length) {
@@ -269,6 +298,8 @@ export function formatSpectrumTooltip(
         "<span><strong>Найденный пик</strong></span>",
         formatTooltipRow(palette.peak, "Интенсивность", peak.intensity, 4),
         `<span>Выраженность: <strong>${peak.prominence.toFixed(4)}</strong></span>`,
+        `<span>SNR: <strong>${Number.isFinite(peak.snr) ? peak.snr.toFixed(2) : "∞"}</strong></span>`,
+        `<span>Ширина: <strong>${peak.widthNm.toFixed(3)} нм</strong></span>`,
         `<span>Совпадение: <strong>${formatPeakMatch(peak)}</strong></span>`,
       );
     }
@@ -284,6 +315,17 @@ export function formatSpectrumTooltip(
       rows.push(formatTooltipTextRow(
         palette.reference,
         "Справочная линия",
+        `${escapeHtml(reference.label)} · ${formatWavelength(reference.wavelength)} нм`,
+      ));
+    }
+  }
+
+  if (visibleLayers.has("missingReferenceLines") && data.missingReferenceLines?.length) {
+    const reference = findReferenceLineAtWavelength(data.missingReferenceLines, wavelength, anchorDataset.wavelengths);
+    if (reference) {
+      rows.push(formatTooltipTextRow(
+        palette.missingReference,
+        "Характерная линия без найденного пика",
         `${escapeHtml(reference.label)} · ${formatWavelength(reference.wavelength)} нм`,
       ));
     }

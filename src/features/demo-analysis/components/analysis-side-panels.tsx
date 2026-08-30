@@ -1,19 +1,19 @@
 "use client";
 
-import { CircleAlert, LoaderCircle, RotateCcw } from "lucide-react";
+import { ArrowRight, CircleAlert, LoaderCircle, RotateCcw, Search } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import type { ReactNode } from "react";
 
-import type { AnalysisHypothesisStatus } from "@/application/analysis/create-working-analysis";
-import type { AnalysisEvidenceLine, SpectralLineCandidate } from "@/domain/spectrum";
+import type { SpectralLineCandidate } from "@/domain/spectrum";
 import { useAnalysisWorkspace } from "@/features/demo-analysis/model/analysis-workspace-context";
+import {
+  diagnosticReasonLabels,
+  getIdentificationEntries,
+  type IdentificationSort,
+} from "@/features/demo-analysis/model/identification-ui";
 
 import styles from "./analysis-page.module.css";
-
-const statusLabels: Record<AnalysisHypothesisStatus, string> = {
-  confirmed: "Подтверждён",
-  possible: "Возможен",
-  review: "Требует проверки",
-};
 
 export function ProcessingSettingsPanel() {
   const {
@@ -27,6 +27,29 @@ export function ProcessingSettingsPanel() {
   return (
     <div className={styles.sidePanelContent}>
       <SidePanelHeader title="Настройки обработки" onReset={resetProcessingParameters} />
+      <section className={styles.sideParameterGroup}>
+        <h3>Базовая линия и шум</h3>
+        <NumberParameter
+          id="baseline-smoothness"
+          label="Гладкость AsLS"
+          unit="λ"
+          value={parameters.processing.baselineSmoothness}
+          min={100}
+          max={10_000_000}
+          step={1000}
+          onChange={(value) => updateProcessingParameters({ baselineSmoothness: value })}
+        />
+        <NumberParameter
+          id="noise-window"
+          label="Окно локального MAD"
+          unit="нм"
+          value={parameters.processing.noiseWindowNm}
+          min={0.05}
+          max={50}
+          step={0.1}
+          onChange={(value) => updateProcessingParameters({ noiseWindowNm: value })}
+        />
+      </section>
       <section className={styles.sideParameterGroup}>
         <h3>Сглаживание</h3>
         <div className={styles.rangeHeading}>
@@ -111,20 +134,40 @@ export function PeakSettingsPanel() {
           <section className={styles.sideParameterGroup}>
             <h3>Поиск пиков</h3>
             <div className={styles.rangeHeading}>
-              <label htmlFor="detection-threshold">Порог обнаружения</label>
-              <output htmlFor="detection-threshold">{parameters.peakSearch.threshold.toFixed(2)}</output>
+              <label htmlFor="detection-threshold">Минимальный SNR</label>
+              <output htmlFor="detection-threshold">{parameters.peakSearch.minimumSnr.toFixed(1)}</output>
             </div>
             <input
               id="detection-threshold"
               className={styles.rangeInput}
               type="range"
               min="0"
-              max="1"
-              step="0.01"
-              value={parameters.peakSearch.threshold}
-              onChange={(event) => updatePeakSearchParameters({ threshold: Number(event.target.value) })}
+              max="30"
+              step="0.5"
+              value={parameters.peakSearch.minimumSnr}
+              onChange={(event) => updatePeakSearchParameters({ minimumSnr: Number(event.target.value) })}
             />
-            <p>Минимальная относительная высота сигнала в подготовленном спектре.</p>
+            <p>Пик должен быть выше локального уровня шума в указанное число раз.</p>
+            <NumberParameter
+              id="minimum-width"
+              label="Минимальная ширина"
+              unit="нм"
+              value={parameters.peakSearch.minimumWidth}
+              min={0}
+              max={50}
+              step={0.01}
+              onChange={(value) => updatePeakSearchParameters({ minimumWidth: value })}
+            />
+            <NumberParameter
+              id="maximum-width"
+              label="Максимальная ширина"
+              unit="нм"
+              value={parameters.peakSearch.maximumWidth}
+              min={0.01}
+              max={100}
+              step={0.1}
+              onChange={(value) => updatePeakSearchParameters({ maximumWidth: value })}
+            />
             <NumberParameter
               id="minimum-prominence"
               label="Минимальная выраженность"
@@ -185,6 +228,8 @@ function SelectedPeakContent({
   analysis: ReturnType<typeof useAnalysisWorkspace>["analysis"];
   selectedPeak: NonNullable<ReturnType<typeof useAnalysisWorkspace>["analysis"]>["peaks"][number] | null;
 }>) {
+  const router = useRouter();
+  const { selectHypothesisForElement } = useAnalysisWorkspace();
   if (!analysis?.peaks.length) {
     return <PanelEmptyState>При текущих параметрах пики не найдены.</PanelEmptyState>;
   }
@@ -192,7 +237,7 @@ function SelectedPeakContent({
     return <PanelEmptyState>Выберите пик на графике или в таблице, чтобы увидеть его параметры и кандидатов.</PanelEmptyState>;
   }
 
-  const rawIntensity = analysis.rawDataset.intensities[selectedPeak.sourceIndex];
+  const rawIntensity = selectedPeak.rawIntensity;
 
   return (
     <>
@@ -202,7 +247,9 @@ function SelectedPeakContent({
         <PeakDetail label="Исходная интенсивность" value={formatValue(rawIntensity, 4)} />
         <PeakDetail label="Подготовленная интенсивность" value={formatValue(selectedPeak.intensity, 4)} />
         <PeakDetail label="Выраженность" value={formatValue(selectedPeak.prominence, 4)} />
-        <PeakDetail label="Порог в этой точке" value={formatValue(analysis.threshold, 4)} />
+        <PeakDetail label="SNR" value={Number.isFinite(selectedPeak.snr) ? formatValue(selectedPeak.snr, 2) : "∞"} />
+        <PeakDetail label="Ширина" value={`${formatValue(selectedPeak.widthNm, 3)} нм`} />
+        <PeakDetail label="Порог в этой точке" value={formatValue(analysis.thresholdDataset.intensities[selectedPeak.index], 4)} />
       </dl>
 
       <section className={styles.candidateSection} aria-labelledby="candidate-lines-title">
@@ -221,6 +268,20 @@ function SelectedPeakContent({
                   <span>{formatCandidateLine(candidate)} нм</span>
                   <code>{formatSigned(candidate.delta)} нм</code>
                 </div>
+                {hasHypothesisForElement(analysis, candidate.elementSymbol) ? (
+                  <button
+                    className={styles.candidateLink}
+                    type="button"
+                    onClick={() => {
+                      if (selectHypothesisForElement(candidate.elementSymbol)) router.push("/identification");
+                    }}
+                  >
+                    Открыть гипотезу
+                    <ArrowRight size={13} aria-hidden="true" />
+                  </button>
+                ) : (
+                  <span className={styles.candidateUnavailable}>Доступной гипотезы нет</span>
+                )}
               </li>
             ))}
           </ol>
@@ -243,52 +304,88 @@ function PanelEmptyState({ children }: Readonly<{ children: ReactNode }>) {
 }
 
 export function IdentificationLinesPanel() {
-  const { analysis } = useAnalysisWorkspace();
-  const leading = analysis?.hypotheses[0];
+  const {
+    analysis,
+    identificationTab,
+    selectedHypothesisId,
+    selectHypothesis,
+    setIdentificationTab,
+  } = useAnalysisWorkspace();
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<IdentificationSort>("ranking");
 
-  if (!analysis || !leading) {
+  if (!analysis) {
     return (
       <div className={styles.sidePanelContent}>
-        <h2 className={styles.sidePanelTitle}>Найденные линии</h2>
-        <p className={styles.sidePanelEmpty}>При текущих параметрах совпадающих линий нет.</p>
+        <h2 className={styles.sidePanelTitle}>Гипотезы</h2>
+        <p className={styles.sidePanelEmpty}>Сначала откройте спектр.</p>
       </div>
     );
   }
+  const entries = getIdentificationEntries(analysis, identificationTab, query, sort);
 
   return (
-    <div className={styles.sidePanelContent}>
-      <header className={styles.linesPanelHeader}>
-        <div>
-          <h2>{leading.name} ({leading.symbol})</h2>
-          <p>Справочная библиотека · {analysis.libraryLabel}</p>
-        </div>
-        <SideStatus status={leading.status} />
-      </header>
-      <section className={styles.linesSection} aria-labelledby="found-lines-title">
-        <h3 id="found-lines-title">Найденные линии ({leading.evidence.length})</h3>
-        <div className={styles.compactTableScroll}>
-          <table className={styles.compactTable}>
-            <thead>
-              <tr>
-                <th>Линия</th>
-                <th>Наблюдено</th>
-                <th>Откл.</th>
-              </tr>
-            </thead>
-            <tbody>
-              {leading.evidence.map((line) => (
-                <tr key={`${line.peakId}-${line.lineId}`}>
-                  <td>{formatEvidenceLabel(line)}<br />{line.referenceWavelength.toFixed(2)}</td>
-                  <td>{line.observedWavelength.toFixed(2)}</td>
-                  <td className={styles.compactDelta}>{formatSigned(line.delta)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+    <div className={`${styles.sidePanelContent} ${styles.identificationMaster}`}>
+      <h2 className={styles.sidePanelTitle}>Гипотезы элементов</h2>
+      <div className={styles.sidePanelTabs} role="tablist" aria-label="Списки идентификации">
+        <button id="identification-hypotheses-tab" type="button" role="tab" aria-selected={identificationTab === "hypotheses"} aria-controls="identification-list-panel" onClick={() => setIdentificationTab("hypotheses")}>Гипотезы · {analysis.hypotheses.length}</button>
+        <button id="identification-diagnostics-tab" type="button" role="tab" aria-selected={identificationTab === "diagnostics"} aria-controls="identification-list-panel" onClick={() => setIdentificationTab("diagnostics")}>Диагностика · {analysis.rejectedHypotheses.length}</button>
+      </div>
+      <label className={styles.hypothesisSearch} htmlFor="hypothesis-search">
+        <Search size={14} aria-hidden="true" />
+        <input id="hypothesis-search" type="search" aria-label="Поиск гипотезы по элементу или символу" placeholder="Элемент или символ" value={query} onChange={(event) => setQuery(event.target.value)} />
+      </label>
+      <label className={styles.hypothesisSort} htmlFor="hypothesis-sort">
+        <span>Сортировка</span>
+        <select id="hypothesis-sort" value={sort} onChange={(event) => setSort(event.target.value as IdentificationSort)}>
+          <option value="ranking">Автоматическое ранжирование</option>
+          <option value="characteristic">Характерные линии</option>
+          <option value="independent">Независимые совпадения</option>
+          <option value="deviation">Среднее отклонение</option>
+          <option value="name">Название</option>
+        </select>
+      </label>
+      <div id="identification-list-panel" role="tabpanel" aria-labelledby={identificationTab === "hypotheses" ? "identification-hypotheses-tab" : "identification-diagnostics-tab"}>
+        {entries.length ? (
+          <div className={styles.hypothesisMasterList} role="listbox" aria-label={identificationTab === "hypotheses" ? "Основные гипотезы" : "Диагностические совпадения"}>
+            {entries.map((entry) => (
+              <button key={entry.id} type="button" role="option" aria-selected={selectedHypothesisId === entry.id} className={styles.hypothesisMasterItem} onClick={() => selectHypothesis(entry.id, identificationTab)}>
+                <span className={styles.hypothesisMasterHeading}>
+                  <strong>{entry.hypothesis.symbol}</strong>
+                  <span>{entry.hypothesis.name}</span>
+                  {identificationTab === "hypotheses" ? <code>#{entry.rank}</code> : null}
+                </span>
+                <span className={styles.hypothesisMasterMetrics}>
+                  <span>Характерные {entry.hypothesis.foundCharacteristicLineCount}/{entry.hypothesis.availableCharacteristicLineCount}</span>
+                  <span>Линии {entry.hypothesis.independentMatchedLineCount}</span>
+                  <span>Δ {entry.hypothesis.meanAbsoluteDelta.toFixed(3)} нм</span>
+                </span>
+                {entry.rejectionReasons.length ? <span className={styles.diagnosticReasonCompact}>{diagnosticReasonLabels[entry.rejectionReasons[0]]}</span> : null}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <PanelEmptyState>
+            {query
+              ? "По вашему запросу элементы не найдены."
+              : identificationTab === "hypotheses"
+                ? analysis.rejectedHypotheses.length
+                  ? "Основных гипотез нет. Перейдите во вкладку «Диагностика», чтобы изучить слабые совпадения."
+                  : "Основные гипотезы не сформированы."
+                : "Диагностических совпадений нет."}
+          </PanelEmptyState>
+        )}
+      </div>
     </div>
   );
+}
+
+function hasHypothesisForElement(
+  analysis: NonNullable<ReturnType<typeof useAnalysisWorkspace>["analysis"]>,
+  symbol: string,
+): boolean {
+  return analysis.hypotheses.some((hypothesis) => hypothesis.symbol === symbol)
+    || analysis.rejectedHypotheses.some((item) => item.hypothesis.symbol === symbol);
 }
 
 function SidePanelHeader({ title, onReset }: Readonly<{ title: string; onReset: () => void }>) {
@@ -376,11 +473,6 @@ function CalculationFeedback({
   return null;
 }
 
-function SideStatus({ status }: Readonly<{ status: AnalysisHypothesisStatus }>) {
-  const tone = status === "confirmed" ? "success" : status === "possible" ? "info" : "warning";
-  return <span className={`${styles.tag} ${styles[`tag_${tone}`]}`}>{statusLabels[status]}</span>;
-}
-
 function formatSigned(value: number): string {
   if (value === 0) return "0.000";
   return `${value > 0 ? "+" : ""}${value.toFixed(3)}`;
@@ -395,10 +487,4 @@ function formatCandidateLine(candidate: SpectralLineCandidate): string {
     ? `${candidate.elementSymbol} ${candidate.ionizationLabel}`
     : candidate.elementSymbol;
   return `${label} · ${candidate.line.toFixed(3)}`;
-}
-
-function formatEvidenceLabel(line: AnalysisEvidenceLine): string {
-  return line.ionizationLabel
-    ? `${line.elementSymbol} ${line.ionizationLabel}`
-    : line.elementSymbol;
 }

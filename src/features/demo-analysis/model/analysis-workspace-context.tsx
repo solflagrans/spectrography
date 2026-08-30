@@ -18,6 +18,7 @@ import type {
   PeakSearchParameters,
   SpectrumProcessingParameters,
 } from "@/domain/spectrum";
+import type { IdentificationTab } from "./identification-ui";
 
 export type AnalysisCalculationStatus = "idle" | "calculating" | "ready" | "error";
 export type SpectrumImportStatus = "idle" | "reading" | "error";
@@ -37,6 +38,10 @@ interface AnalysisWorkspaceContextValue {
   readonly importError: string | null;
   readonly selectedPeakId: string | null;
   readonly peakPanelSection: PeakPanelSection;
+  readonly selectedHypothesisId: string | null;
+  readonly identificationTab: IdentificationTab;
+  readonly selectedIdentificationChannelId: string | null;
+  readonly hypothesisSelectionNotice: boolean;
   readonly openDemoAnalysis: () => void;
   readonly importSpectrumFile: (file: SpectrumFileLike) => Promise<void>;
   readonly updateProcessingParameters: (patch: Partial<SpectrumProcessingParameters>) => void;
@@ -45,6 +50,10 @@ interface AnalysisWorkspaceContextValue {
   readonly resetPeakSearchParameters: () => void;
   readonly selectPeak: (peakId: string | null) => void;
   readonly setPeakPanelSection: (section: PeakPanelSection) => void;
+  readonly selectHypothesis: (hypothesisId: string, tab?: IdentificationTab) => void;
+  readonly selectHypothesisForElement: (elementSymbol: string) => boolean;
+  readonly setIdentificationTab: (tab: IdentificationTab) => void;
+  readonly selectIdentificationChannel: (channelId: string) => void;
 }
 
 const AnalysisWorkspaceContext = createContext<AnalysisWorkspaceContextValue | null>(null);
@@ -60,6 +69,10 @@ export function AnalysisWorkspaceProvider({ children }: Readonly<{ children: Rea
   const [importError, setImportError] = useState<string | null>(null);
   const [selectedPeakId, setSelectedPeakId] = useState<string | null>(null);
   const [peakPanelSection, setPeakPanelSection] = useState<PeakPanelSection>("parameters");
+  const [selectedHypothesisId, setSelectedHypothesisId] = useState<string | null>(null);
+  const [identificationTab, setIdentificationTabState] = useState<IdentificationTab>("hypotheses");
+  const [selectedIdentificationChannelId, setSelectedIdentificationChannelId] = useState<string | null>(null);
+  const [hypothesisSelectionNotice, setHypothesisSelectionNotice] = useState(false);
   const recalculationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sourceRef = useRef<CreateWorkingAnalysisInput | null>(null);
   const parametersRef = useRef<InteractiveAnalysisParameters>(
@@ -79,6 +92,29 @@ export function AnalysisWorkspaceProvider({ children }: Readonly<{ children: Rea
         setAnalysis(nextAnalysis);
         setSelectedPeakId((current) => (
           current && nextAnalysis.peaks.some((peak) => peak.id === current) ? current : null
+        ));
+        setSelectedHypothesisId((current) => {
+          const accepted = nextAnalysis.hypotheses.find((hypothesis) => hypothesis.id === current);
+          if (accepted) {
+            setIdentificationTabState("hypotheses");
+            setHypothesisSelectionNotice(false);
+            return accepted.id;
+          }
+          const diagnostic = nextAnalysis.rejectedHypotheses.find((item) => item.hypothesis.id === current);
+          if (diagnostic) {
+            setIdentificationTabState("diagnostics");
+            setHypothesisSelectionNotice(false);
+            return diagnostic.hypothesis.id;
+          }
+          const fallback = getInitialHypothesisSelection(nextAnalysis);
+          setIdentificationTabState(fallback.tab);
+          setHypothesisSelectionNotice(current !== null);
+          return fallback.id;
+        });
+        setSelectedIdentificationChannelId((current) => (
+          current && nextAnalysis.channels.some((channel) => channel.id === current)
+            ? current
+            : nextAnalysis.channels[0]?.id ?? null
         ));
         setCalculationStatus("ready");
       } catch (error) {
@@ -104,7 +140,13 @@ export function AnalysisWorkspaceProvider({ children }: Readonly<{ children: Rea
     setParameterError(null);
     setSelectedPeakId(null);
     setPeakPanelSection("parameters");
-    setAnalysis(createWorkingAnalysis(source, DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS));
+    const nextAnalysis = createWorkingAnalysis(source, DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS);
+    const initialHypothesis = getInitialHypothesisSelection(nextAnalysis);
+    setSelectedHypothesisId(initialHypothesis.id);
+    setIdentificationTabState(initialHypothesis.tab);
+    setSelectedIdentificationChannelId(nextAnalysis.channels[0]?.id ?? null);
+    setHypothesisSelectionNotice(false);
+    setAnalysis(nextAnalysis);
     setCalculationStatus("ready");
   }, []);
 
@@ -200,6 +242,48 @@ export function AnalysisWorkspaceProvider({ children }: Readonly<{ children: Rea
     if (peakId) setPeakPanelSection("selected");
   }, []);
 
+  const selectHypothesis = useCallback((hypothesisId: string, tab?: IdentificationTab) => {
+    setSelectedHypothesisId(hypothesisId);
+    if (tab) setIdentificationTabState(tab);
+    setHypothesisSelectionNotice(false);
+  }, []);
+
+  const selectHypothesisForElement = useCallback((elementSymbol: string): boolean => {
+    const current = analysis;
+    if (!current) return false;
+    const accepted = current.hypotheses.find((hypothesis) => hypothesis.symbol === elementSymbol);
+    if (accepted) {
+      selectHypothesis(accepted.id, "hypotheses");
+      return true;
+    }
+    const diagnostic = current.rejectedHypotheses.find((item) => item.hypothesis.symbol === elementSymbol);
+    if (diagnostic) {
+      selectHypothesis(diagnostic.hypothesis.id, "diagnostics");
+      return true;
+    }
+    return false;
+  }, [analysis, selectHypothesis]);
+
+  const setIdentificationTab = useCallback((tab: IdentificationTab) => {
+    setIdentificationTabState(tab);
+    const current = analysis;
+    if (!current) return;
+    const currentExistsInTab = tab === "hypotheses"
+      ? current.hypotheses.some((hypothesis) => hypothesis.id === selectedHypothesisId)
+      : current.rejectedHypotheses.some((item) => item.hypothesis.id === selectedHypothesisId);
+    if (!currentExistsInTab) {
+      setSelectedHypothesisId(tab === "hypotheses"
+        ? current.hypotheses[0]?.id ?? null
+        : current.rejectedHypotheses[0]?.hypothesis.id ?? null);
+    }
+    setHypothesisSelectionNotice(false);
+  }, [analysis, selectedHypothesisId]);
+
+  const selectIdentificationChannel = useCallback((channelId: string) => {
+    setSelectedIdentificationChannelId(channelId);
+    setSelectedPeakId(null);
+  }, []);
+
   const value = useMemo(
     () => ({
       analysis,
@@ -210,6 +294,10 @@ export function AnalysisWorkspaceProvider({ children }: Readonly<{ children: Rea
       importError,
       selectedPeakId,
       peakPanelSection,
+      selectedHypothesisId,
+      identificationTab,
+      selectedIdentificationChannelId,
+      hypothesisSelectionNotice,
       openDemoAnalysis,
       importSpectrumFile,
       updateProcessingParameters,
@@ -218,6 +306,10 @@ export function AnalysisWorkspaceProvider({ children }: Readonly<{ children: Rea
       resetProcessingParameters,
       selectPeak,
       setPeakPanelSection,
+      selectHypothesis,
+      selectHypothesisForElement,
+      setIdentificationTab,
+      selectIdentificationChannel,
     }),
     [
       analysis,
@@ -229,10 +321,18 @@ export function AnalysisWorkspaceProvider({ children }: Readonly<{ children: Rea
       parameterError,
       parameters,
       peakPanelSection,
+      selectedHypothesisId,
+      identificationTab,
+      selectedIdentificationChannelId,
+      hypothesisSelectionNotice,
       resetPeakSearchParameters,
       resetProcessingParameters,
       selectPeak,
       selectedPeakId,
+      selectHypothesis,
+      selectHypothesisForElement,
+      setIdentificationTab,
+      selectIdentificationChannel,
       updatePeakSearchParameters,
       updateProcessingParameters,
     ],
@@ -243,6 +343,11 @@ export function AnalysisWorkspaceProvider({ children }: Readonly<{ children: Rea
       {children}
     </AnalysisWorkspaceContext.Provider>
   );
+}
+
+function getInitialHypothesisSelection(analysis: WorkingAnalysis): { id: string | null; tab: IdentificationTab } {
+  if (analysis.hypotheses[0]) return { id: analysis.hypotheses[0].id, tab: "hypotheses" };
+  return { id: analysis.rejectedHypotheses[0]?.hypothesis.id ?? null, tab: "diagnostics" };
 }
 
 export function useAnalysisWorkspace(): AnalysisWorkspaceContextValue {

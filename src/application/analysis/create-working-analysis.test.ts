@@ -9,8 +9,9 @@ describe("createWorkingAnalysis", () => {
 
     expect(analysis.rawDataset).not.toBe(analysis.preparedDataset);
     expect(analysis.rawDataset.wavelengths).toHaveLength(1_024);
-    expect(analysis.peaks.length).toBeGreaterThanOrEqual(6);
-    expect(analysis.hypotheses.some((hypothesis) => hypothesis.symbol === "Fe")).toBe(true);
+    expect(analysis.peaks.length).toBeGreaterThan(0);
+    expect([...analysis.hypotheses, ...analysis.rejectedHypotheses.map((item) => item.hypothesis)]
+      .some((hypothesis) => hypothesis.symbol === "Fe")).toBe(true);
 
     for (const hypothesis of analysis.hypotheses) {
       for (const evidence of hypothesis.evidence) {
@@ -41,14 +42,29 @@ describe("createWorkingAnalysis", () => {
     expect(analysis.transformations[0].id).toBe("sorting");
   });
 
-  it("пересчитывает зависимые результаты при изменении порога", () => {
+  it("пересчитывает зависимые результаты при изменении минимального SNR", () => {
     const defaultAnalysis = createWorkingAnalysis(DEMO_ANALYSIS_INPUT);
     const stricterAnalysis = createWorkingAnalysis(DEMO_ANALYSIS_INPUT, {
       ...defaultAnalysis.parameters,
-      peakSearch: { ...defaultAnalysis.parameters.peakSearch, threshold: 0.9 },
+      peakSearch: { ...defaultAnalysis.parameters.peakSearch, minimumSnr: 100 },
     });
 
     expect(stricterAnalysis.peaks.length).toBeLessThan(defaultAnalysis.peaks.length);
     expect(stricterAnalysis.conclusion).not.toBe(defaultAnalysis.conclusion);
+  });
+
+  it("принимает несколько каналов через ту же прикладную модель", () => {
+    const primary = { wavelengths: [500, 501, 502, 503, 504], intensities: [0, 0, 10, 0, 0] };
+    const secondary = { wavelengths: [600, 601, 602, 603, 604], intensities: [0, 0, 8, 0, 0] };
+    const analysis = createWorkingAnalysis({
+      ...DEMO_ANALYSIS_INPUT,
+      rawDataset: primary,
+      channels: [
+        { id: "uv", name: "УФ-канал", dataset: primary },
+        { id: "visible", name: "Видимый канал", dataset: secondary },
+      ],
+    });
+    expect(analysis.channels.map((channel) => channel.id)).toEqual(["uv", "visible"]);
+    expect(analysis.channels.every((channel) => channel.baselineDataset.intensities.length === 5)).toBe(true);
   });
 });

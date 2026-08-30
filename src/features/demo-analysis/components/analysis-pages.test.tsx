@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -9,8 +9,17 @@ import {
 } from "@/features/demo-analysis/model/analysis-workspace-context";
 import { createRaw8Fixture } from "@/fixtures/raw8-test-fixture";
 
-import { PeakSettingsPanel } from "./analysis-side-panels";
-import { DataAnalysisPage, PeaksAnalysisPage, ProcessingAnalysisPage } from "./analysis-pages";
+import { IdentificationLinesPanel, PeakSettingsPanel } from "./analysis-side-panels";
+import {
+  DataAnalysisPage,
+  IdentificationAnalysisPage,
+  PeaksAnalysisPage,
+  ProcessingAnalysisPage,
+} from "./analysis-pages";
+
+const navigationMock = vi.hoisted(() => ({ push: vi.fn() }));
+
+vi.mock("next/navigation", () => ({ useRouter: () => navigationMock }));
 
 vi.mock("./spectrum-chart", () => ({
   SpectrumChart: (props: {
@@ -20,12 +29,18 @@ vi.mock("./spectrum-chart", () => ({
     peaks?: readonly { id: string; wavelength: number }[];
     selectedPeakId?: string | null;
     onPeakSelect?: (peakId: string) => void;
+    sourceKey?: string;
+    referenceLines?: readonly unknown[];
+    missingReferenceLines?: readonly unknown[];
   }) => (
     <div
       data-testid="spectrum-chart"
       data-layer-controls={String(props.showLayerControls ?? true)}
       data-has-prepared={String(Boolean(props.preparedDataset))}
       data-selected-peak={props.selectedPeakId ?? ""}
+      data-source-key={props.sourceKey ?? ""}
+      data-reference-count={String(props.referenceLines?.length ?? 0)}
+      data-missing-reference-count={String(props.missingReferenceLines?.length ?? 0)}
       role="img"
       aria-label={props.label}
     >
@@ -44,10 +59,17 @@ vi.mock("./spectrum-chart", () => ({
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+  navigationMock.push.mockClear();
 });
 
 function AnalysisProbe() {
-  const { analysis, calculationStatus, selectedPeakId } = useAnalysisWorkspace();
+  const {
+    analysis,
+    calculationStatus,
+    identificationTab,
+    selectedHypothesisId,
+    selectedPeakId,
+  } = useAnalysisWorkspace();
   return (
     <div>
       <output data-testid="peak-count">{analysis?.peaks.length ?? "—"}</output>
@@ -56,6 +78,8 @@ function AnalysisProbe() {
       <output data-testid="file-name">{analysis?.source.fileName ?? "—"}</output>
       <output data-testid="point-count">{analysis?.rawDataset.wavelengths.length ?? "—"}</output>
       <output data-testid="selected-peak">{selectedPeakId ?? "—"}</output>
+      <output data-testid="selected-hypothesis">{selectedHypothesisId ?? "—"}</output>
+      <output data-testid="identification-tab">{identificationTab}</output>
     </div>
   );
 }
@@ -82,6 +106,18 @@ function Scenario() {
   );
 }
 
+function IdentificationScenario() {
+  return (
+    <AnalysisWorkspaceProvider>
+      <DataAnalysisPage />
+      <IdentificationLinesPanel />
+      <IdentificationAnalysisPage />
+      <PeakSettingsPanel />
+      <AnalysisProbe />
+    </AnalysisWorkspaceProvider>
+  );
+}
+
 describe("interactive demo analysis", () => {
   it("automatically refreshes peaks and conclusion after a parameter change", async () => {
     vi.useFakeTimers();
@@ -91,7 +127,7 @@ describe("interactive demo analysis", () => {
     const initialPeakCount = Number(screen.getByTestId("peak-count").textContent);
     const initialConclusion = screen.getByTestId("conclusion").textContent;
 
-    fireEvent.change(screen.getByLabelText("Порог обнаружения"), { target: { value: "0.9" } });
+    fireEvent.change(screen.getByLabelText("Минимальный SNR"), { target: { value: "30" } });
 
     expect(screen.getByText(/Обновляем графики и результаты/)).toBeTruthy();
     expect(screen.getByTestId("calculation-status").textContent).toBe("calculating");
@@ -243,7 +279,7 @@ describe("interactive demo analysis", () => {
     await act(async () => vi.advanceTimersByTime(181));
     expect(screen.getByTestId("selected-peak").textContent).toBe(selectedId);
 
-    fireEvent.change(screen.getByLabelText(/Минимальная выраженность/), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText(/Минимальная выраженность/), { target: { value: "1.01" } });
     await act(async () => vi.advanceTimersByTime(181));
     expect(screen.getByTestId("selected-peak").textContent).toBe("—");
     fireEvent.click(screen.getByRole("tab", { name: "Выбранный пик" }));
@@ -263,6 +299,69 @@ describe("interactive demo analysis", () => {
 
     await waitFor(() => expect(screen.getByTestId("file-name").textContent).toBe("another.json"));
     expect(screen.getByTestId("selected-peak").textContent).toBe("—");
+  });
+
+  it("selects, filters and opens diagnostic hypotheses in the master-detail view", () => {
+    render(<IdentificationScenario />);
+    fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
+
+    expect(screen.getByTestId("identification-tab").textContent).toBe("diagnostics");
+    expect(document.querySelector('[role="option"][aria-selected="true"]')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("option", { name: /Hg.*Ртуть/ }));
+    expect(screen.getByRole("heading", { level: 2, name: "Ртуть (Hg)" })).toBeTruthy();
+    expect(screen.getAllByText("Не отличается от случайного согласования").length).toBeGreaterThan(0);
+
+    fireEvent.change(screen.getByLabelText("Поиск гипотезы по элементу или символу"), { target: { value: "Железо" } });
+    const filteredOptions = within(screen.getByRole("listbox", { name: "Диагностические совпадения" })).getAllByRole("option");
+    expect(filteredOptions).toHaveLength(1);
+    expect(filteredOptions[0].textContent).toContain("Fe");
+
+    fireEvent.change(screen.getByLabelText("Поиск гипотезы по элементу или символу"), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText("Сортировка"), { target: { value: "name" } });
+    const alphabeticOptions = within(screen.getByRole("listbox", { name: "Диагностические совпадения" })).getAllByRole("option");
+    expect(alphabeticOptions[0].textContent).toContain("Азот");
+  });
+
+  it("preserves a hypothesis across recalculation and falls back when hypotheses disappear", async () => {
+    vi.useFakeTimers();
+    render(<IdentificationScenario />);
+    fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
+    fireEvent.click(screen.getByRole("option", { name: /Hg.*Ртуть/ }));
+    const selectedHypothesis = screen.getByTestId("selected-hypothesis").textContent;
+
+    fireEvent.click(screen.getByRole("tab", { name: "Параметры" }));
+    fireEvent.change(screen.getByLabelText(/Допуск сопоставления/), { target: { value: "0.4" } });
+    await act(async () => vi.advanceTimersByTime(181));
+    expect(screen.getByTestId("selected-hypothesis").textContent).toBe(selectedHypothesis);
+
+    fireEvent.change(screen.getByLabelText(/Минимальная выраженность/), { target: { value: "1.01" } });
+    await act(async () => vi.advanceTimersByTime(181));
+    expect(screen.getByTestId("selected-hypothesis").textContent).toBe("—");
+  });
+
+  it("opens a supporting observation and carries the selected peak to the Peaks route", () => {
+    render(<IdentificationScenario />);
+    fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
+    fireEvent.click(screen.getByRole("option", { name: /Hg.*Ртуть/ }));
+
+    const chart = screen.getByRole("img", { name: /Спектр канала .* гипотезы Ртуть/ });
+    expect(Number(chart.getAttribute("data-reference-count"))).toBeGreaterThan(0);
+    expect(Number(chart.getAttribute("data-missing-reference-count"))).toBeGreaterThanOrEqual(0);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Открыть пик" })[0]);
+    expect(screen.getByTestId("selected-peak").textContent).not.toBe("—");
+    expect(navigationMock.push).toHaveBeenCalledWith("/peaks");
+  });
+
+  it("opens an available hypothesis from a selected peak candidate", () => {
+    render(<PeakSelectionScenario />);
+    fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
+    fireEvent.click(screen.getAllByRole("button", { name: /График: выбрать пик/ })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Открыть гипотезу" })[0]);
+
+    expect(screen.getByTestId("selected-hypothesis").textContent).not.toBe("—");
+    expect(navigationMock.push).toHaveBeenCalledWith("/identification");
   });
 });
 
