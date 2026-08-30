@@ -50,6 +50,17 @@ const preparedDataset: SpectrumDataset = {
   wavelengths: [400, 401, 402],
   intensities: [0.1, 0.8, 0.3],
 };
+const match = {
+  lineId: "nist-fe-i-40105",
+  elementSymbol: "Fe",
+  elementName: "Железо",
+  ionizationStage: 1,
+  ionizationLabel: "I",
+  line: 401.05,
+  wavelengthType: "observed" as const,
+  wavelengthMedium: "air" as const,
+  delta: -0.05,
+};
 const peak: AnalyzedPeak = {
   id: "peak-point-2",
   sourceIndex: 1,
@@ -57,18 +68,8 @@ const peak: AnalyzedPeak = {
   wavelength: 401,
   intensity: 0.8,
   prominence: 0.62,
-  candidates: [{
-    elementSymbol: "Fe",
-    elementName: "Железо",
-    line: 401.05,
-    delta: -0.05,
-  }],
-  match: {
-    elementSymbol: "Fe",
-    elementName: "Железо",
-    line: 401.05,
-    delta: -0.05,
-  },
+  candidates: [match],
+  match,
 };
 const palette: SpectrumChartPalette = {
   raw: "#0ea5c2",
@@ -165,7 +166,7 @@ describe("spectrum chart configuration", () => {
     expect(tooltip).toContain("Подготовленная интенсивность: <strong>0.8000</strong>");
     expect(tooltip).toContain("Порог обнаружения: <strong>0.1500</strong>");
     expect(tooltip).toContain("Выраженность: <strong>0.6200</strong>");
-    expect(tooltip).toContain("Совпадение: <strong>Fe · 401.05 нм (Δ -0.050 нм)</strong>");
+    expect(tooltip).toContain("Совпадение: <strong>Fe I · 401.05 нм (Δ -0.050 нм)</strong>");
     expect(tooltip).toContain("Справочная линия: <strong>Fe 401.05 · 401.05 нм</strong>");
   });
 

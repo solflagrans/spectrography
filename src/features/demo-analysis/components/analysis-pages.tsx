@@ -338,7 +338,7 @@ export function ResultAnalysisPage() {
 
       <div className={styles.twoColumns}>
         <MetricCard label="Источник данных" value={`${analysis.source.kind} · ${analysis.rawDataset.wavelengths.length} точки`} />
-        <MetricCard label="Справочная библиотека" value={`Встроенная · ${analysis.libraryVersion}`} />
+        <MetricCard label="Справочная библиотека" value={analysis.libraryLabel} />
       </div>
 
       <Card title="Прослеживаемость вывода">
@@ -354,7 +354,7 @@ export function ResultAnalysisPage() {
               </header>
               <div className={styles.evidenceList}>
                 {hypothesis.evidence.map((line) => (
-                  <div className={styles.evidenceRow} key={`${line.peakId}-${line.referenceWavelength}`}>
+                  <div className={styles.evidenceRow} key={`${line.peakId}-${line.lineId}`}>
                     <Link2 size={14} aria-hidden="true" />
                     <span>Пик {line.peakWavelength.toFixed(2)} нм</span>
                     <ArrowRight size={13} aria-hidden="true" />
@@ -562,13 +562,15 @@ function formatSignedDelta(delta: number): string {
 }
 
 function formatCandidateLabel(candidate: SpectralLineCandidate): string {
-  return candidate.ion
-    ? `${candidate.elementSymbol} ${candidate.ion}`
+  return candidate.ionizationLabel
+    ? `${candidate.elementSymbol} ${candidate.ionizationLabel}`
     : candidate.elementSymbol;
 }
 
 function formatEvidenceLabel(line: AnalysisEvidenceLine): string {
-  return line.ion ? `${line.elementSymbol} ${line.ion}` : line.elementSymbol;
+  return line.ionizationLabel
+    ? `${line.elementSymbol} ${line.ionizationLabel}`
+    : line.elementSymbol;
 }
 
 function formatNumber(value: number): string {

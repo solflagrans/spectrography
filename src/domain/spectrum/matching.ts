@@ -1,11 +1,11 @@
-import type { SpectralElement } from "@/domain/spectral-library/types";
+import type { SpectralLine } from "@/domain/spectral-library/types";
 
 import { round } from "./math";
 import type { DetectedPeak, ElementHypothesis, MatchedPeak, SpectralLineCandidate } from "./types";
 
 export function matchPeaks(
   peaks: readonly DetectedPeak[],
-  library: readonly SpectralElement[],
+  library: readonly SpectralLine[],
   tolerance: number,
 ): { peaks: readonly MatchedPeak[]; hypotheses: readonly ElementHypothesis[] } {
   if (!Number.isFinite(tolerance) || tolerance <= 0) {
@@ -50,22 +50,26 @@ export function matchPeaks(
 
 export function findLineCandidates(
   wavelength: number,
-  library: readonly SpectralElement[],
+  library: readonly SpectralLine[],
   tolerance: number,
 ): readonly SpectralLineCandidate[] {
   const candidates: SpectralLineCandidate[] = [];
 
-  for (const element of library) {
-    for (const line of element.lines) {
-      const delta = wavelength - line;
-      if (Math.abs(delta) <= tolerance) {
-        candidates.push({
-          elementSymbol: element.symbol,
-          elementName: element.name,
-          line,
-          delta,
-        });
-      }
+  for (const spectralLine of library) {
+    const line = spectralLine.preferredWavelength.valueNm;
+    const delta = wavelength - line;
+    if (Math.abs(delta) <= tolerance) {
+      candidates.push({
+        lineId: spectralLine.id,
+        elementSymbol: spectralLine.element.symbol,
+        elementName: spectralLine.element.name,
+        ionizationStage: spectralLine.ionizationStage,
+        ionizationLabel: spectralLine.ionizationLabel,
+        line,
+        wavelengthType: spectralLine.preferredWavelength.origin,
+        wavelengthMedium: spectralLine.preferredWavelength.medium,
+        delta,
+      });
     }
   }
 
@@ -73,5 +77,7 @@ export function findLineCandidates(
     Math.abs(left.delta) - Math.abs(right.delta)
       || left.line - right.line
       || left.elementSymbol.localeCompare(right.elementSymbol)
+      || left.ionizationStage - right.ionizationStage
+      || left.lineId.localeCompare(right.lineId)
   ));
 }

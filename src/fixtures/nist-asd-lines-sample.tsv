@@ -1,0 +1,3 @@
+element	sp_num	obs_wl_air(nm)	unc_obs_wl	ritz_wl_air(nm)	unc_ritz_wl	intens	Aki(s^-1)	Acc	Ei(eV)	Ek(eV)	conf_i	term_i	J_i	conf_k	term_k	J_k	g_i	g_k	Type	tp_ref	line_ref
+H	1	"656.279"	"0.003"	"656.281"	"0.001"	"120bl*"	"4.410e+07"	AAA	"10.1988"	"12.0875"	"2p"	"2P*"	"3/2"	"3d"	"2D"	"5/2"	4	6	E1	"T1;T2"	"L1"
+Fe	2	""	""	"501.194+"	"0.004"	":"	""		"[2.891]"	""	"3d6.4s"	"a 6D"	"9/2"	""	""	""	10			""	"L2,L3"

@@ -424,8 +424,8 @@ function formatTooltipTextRow(color: string, label: string, value: string): stri
 
 function formatPeakMatch(peak: AnalyzedPeak): string {
   if (!peak.match) return "нет";
-  const label = peak.match.ion
-    ? `${peak.match.elementSymbol} ${peak.match.ion}`
+  const label = peak.match.ionizationLabel
+    ? `${peak.match.elementSymbol} ${peak.match.ionizationLabel}`
     : peak.match.elementSymbol;
   return `${escapeHtml(label)} · ${formatWavelength(peak.match.line)} нм (${formatSignedDelta(peak.match.delta)} нм)`;
 }

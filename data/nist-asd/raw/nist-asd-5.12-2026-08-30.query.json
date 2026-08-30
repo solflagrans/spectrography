@@ -1,0 +1,30 @@
+{
+  "source": "NIST Atomic Spectra Database",
+  "version": "5.12",
+  "retrievedAt": "2026-08-30",
+  "endpoint": "https://physics.nist.gov/cgi-bin/ASD/lines1.pl",
+  "parameters": {
+    "spectra": "H I-II;He I-II;C I-II;N I-II;O I-II;Na I-II;Mg I-II;Al I-II;Si I-II;S I-II;Ca I-II;Ti I-II;Cr I-II;Mn I-II;Fe I-II;Ni I-II;Cu I-II;Zn I-II;Ar I-II;Ne I-II;Hg I-II",
+    "low_w": "200",
+    "upp_w": "1000",
+    "unit": "1",
+    "format": "3",
+    "line_out": "3",
+    "show_obs_wl": "1",
+    "show_calc_wl": "1",
+    "unc_out": "1",
+    "intens_out": "on",
+    "allowed_out": "1",
+    "forbid_out": "1",
+    "conf_out": "on",
+    "term_out": "on",
+    "enrg_out": "on",
+    "J_out": "on",
+    "g_out": "on",
+    "bibrefs": "1",
+    "remove_js": "on",
+    "order_out": "0",
+    "show_av": "2"
+  },
+  "rawFileSha256": "559d04cb8af96495955bd10e557c4488a62da778122633032d4eef02bc00a309"
+}

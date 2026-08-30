@@ -228,7 +228,7 @@ describe("interactive demo analysis", () => {
     expect(screen.getByTestId("selected-peak").textContent).toBe(nextId);
     expect(chart.getAttribute("data-selected-peak")).toBe(nextId);
     expect(selectableRows[1].getAttribute("aria-selected")).toBe("true");
-    expect(screen.getByText(/подходящих линий нет/)).toBeTruthy();
+    expect(screen.getByText("Предложено")).toBeTruthy();
   });
 
   it("preserves a selected source point when it remains a peak and resets it otherwise", async () => {

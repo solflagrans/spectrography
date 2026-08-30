@@ -1,4 +1,8 @@
-import { BUILTIN_LIBRARY_VERSION, builtinSpectralLibrary } from "@/domain/spectral-library/builtin-library";
+import {
+  BUILTIN_LIBRARY_LABEL,
+  BUILTIN_LIBRARY_VERSION,
+  builtinSpectralLibrary,
+} from "@/domain/spectral-library/builtin-library";
 import {
   DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS,
   isDatasetSortedByWavelength,
@@ -42,6 +46,7 @@ export interface WorkingAnalysis extends InteractiveSpectrumAnalysis {
   readonly title: string;
   readonly source: AnalysisSource;
   readonly libraryVersion: string;
+  readonly libraryLabel: string;
   readonly rawDataset: SpectrumDataset;
   readonly rawStats: SpectrumStats;
   readonly wavelengthRange: {
@@ -93,6 +98,7 @@ export function createWorkingAnalysis(
     title: input.title,
     source: input.source,
     libraryVersion: BUILTIN_LIBRARY_VERSION,
+    libraryLabel: BUILTIN_LIBRARY_LABEL,
     rawDataset,
     rawStats: getSpectrumStats(rawDataset.intensities),
     wavelengthRange: {

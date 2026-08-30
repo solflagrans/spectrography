@@ -210,7 +210,7 @@ function SelectedPeakContent({
         {selectedPeak.candidates.length ? (
           <ol className={styles.candidateList}>
             {selectedPeak.candidates.map((candidate, index) => (
-              <li key={`${candidate.elementSymbol}-${candidate.line}`}>
+              <li key={candidate.lineId}>
                 <div className={styles.candidateHeading}>
                   <strong>{candidate.elementName} ({candidate.elementSymbol})</strong>
                   <span className={index === 0 ? styles.suggestedCandidate : styles.alternativeCandidate}>
@@ -260,7 +260,7 @@ export function IdentificationLinesPanel() {
       <header className={styles.linesPanelHeader}>
         <div>
           <h2>{leading.name} ({leading.symbol})</h2>
-          <p>Справочная библиотека · {analysis.libraryVersion}</p>
+          <p>Справочная библиотека · {analysis.libraryLabel}</p>
         </div>
         <SideStatus status={leading.status} />
       </header>
@@ -277,7 +277,7 @@ export function IdentificationLinesPanel() {
             </thead>
             <tbody>
               {leading.evidence.map((line) => (
-                <tr key={`${line.peakId}-${line.referenceWavelength}`}>
+                <tr key={`${line.peakId}-${line.lineId}`}>
                   <td>{formatEvidenceLabel(line)}<br />{line.referenceWavelength.toFixed(2)}</td>
                   <td>{line.observedWavelength.toFixed(2)}</td>
                   <td className={styles.compactDelta}>{formatSigned(line.delta)}</td>
@@ -391,12 +391,14 @@ function formatValue(value: number | undefined, precision: number): string {
 }
 
 function formatCandidateLine(candidate: SpectralLineCandidate): string {
-  const label = candidate.ion
-    ? `${candidate.elementSymbol} ${candidate.ion}`
+  const label = candidate.ionizationLabel
+    ? `${candidate.elementSymbol} ${candidate.ionizationLabel}`
     : candidate.elementSymbol;
   return `${label} · ${candidate.line.toFixed(3)}`;
 }
 
 function formatEvidenceLabel(line: AnalysisEvidenceLine): string {
-  return line.ion ? `${line.elementSymbol} ${line.ion}` : line.elementSymbol;
+  return line.ionizationLabel
+    ? `${line.elementSymbol} ${line.ionizationLabel}`
+    : line.elementSymbol;
 }

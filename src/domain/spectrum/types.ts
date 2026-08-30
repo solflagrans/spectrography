@@ -1,4 +1,4 @@
-import type { SpectralElement } from "@/domain/spectral-library/types";
+import type { PreferredWavelengthOrigin, SpectralLine, WavelengthMedium } from "@/domain/spectral-library/types";
 
 export interface SpectrumDataset {
   readonly wavelengths: readonly number[];
@@ -44,13 +44,16 @@ export interface DetectedPeak {
 }
 
 export interface SpectralLineCandidate {
-  readonly elementSymbol: SpectralElement["symbol"];
-  readonly elementName: SpectralElement["name"];
+  readonly lineId: SpectralLine["id"];
+  readonly elementSymbol: SpectralLine["element"]["symbol"];
+  readonly elementName: SpectralLine["element"]["name"];
+  readonly ionizationStage: number;
+  readonly ionizationLabel: string;
   readonly line: number;
+  readonly wavelengthType: PreferredWavelengthOrigin;
+  readonly wavelengthMedium: WavelengthMedium;
   /** Observed wavelength minus reference wavelength, in nanometres. */
   readonly delta: number;
-  /** Present only when the spectral library explicitly provides an ion label. */
-  readonly ion?: string;
 }
 
 export type SpectralLineMatch = SpectralLineCandidate;
@@ -69,8 +72,8 @@ export interface AnalyzedPeak extends MatchedPeak {
 }
 
 export interface ElementHypothesis {
-  readonly elementSymbol: SpectralElement["symbol"];
-  readonly elementName: SpectralElement["name"];
+  readonly elementSymbol: SpectralLine["element"]["symbol"];
+  readonly elementName: SpectralLine["element"]["name"];
   /** A relative ranking heuristic, not a calibrated probability. */
   readonly heuristicScore: number;
   readonly peaks: readonly MatchedPeak[];
@@ -79,13 +82,17 @@ export interface ElementHypothesis {
 export type ElementInterpretationStatus = "confirmed" | "possible" | "review";
 
 export interface AnalysisEvidenceLine {
+  readonly lineId: string;
   readonly peakId: string;
   readonly peakWavelength: number;
   readonly observedWavelength: number;
   readonly referenceWavelength: number;
   readonly delta: number;
   readonly elementSymbol: string;
-  readonly ion?: string;
+  readonly ionizationStage: number;
+  readonly ionizationLabel: string;
+  readonly wavelengthType: PreferredWavelengthOrigin;
+  readonly wavelengthMedium: WavelengthMedium;
 }
 
 export interface ElementInterpretation {

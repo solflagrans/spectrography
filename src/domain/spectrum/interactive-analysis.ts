@@ -1,4 +1,4 @@
-import type { SpectralElement } from "@/domain/spectral-library/types";
+import type { SpectralLine } from "@/domain/spectral-library/types";
 
 import { sortDatasetByWavelength } from "./dataset";
 import { getSpectrumStats, round } from "./math";
@@ -31,7 +31,7 @@ export const DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS: InteractiveAnalysisParamet
 
 export function runInteractiveSpectrumAnalysis(
   dataset: SpectrumDataset,
-  library: readonly SpectralElement[],
+  library: readonly SpectralLine[],
   parameters: InteractiveAnalysisParameters = DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS,
 ): InteractiveSpectrumAnalysis {
   validateInteractiveAnalysisParameters(parameters);
@@ -216,13 +216,17 @@ function interpretHypothesis(
     const peak = peaks.find((candidate) => candidate.index === hypothesisPeak.index);
     if (!peak) return [];
     return [{
+      lineId: hypothesisPeak.match.lineId,
       peakId: peak.id,
       peakWavelength: round(peak.wavelength, 2),
       observedWavelength: round(peak.wavelength, 2),
       referenceWavelength: round(hypothesisPeak.match.line, 2),
       delta: round(hypothesisPeak.match.delta, 3),
       elementSymbol: hypothesis.elementSymbol,
-      ion: hypothesisPeak.match.ion,
+      ionizationStage: hypothesisPeak.match.ionizationStage,
+      ionizationLabel: hypothesisPeak.match.ionizationLabel,
+      wavelengthType: hypothesisPeak.match.wavelengthType,
+      wavelengthMedium: hypothesisPeak.match.wavelengthMedium,
     }];
   });
 
