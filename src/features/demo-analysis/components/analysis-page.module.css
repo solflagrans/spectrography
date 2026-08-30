@@ -482,6 +482,40 @@
   flex-direction: column;
 }
 
+.sidePanelTabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-2xs);
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-2xs);
+  border-radius: var(--radius-sm);
+  background: var(--color-background-canvas);
+}
+
+.sidePanelTabs button {
+  min-width: 0;
+  padding: var(--spacing-xs);
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-size-label);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sidePanelTabs button[aria-selected="true"] {
+  background: var(--color-background-surface);
+  box-shadow: var(--shadow-surface);
+  color: var(--color-text-primary);
+}
+
+.sidePanelTabs button:focus-visible {
+  outline: 2px solid var(--color-action-primary);
+  outline-offset: 1px;
+}
+
 .sidePanelHeader {
   display: flex;
   min-height: 2.25rem;
@@ -618,6 +652,119 @@
   color: var(--color-text-secondary);
   font-size: var(--font-size-navigation);
   line-height: var(--line-height-body);
+}
+
+.selectedPeakPanel {
+  min-width: 0;
+}
+
+.selectedPeakDetails {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin: var(--spacing-md) 0 0;
+}
+
+.selectedPeakDetails > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding-bottom: var(--spacing-xs);
+  border-bottom: 1px solid var(--color-border-default);
+}
+
+.selectedPeakDetails dt {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-label);
+}
+
+.selectedPeakDetails dd {
+  margin: 0;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-data);
+  text-align: right;
+}
+
+.candidateSection {
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--color-border-default);
+}
+
+.candidateSection > h3 {
+  margin: 0 0 var(--spacing-sm);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-label);
+  font-weight: 700;
+  letter-spacing: var(--letter-spacing-label);
+  line-height: var(--line-height-label);
+  text-transform: uppercase;
+}
+
+.candidateList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.candidateList > li {
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--color-background-canvas);
+}
+
+.candidateList > li:first-child {
+  border-color: color-mix(in srgb, var(--color-action-primary) 38%, var(--color-border-default));
+  background: color-mix(in srgb, var(--color-action-primary) 5%, white);
+}
+
+.candidateHeading,
+.candidateValues {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-xs);
+}
+
+.candidateHeading strong {
+  min-width: 0;
+  font-size: var(--font-size-navigation);
+  overflow-wrap: anywhere;
+}
+
+.suggestedCandidate,
+.alternativeCandidate {
+  flex: 0 0 auto;
+  padding: var(--spacing-2xs) var(--spacing-xs);
+  border-radius: var(--radius-full);
+  font-size: 0.625rem;
+  font-weight: 600;
+}
+
+.suggestedCandidate {
+  background: color-mix(in srgb, var(--color-action-primary) 11%, white);
+  color: var(--color-action-primary);
+}
+
+.alternativeCandidate {
+  background: var(--color-background-elevated);
+  color: var(--color-text-secondary);
+}
+
+.candidateValues {
+  margin-top: var(--spacing-xs);
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-mono);
+  font-size: 0.6875rem;
+}
+
+.candidateValues code {
+  color: var(--color-text-primary);
 }
 
 .metricGrid {
@@ -1034,6 +1181,26 @@
 
 .table tbody tr:last-child td {
   border-bottom: 0;
+}
+
+.selectableRow {
+  cursor: pointer;
+  transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.selectableRow:hover {
+  background: color-mix(in srgb, var(--color-action-primary) 4%, white);
+}
+
+.selectableRow:focus-visible {
+  outline: 2px solid var(--color-action-primary);
+  outline-offset: -2px;
+}
+
+.selectableRowSelected,
+.selectableRowSelected:hover {
+  background: color-mix(in srgb, var(--color-action-primary) 8%, white);
+  box-shadow: inset 3px 0 var(--color-action-primary);
 }
 
 .hypothesisTable tbody tr:first-child {

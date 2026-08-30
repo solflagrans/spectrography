@@ -21,6 +21,7 @@ import type {
 
 export type AnalysisCalculationStatus = "idle" | "calculating" | "ready" | "error";
 export type SpectrumImportStatus = "idle" | "reading" | "error";
+export type PeakPanelSection = "parameters" | "selected";
 
 export interface SpectrumFileLike {
   readonly name: string;
@@ -34,12 +35,16 @@ interface AnalysisWorkspaceContextValue {
   readonly parameterError: string | null;
   readonly importStatus: SpectrumImportStatus;
   readonly importError: string | null;
+  readonly selectedPeakId: string | null;
+  readonly peakPanelSection: PeakPanelSection;
   readonly openDemoAnalysis: () => void;
   readonly importSpectrumFile: (file: SpectrumFileLike) => Promise<void>;
   readonly updateProcessingParameters: (patch: Partial<SpectrumProcessingParameters>) => void;
   readonly updatePeakSearchParameters: (patch: Partial<PeakSearchParameters>) => void;
   readonly resetProcessingParameters: () => void;
   readonly resetPeakSearchParameters: () => void;
+  readonly selectPeak: (peakId: string | null) => void;
+  readonly setPeakPanelSection: (section: PeakPanelSection) => void;
 }
 
 const AnalysisWorkspaceContext = createContext<AnalysisWorkspaceContextValue | null>(null);
@@ -53,6 +58,8 @@ export function AnalysisWorkspaceProvider({ children }: Readonly<{ children: Rea
   const [parameterError, setParameterError] = useState<string | null>(null);
   const [importStatus, setImportStatus] = useState<SpectrumImportStatus>("idle");
   const [importError, setImportError] = useState<string | null>(null);
+  const [selectedPeakId, setSelectedPeakId] = useState<string | null>(null);
+  const [peakPanelSection, setPeakPanelSection] = useState<PeakPanelSection>("parameters");
   const recalculationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sourceRef = useRef<CreateWorkingAnalysisInput | null>(null);
   const parametersRef = useRef<InteractiveAnalysisParameters>(
@@ -68,7 +75,11 @@ export function AnalysisWorkspaceProvider({ children }: Readonly<{ children: Rea
     setCalculationStatus("calculating");
     recalculationTimer.current = setTimeout(() => {
       try {
-        setAnalysis(createWorkingAnalysis(source, nextParameters));
+        const nextAnalysis = createWorkingAnalysis(source, nextParameters);
+        setAnalysis(nextAnalysis);
+        setSelectedPeakId((current) => (
+          current && nextAnalysis.peaks.some((peak) => peak.id === current) ? current : null
+        ));
         setCalculationStatus("ready");
       } catch (error) {
         setParameterError(
@@ -91,6 +102,8 @@ export function AnalysisWorkspaceProvider({ children }: Readonly<{ children: Rea
     parametersRef.current = DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS;
     setParameters(DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS);
     setParameterError(null);
+    setSelectedPeakId(null);
+    setPeakPanelSection("parameters");
     setAnalysis(createWorkingAnalysis(source, DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS));
     setCalculationStatus("ready");
   }, []);
@@ -182,6 +195,11 @@ export function AnalysisWorkspaceProvider({ children }: Readonly<{ children: Rea
     calculate(next);
   }, [calculate]);
 
+  const selectPeak = useCallback((peakId: string | null) => {
+    setSelectedPeakId(peakId);
+    if (peakId) setPeakPanelSection("selected");
+  }, []);
+
   const value = useMemo(
     () => ({
       analysis,
@@ -190,12 +208,16 @@ export function AnalysisWorkspaceProvider({ children }: Readonly<{ children: Rea
       parameterError,
       importStatus,
       importError,
+      selectedPeakId,
+      peakPanelSection,
       openDemoAnalysis,
       importSpectrumFile,
       updateProcessingParameters,
       updatePeakSearchParameters,
       resetPeakSearchParameters,
       resetProcessingParameters,
+      selectPeak,
+      setPeakPanelSection,
     }),
     [
       analysis,
@@ -206,8 +228,11 @@ export function AnalysisWorkspaceProvider({ children }: Readonly<{ children: Rea
       openDemoAnalysis,
       parameterError,
       parameters,
+      peakPanelSection,
       resetPeakSearchParameters,
       resetProcessingParameters,
+      selectPeak,
+      selectedPeakId,
       updatePeakSearchParameters,
       updateProcessingParameters,
     ],

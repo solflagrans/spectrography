@@ -1,8 +1,10 @@
 "use client";
 
 import { CircleAlert, LoaderCircle, RotateCcw } from "lucide-react";
+import type { ReactNode } from "react";
 
 import type { AnalysisHypothesisStatus } from "@/application/analysis/create-working-analysis";
+import type { AnalysisEvidenceLine, SpectralLineCandidate } from "@/domain/spectrum";
 import { useAnalysisWorkspace } from "@/features/demo-analysis/model/analysis-workspace-context";
 
 import styles from "./analysis-page.module.css";
@@ -66,70 +68,178 @@ export function ProcessingSettingsPanel() {
 
 export function PeakSettingsPanel() {
   const {
+    analysis,
     parameters,
     calculationStatus,
     parameterError,
+    peakPanelSection,
     resetPeakSearchParameters,
+    selectedPeakId,
+    setPeakPanelSection,
     updatePeakSearchParameters,
   } = useAnalysisWorkspace();
+  const selectedPeak = analysis?.peaks.find((peak) => peak.id === selectedPeakId) ?? null;
 
   return (
     <div className={styles.sidePanelContent}>
-      <SidePanelHeader title="Параметры пиков" onReset={resetPeakSearchParameters} />
-      <section className={styles.sideParameterGroup}>
-        <h3>Поиск пиков</h3>
-        <div className={styles.rangeHeading}>
-          <label htmlFor="detection-threshold">Порог обнаружения</label>
-          <output htmlFor="detection-threshold">{parameters.peakSearch.threshold.toFixed(2)}</output>
+      <div className={styles.sidePanelTabs} role="tablist" aria-label="Разделы панели пиков">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={peakPanelSection === "parameters"}
+          aria-controls="peak-parameters-panel"
+          id="peak-parameters-tab"
+          onClick={() => setPeakPanelSection("parameters")}
+        >
+          Параметры
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={peakPanelSection === "selected"}
+          aria-controls="selected-peak-panel"
+          id="selected-peak-tab"
+          onClick={() => setPeakPanelSection("selected")}
+        >
+          Выбранный пик
+        </button>
+      </div>
+
+      {peakPanelSection === "parameters" ? (
+        <div role="tabpanel" id="peak-parameters-panel" aria-labelledby="peak-parameters-tab">
+          <SidePanelHeader title="Параметры пиков" onReset={resetPeakSearchParameters} />
+          <section className={styles.sideParameterGroup}>
+            <h3>Поиск пиков</h3>
+            <div className={styles.rangeHeading}>
+              <label htmlFor="detection-threshold">Порог обнаружения</label>
+              <output htmlFor="detection-threshold">{parameters.peakSearch.threshold.toFixed(2)}</output>
+            </div>
+            <input
+              id="detection-threshold"
+              className={styles.rangeInput}
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={parameters.peakSearch.threshold}
+              onChange={(event) => updatePeakSearchParameters({ threshold: Number(event.target.value) })}
+            />
+            <p>Минимальная относительная высота сигнала в подготовленном спектре.</p>
+            <NumberParameter
+              id="minimum-prominence"
+              label="Минимальная выраженность"
+              unit="отн. ед."
+              value={parameters.peakSearch.prominence}
+              min={0}
+              max={1}
+              step={0.01}
+              onChange={(value) => updatePeakSearchParameters({ prominence: value })}
+            />
+            <NumberParameter
+              id="minimum-distance"
+              label="Минимальное расстояние"
+              unit="нм"
+              value={parameters.peakSearch.minimumDistance}
+              min={0.01}
+              max={50}
+              step={0.1}
+              onChange={(value) => updatePeakSearchParameters({ minimumDistance: value })}
+            />
+          </section>
+          <section className={styles.sideParameterGroup}>
+            <h3>Сопоставление линий</h3>
+            <NumberParameter
+              id="matching-tolerance"
+              label="Допуск сопоставления"
+              unit="нм"
+              value={parameters.peakSearch.tolerance}
+              min={0.01}
+              max={5}
+              step={0.01}
+              onChange={(value) => updatePeakSearchParameters({ tolerance: value })}
+            />
+          </section>
+          <CalculationFeedback status={calculationStatus} error={parameterError} />
         </div>
-        <input
-          id="detection-threshold"
-          className={styles.rangeInput}
-          type="range"
-          min="0"
-          max="1"
-          step="0.01"
-          value={parameters.peakSearch.threshold}
-          onChange={(event) => updatePeakSearchParameters({ threshold: Number(event.target.value) })}
-        />
-        <p>Минимальная относительная высота сигнала в подготовленном спектре.</p>
-        <NumberParameter
-          id="minimum-prominence"
-          label="Минимальная выраженность"
-          unit="отн. ед."
-          value={parameters.peakSearch.prominence}
-          min={0}
-          max={1}
-          step={0.01}
-          onChange={(value) => updatePeakSearchParameters({ prominence: value })}
-        />
-        <NumberParameter
-          id="minimum-distance"
-          label="Минимальное расстояние"
-          unit="нм"
-          value={parameters.peakSearch.minimumDistance}
-          min={0.01}
-          max={50}
-          step={0.1}
-          onChange={(value) => updatePeakSearchParameters({ minimumDistance: value })}
-        />
-      </section>
-      <section className={styles.sideParameterGroup}>
-        <h3>Сопоставление линий</h3>
-        <NumberParameter
-          id="matching-tolerance"
-          label="Допуск сопоставления"
-          unit="нм"
-          value={parameters.peakSearch.tolerance}
-          min={0.01}
-          max={5}
-          step={0.01}
-          onChange={(value) => updatePeakSearchParameters({ tolerance: value })}
-        />
-      </section>
-      <CalculationFeedback status={calculationStatus} error={parameterError} />
+      ) : (
+        <section
+          className={styles.selectedPeakPanel}
+          role="tabpanel"
+          id="selected-peak-panel"
+          aria-labelledby="selected-peak-tab"
+        >
+          <SelectedPeakContent
+            analysis={analysis}
+            selectedPeak={selectedPeak}
+          />
+        </section>
+      )}
     </div>
   );
+}
+
+function SelectedPeakContent({
+  analysis,
+  selectedPeak,
+}: Readonly<{
+  analysis: ReturnType<typeof useAnalysisWorkspace>["analysis"];
+  selectedPeak: NonNullable<ReturnType<typeof useAnalysisWorkspace>["analysis"]>["peaks"][number] | null;
+}>) {
+  if (!analysis?.peaks.length) {
+    return <PanelEmptyState>При текущих параметрах пики не найдены.</PanelEmptyState>;
+  }
+  if (!selectedPeak) {
+    return <PanelEmptyState>Выберите пик на графике или в таблице, чтобы увидеть его параметры и кандидатов.</PanelEmptyState>;
+  }
+
+  const rawIntensity = analysis.rawDataset.intensities[selectedPeak.sourceIndex];
+
+  return (
+    <>
+      <h2 className={styles.sidePanelTitle}>Пик {selectedPeak.wavelength.toFixed(2)} нм</h2>
+      <dl className={styles.selectedPeakDetails}>
+        <PeakDetail label="Длина волны" value={`${selectedPeak.wavelength.toFixed(3)} нм`} />
+        <PeakDetail label="Исходная интенсивность" value={formatValue(rawIntensity, 4)} />
+        <PeakDetail label="Подготовленная интенсивность" value={formatValue(selectedPeak.intensity, 4)} />
+        <PeakDetail label="Выраженность" value={formatValue(selectedPeak.prominence, 4)} />
+        <PeakDetail label="Порог в этой точке" value={formatValue(analysis.threshold, 4)} />
+      </dl>
+
+      <section className={styles.candidateSection} aria-labelledby="candidate-lines-title">
+        <h3 id="candidate-lines-title">Кандидаты в пределах допуска</h3>
+        {selectedPeak.candidates.length ? (
+          <ol className={styles.candidateList}>
+            {selectedPeak.candidates.map((candidate, index) => (
+              <li key={`${candidate.elementSymbol}-${candidate.line}`}>
+                <div className={styles.candidateHeading}>
+                  <strong>{candidate.elementName} ({candidate.elementSymbol})</strong>
+                  <span className={index === 0 ? styles.suggestedCandidate : styles.alternativeCandidate}>
+                    {index === 0 ? "Предложено" : "Альтернатива"}
+                  </span>
+                </div>
+                <div className={styles.candidateValues}>
+                  <span>{formatCandidateLine(candidate)} нм</span>
+                  <code>{formatSigned(candidate.delta)} нм</code>
+                </div>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <PanelEmptyState>
+            В пределах допуска ±{analysis.parameters.peakSearch.tolerance.toFixed(2)} нм подходящих линий нет.
+          </PanelEmptyState>
+        )}
+      </section>
+    </>
+  );
+}
+
+function PeakDetail({ label, value }: Readonly<{ label: string; value: string }>) {
+  return <div><dt>{label}</dt><dd>{value}</dd></div>;
+}
+
+function PanelEmptyState({ children }: Readonly<{ children: ReactNode }>) {
+  return <p className={styles.sidePanelEmpty}>{children}</p>;
 }
 
 export function IdentificationLinesPanel() {
@@ -168,7 +278,7 @@ export function IdentificationLinesPanel() {
             <tbody>
               {leading.evidence.map((line) => (
                 <tr key={`${line.peakId}-${line.referenceWavelength}`}>
-                  <td>{line.ion}<br />{line.referenceWavelength.toFixed(2)}</td>
+                  <td>{formatEvidenceLabel(line)}<br />{line.referenceWavelength.toFixed(2)}</td>
                   <td>{line.observedWavelength.toFixed(2)}</td>
                   <td className={styles.compactDelta}>{formatSigned(line.delta)}</td>
                 </tr>
@@ -272,5 +382,21 @@ function SideStatus({ status }: Readonly<{ status: AnalysisHypothesisStatus }>) 
 }
 
 function formatSigned(value: number): string {
-  return value === 0 ? "0.000" : `+${value.toFixed(3)}`;
+  if (value === 0) return "0.000";
+  return `${value > 0 ? "+" : ""}${value.toFixed(3)}`;
+}
+
+function formatValue(value: number | undefined, precision: number): string {
+  return value === undefined ? "—" : value.toFixed(precision);
+}
+
+function formatCandidateLine(candidate: SpectralLineCandidate): string {
+  const label = candidate.ion
+    ? `${candidate.elementSymbol} ${candidate.ion}`
+    : candidate.elementSymbol;
+  return `${label} · ${candidate.line.toFixed(3)}`;
+}
+
+function formatEvidenceLabel(line: AnalysisEvidenceLine): string {
+  return line.ion ? `${line.elementSymbol} ${line.ion}` : line.elementSymbol;
 }

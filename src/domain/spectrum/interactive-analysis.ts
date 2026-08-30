@@ -4,13 +4,13 @@ import { sortDatasetByWavelength } from "./dataset";
 import { getSpectrumStats, round } from "./math";
 import { matchPeaks } from "./matching";
 import type {
+  AnalyzedPeak,
   DetectedPeak,
   ElementHypothesis,
   ElementInterpretation,
   ElementInterpretationStatus,
   InteractiveAnalysisParameters,
   InteractiveSpectrumAnalysis,
-  MatchedPeak,
   PeakSearchParameters,
   SpectrumDataset,
   SpectrumProcessingParameters,
@@ -38,7 +38,16 @@ export function runInteractiveSpectrumAnalysis(
   const prepared = prepareSpectrum(dataset, parameters.processing);
   const detection = detectInteractivePeaks(prepared.dataset, parameters.peakSearch);
   const matched = matchPeaks(detection.peaks, library, parameters.peakSearch.tolerance);
-  const peaks = matched.peaks.map((peak, index) => ({ ...peak, id: `peak-${index + 1}` }));
+  const sourceIndexByWavelength = new Map(
+    dataset.wavelengths.map((wavelength, index) => [wavelength, index] as const),
+  );
+  const peaks: readonly AnalyzedPeak[] = matched.peaks.map((peak) => {
+    const sourceIndex = sourceIndexByWavelength.get(peak.wavelength);
+    if (sourceIndex === undefined) {
+      throw new Error("Не удалось связать найденный пик с исходной точкой спектра.");
+    }
+    return { ...peak, sourceIndex, id: `peak-point-${sourceIndex + 1}` };
+  });
   const hypotheses = matched.hypotheses.map((hypothesis) => interpretHypothesis(hypothesis, peaks));
   const unmatchedPeaks = peaks.filter((peak) => !peak.match);
 
@@ -199,7 +208,7 @@ function validatePeakSearchParameters(parameters: PeakSearchParameters): void {
 
 function interpretHypothesis(
   hypothesis: ElementHypothesis,
-  peaks: readonly (MatchedPeak & { readonly id: string })[],
+  peaks: readonly AnalyzedPeak[],
 ): ElementInterpretation {
   const status = getHypothesisStatus(hypothesis.peaks.length);
   const evidence = hypothesis.peaks.flatMap((hypothesisPeak) => {
@@ -213,7 +222,7 @@ function interpretHypothesis(
       referenceWavelength: round(hypothesisPeak.match.line, 2),
       delta: round(hypothesisPeak.match.delta, 3),
       elementSymbol: hypothesis.elementSymbol,
-      ion: `${hypothesis.elementSymbol} I`,
+      ion: hypothesisPeak.match.ion,
     }];
   });
 

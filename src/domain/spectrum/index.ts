@@ -16,6 +16,7 @@ export {
 } from "./interactive-analysis";
 export type {
   AnalysisEvidenceLine,
+  AnalyzedPeak,
   DetectedPeak,
   ElementHypothesis,
   ElementInterpretation,
@@ -25,6 +26,7 @@ export type {
   MatchedPeak,
   PeakSearchParameters,
   SpectralLineMatch,
+  SpectralLineCandidate,
   SpectrumDataset,
   SpectrumNormalizationMethod,
   SpectrumProcessingParameters,

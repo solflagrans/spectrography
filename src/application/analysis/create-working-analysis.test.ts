@@ -15,7 +15,7 @@ describe("createWorkingAnalysis", () => {
     for (const hypothesis of analysis.hypotheses) {
       for (const evidence of hypothesis.evidence) {
         expect(peakIds.has(evidence.peakId)).toBe(true);
-        expect(evidence.delta).toBeLessThanOrEqual(analysis.parameters.peakSearch.tolerance);
+        expect(Math.abs(evidence.delta)).toBeLessThanOrEqual(analysis.parameters.peakSearch.tolerance);
       }
     }
   });

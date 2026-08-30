@@ -3,7 +3,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { MatchedPeak, SpectrumDataset } from "@/domain/spectrum";
+import type { AnalyzedPeak, SpectrumDataset } from "@/domain/spectrum";
 
 import { SpectrumChart } from "./spectrum-chart";
 import {
@@ -50,16 +50,24 @@ const preparedDataset: SpectrumDataset = {
   wavelengths: [400, 401, 402],
   intensities: [0.1, 0.8, 0.3],
 };
-const peak: MatchedPeak = {
+const peak: AnalyzedPeak = {
+  id: "peak-point-2",
+  sourceIndex: 1,
   index: 1,
   wavelength: 401,
   intensity: 0.8,
   prominence: 0.62,
+  candidates: [{
+    elementSymbol: "Fe",
+    elementName: "Железо",
+    line: 401.05,
+    delta: -0.05,
+  }],
   match: {
     elementSymbol: "Fe",
     elementName: "Железо",
     line: 401.05,
-    delta: 0.05,
+    delta: -0.05,
   },
 };
 const palette: SpectrumChartPalette = {
@@ -85,7 +93,7 @@ afterEach(() => {
 describe("spectrum chart configuration", () => {
   it("builds only visible layers and links simultaneous signals to two labelled axes", () => {
     const option = createSpectrumChartOption(
-      { rawDataset, preparedDataset, peaks: [peak], threshold: 0.15 },
+      { rawDataset, preparedDataset, peaks: [peak], selectedPeakId: peak.id, threshold: 0.15 },
       new Set(["raw", "prepared", "threshold", "peaks"]),
       palette,
       FULL_SPECTRUM_ZOOM,
@@ -96,6 +104,7 @@ describe("spectrum chart configuration", () => {
       yAxisIndex: number;
       lineStyle?: { opacity?: number; type?: string; width?: number };
       itemStyle?: { color?: string };
+      data?: Array<{ id?: string; symbolSize?: number }>;
     }>;
 
     expect(axes.map((axis) => [axis.name, axis.position])).toEqual([
@@ -112,13 +121,14 @@ describe("spectrum chart configuration", () => {
     expect(series[1]).toMatchObject({ yAxisIndex: 1, lineStyle: { width: 1.8 } });
     expect(series[2]).toMatchObject({ yAxisIndex: 1, lineStyle: { type: "dashed" } });
     expect(series[3]).toMatchObject({ yAxisIndex: 1, itemStyle: { color: palette.peak } });
+    expect(series[3].data?.[0]).toMatchObject({ id: peak.id, symbolSize: 13 });
   });
 
   it("keeps reference lines independent from the prepared curve", () => {
     const option = createSpectrumChartOption(
       {
         preparedDataset,
-        referenceLines: [{ label: "Fe I 401.05", wavelength: 401.05 }],
+        referenceLines: [{ label: "Fe 401.05", wavelength: 401.05 }],
       },
       new Set(["referenceLines"]),
       palette,
@@ -132,7 +142,7 @@ describe("spectrum chart configuration", () => {
     expect(series).toHaveLength(1);
     expect(series[0]).toMatchObject({
       name: "Справочные линии",
-      markLine: { data: [{ name: "Fe I 401.05", xAxis: 401.05 }] },
+      markLine: { data: [{ name: "Fe 401.05", xAxis: 401.05 }] },
     });
   });
 
@@ -144,7 +154,7 @@ describe("spectrum chart configuration", () => {
         preparedDataset,
         peaks: [peak],
         threshold: 0.15,
-        referenceLines: [{ label: "Fe I 401.05", wavelength: 401.05 }],
+        referenceLines: [{ label: "Fe 401.05", wavelength: 401.05 }],
       },
       new Set(["raw", "prepared", "threshold", "peaks", "referenceLines"]),
       palette,
@@ -155,8 +165,8 @@ describe("spectrum chart configuration", () => {
     expect(tooltip).toContain("Подготовленная интенсивность: <strong>0.8000</strong>");
     expect(tooltip).toContain("Порог обнаружения: <strong>0.1500</strong>");
     expect(tooltip).toContain("Выраженность: <strong>0.6200</strong>");
-    expect(tooltip).toContain("Совпадение: <strong>Fe I · 401.05 нм (Δ 0.050 нм)</strong>");
-    expect(tooltip).toContain("Справочная линия: <strong>Fe I 401.05 · 401.05 нм</strong>");
+    expect(tooltip).toContain("Совпадение: <strong>Fe · 401.05 нм (Δ -0.050 нм)</strong>");
+    expect(tooltip).toContain("Справочная линия: <strong>Fe 401.05 · 401.05 нм</strong>");
   });
 
   it("preserves a zoom range for updates of one source and resets it for another source", () => {
@@ -199,10 +209,14 @@ describe("SpectrumChart", () => {
   });
 
   it("uses aria-pressed toggles without recreating ECharts and preserves zoom on data updates", () => {
+    const onPeakSelect = vi.fn();
     const { rerender } = render(
       <SpectrumChart
         rawDataset={rawDataset}
         preparedDataset={preparedDataset}
+        peaks={[peak]}
+        selectedPeakId={peak.id}
+        onPeakSelect={onPeakSelect}
         sourceKey="analysis-a"
         defaultVisibleLayers={["raw"]}
         label="Тестовый спектр"
@@ -214,6 +228,12 @@ describe("SpectrumChart", () => {
     expect(rawToggle.getAttribute("aria-pressed")).toBe("true");
     expect(preparedToggle.getAttribute("aria-pressed")).toBe("false");
 
+    echartsMock.events.get("click")?.({
+      seriesId: "detected-peaks",
+      data: { id: peak.id },
+    });
+    expect(onPeakSelect).toHaveBeenCalledWith(peak.id);
+
     fireEvent.click(preparedToggle);
     expect(preparedToggle.getAttribute("aria-pressed")).toBe("true");
     expect(echartsMock.init).toHaveBeenCalledTimes(1);
@@ -223,6 +243,9 @@ describe("SpectrumChart", () => {
       <SpectrumChart
         rawDataset={rawDataset}
         preparedDataset={{ ...preparedDataset, intensities: [0.2, 0.7, 0.4] }}
+        peaks={[peak]}
+        selectedPeakId={peak.id}
+        onPeakSelect={onPeakSelect}
         sourceKey="analysis-a"
         defaultVisibleLayers={["raw"]}
         label="Обновлённый спектр"
@@ -239,6 +262,9 @@ describe("SpectrumChart", () => {
       <SpectrumChart
         rawDataset={rawDataset}
         preparedDataset={preparedDataset}
+        peaks={[peak]}
+        selectedPeakId={peak.id}
+        onPeakSelect={onPeakSelect}
         sourceKey="analysis-b"
         defaultVisibleLayers={["raw"]}
         label="Другой спектр"

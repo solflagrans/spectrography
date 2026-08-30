@@ -13,7 +13,7 @@ import { CanvasRenderer } from "echarts/renderers";
 import { RotateCcw } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import type { MatchedPeak, SpectrumDataset } from "@/domain/spectrum";
+import type { AnalyzedPeak, SpectrumDataset } from "@/domain/spectrum";
 
 import styles from "./analysis-page.module.css";
 import {
@@ -47,7 +47,9 @@ interface SpectrumChartProps {
   readonly label: string;
   readonly sourceKey: string;
   readonly defaultVisibleLayers: readonly SpectrumChartLayer[];
-  readonly peaks?: readonly MatchedPeak[];
+  readonly peaks?: readonly AnalyzedPeak[];
+  readonly selectedPeakId?: string | null;
+  readonly onPeakSelect?: (peakId: string) => void;
   readonly threshold?: number;
   readonly referenceLines?: readonly SpectrumReferenceLine[];
   readonly showLayerControls?: boolean;
@@ -70,6 +72,8 @@ export function SpectrumChart({
   sourceKey,
   defaultVisibleLayers,
   peaks,
+  selectedPeakId,
+  onPeakSelect,
   threshold,
   referenceLines,
   showLayerControls = true,
@@ -80,6 +84,7 @@ export function SpectrumChart({
   const chartInstance = useRef<ReturnType<typeof init> | null>(null);
   const previousSourceKey = useRef<string | undefined>(undefined);
   const zoomRange = useRef<SpectrumZoomRange>(FULL_SPECTRUM_ZOOM);
+  const onPeakSelectRef = useRef(onPeakSelect);
   const [visibleLayers, setVisibleLayers] = useState<ReadonlySet<SpectrumChartLayer>>(
     () => new Set(defaultVisibleLayers),
   );
@@ -87,10 +92,15 @@ export function SpectrumChart({
     rawDataset,
     preparedDataset,
     peaks,
+    selectedPeakId,
     threshold,
     referenceLines,
-  }), [peaks, preparedDataset, rawDataset, referenceLines, threshold]);
+  }), [peaks, preparedDataset, rawDataset, referenceLines, selectedPeakId, threshold]);
   const availableLayers = getAvailableLayers(chartData);
+
+  useEffect(() => {
+    onPeakSelectRef.current = onPeakSelect;
+  }, [onPeakSelect]);
 
   useEffect(() => {
     if (!chartElement.current) return;
@@ -100,7 +110,12 @@ export function SpectrumChart({
     const handleDataZoom = (event: unknown) => {
       zoomRange.current = readZoomRange(event, zoomRange.current);
     };
+    const handleChartClick = (event: unknown) => {
+      const peakId = getPeakIdFromChartEvent(event);
+      if (peakId) onPeakSelectRef.current?.(peakId);
+    };
     chart.on("datazoom", handleDataZoom);
+    chart.on("click", handleChartClick);
 
     const observer = typeof ResizeObserver === "undefined"
       ? null
@@ -110,6 +125,7 @@ export function SpectrumChart({
     return () => {
       observer?.disconnect();
       chart.off("datazoom", handleDataZoom);
+      chart.off("click", handleChartClick);
       chart.dispose();
       chartInstance.current = null;
     };
@@ -184,6 +200,17 @@ export function SpectrumChart({
       />
     </div>
   );
+}
+
+function getPeakIdFromChartEvent(event: unknown): string | null {
+  if (!event || typeof event !== "object") return null;
+  const candidate = event as {
+    readonly seriesId?: unknown;
+    readonly data?: { readonly id?: unknown };
+  };
+  return candidate.seriesId === "detected-peaks" && typeof candidate.data?.id === "string"
+    ? candidate.data.id
+    : null;
 }
 
 function getAvailableLayers(data: SpectrumChartData): readonly SpectrumChartLayer[] {

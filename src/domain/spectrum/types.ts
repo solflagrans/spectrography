@@ -43,15 +43,29 @@ export interface DetectedPeak {
   readonly prominence: number;
 }
 
-export interface SpectralLineMatch {
+export interface SpectralLineCandidate {
   readonly elementSymbol: SpectralElement["symbol"];
   readonly elementName: SpectralElement["name"];
   readonly line: number;
+  /** Observed wavelength minus reference wavelength, in nanometres. */
   readonly delta: number;
+  /** Present only when the spectral library explicitly provides an ion label. */
+  readonly ion?: string;
 }
 
+export type SpectralLineMatch = SpectralLineCandidate;
+
 export interface MatchedPeak extends DetectedPeak {
+  /** All library lines inside the configured tolerance, nearest first. */
+  readonly candidates: readonly SpectralLineCandidate[];
+  /** Automatically suggested nearest candidate. */
   readonly match: SpectralLineMatch | null;
+}
+
+export interface AnalyzedPeak extends MatchedPeak {
+  readonly id: string;
+  /** Position of the point in the untouched source dataset. */
+  readonly sourceIndex: number;
 }
 
 export interface ElementHypothesis {
@@ -71,7 +85,7 @@ export interface AnalysisEvidenceLine {
   readonly referenceWavelength: number;
   readonly delta: number;
   readonly elementSymbol: string;
-  readonly ion: string;
+  readonly ion?: string;
 }
 
 export interface ElementInterpretation {
@@ -89,8 +103,8 @@ export interface InteractiveSpectrumAnalysis {
   readonly preparedStats: SpectrumStats;
   readonly baseline: number;
   readonly threshold: number;
-  readonly peaks: readonly (MatchedPeak & { readonly id: string })[];
+  readonly peaks: readonly AnalyzedPeak[];
   readonly hypotheses: readonly ElementInterpretation[];
-  readonly unmatchedPeaks: readonly (MatchedPeak & { readonly id: string })[];
+  readonly unmatchedPeaks: readonly AnalyzedPeak[];
   readonly conclusion: string;
 }

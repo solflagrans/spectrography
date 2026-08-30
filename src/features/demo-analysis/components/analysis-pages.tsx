@@ -20,7 +20,7 @@ import type {
   AnalysisHypothesisStatus,
   WorkingAnalysis,
 } from "@/application/analysis/create-working-analysis";
-import type { MatchedPeak } from "@/domain/spectrum";
+import type { AnalysisEvidenceLine, AnalyzedPeak, SpectralLineCandidate } from "@/domain/spectrum";
 import { useAnalysisWorkspace } from "@/features/demo-analysis/model/analysis-workspace-context";
 
 import styles from "./analysis-page.module.css";
@@ -222,7 +222,7 @@ export function ProcessingAnalysisPage() {
 }
 
 export function PeaksAnalysisPage() {
-  const analysis = useRequiredAnalysis();
+  const { analysis, selectedPeakId, selectPeak } = useAnalysisWorkspace();
   if (!analysis) return <AnalysisUnavailable section="Пики" />;
 
   return (
@@ -237,6 +237,8 @@ export function PeaksAnalysisPage() {
           rawDataset={analysis.rawDataset}
           preparedDataset={analysis.preparedDataset}
           peaks={analysis.peaks}
+          selectedPeakId={selectedPeakId}
+          onPeakSelect={selectPeak}
           threshold={analysis.threshold}
           sourceKey={analysis.id}
           defaultVisibleLayers={["prepared", "threshold", "peaks"]}
@@ -244,7 +246,11 @@ export function PeaksAnalysisPage() {
         />
       </Card>
       <Card title="Найденные пики" accessory={<Tag tone="success">{analysis.peaks.length}</Tag>}>
-        <PeakTable peaks={analysis.peaks} />
+        <PeakTable
+          peaks={analysis.peaks}
+          selectedPeakId={selectedPeakId}
+          onPeakSelect={selectPeak}
+        />
       </Card>
     </AnalysisPage>
   );
@@ -269,7 +275,7 @@ export function IdentificationAnalysisPage() {
             peaks={analysis.peaks.filter((peak) => peak.match?.elementSymbol === leading.symbol)}
             threshold={analysis.threshold}
             referenceLines={leading.evidence.map((line) => ({
-              label: `${line.ion} ${line.referenceWavelength.toFixed(2)}`,
+              label: `${formatEvidenceLabel(line)} ${line.referenceWavelength.toFixed(2)}`,
               wavelength: line.referenceWavelength,
             }))}
             sourceKey={analysis.id}
@@ -352,10 +358,10 @@ export function ResultAnalysisPage() {
                     <Link2 size={14} aria-hidden="true" />
                     <span>Пик {line.peakWavelength.toFixed(2)} нм</span>
                     <ArrowRight size={13} aria-hidden="true" />
-                    <span>{line.ion} {line.referenceWavelength.toFixed(2)} нм</span>
+                    <span>{formatEvidenceLabel(line)} {line.referenceWavelength.toFixed(2)} нм</span>
                     <span className={styles.deviationValue}>
                       <Ruler size={13} aria-hidden="true" />
-                      {formatDelta(line.delta)} нм
+                      {formatSignedDelta(line.delta)} нм
                     </span>
                   </div>
                 ))}
@@ -480,7 +486,15 @@ function DefinitionList({ items }: Readonly<{ items: readonly (readonly [string,
   );
 }
 
-function PeakTable({ peaks }: Readonly<{ peaks: readonly (MatchedPeak & { readonly id: string })[] }>) {
+function PeakTable({
+  peaks,
+  selectedPeakId,
+  onPeakSelect,
+}: Readonly<{
+  peaks: readonly AnalyzedPeak[];
+  selectedPeakId: string | null;
+  onPeakSelect: (peakId: string) => void;
+}>) {
   if (!peaks.length) {
     return <InlineEmptyState>При текущих параметрах пики не обнаружены.</InlineEmptyState>;
   }
@@ -499,12 +513,25 @@ function PeakTable({ peaks }: Readonly<{ peaks: readonly (MatchedPeak & { readon
         </thead>
         <tbody>
           {peaks.map((peak, index) => (
-            <tr key={peak.id}>
+            <tr
+              key={peak.id}
+              data-peak-id={peak.id}
+              className={`${styles.selectableRow} ${peak.id === selectedPeakId ? styles.selectableRowSelected : ""}`}
+              aria-selected={peak.id === selectedPeakId}
+              tabIndex={0}
+              onClick={() => onPeakSelect(peak.id)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onPeakSelect(peak.id);
+                }
+              }}
+            >
               <td>{index + 1}</td>
               <td><code>{peak.wavelength.toFixed(2)} нм</code></td>
               <td><code>{peak.intensity.toFixed(3)}</code></td>
-              <td>{peak.match ? `${peak.match.elementSymbol} I · ${peak.match.line.toFixed(2)} нм` : "Не найдено"}</td>
-              <td><code>{peak.match ? `${formatDelta(peak.match.delta)} нм` : "—"}</code></td>
+              <td>{peak.match ? `${formatCandidateLabel(peak.match)} · ${peak.match.line.toFixed(2)} нм` : "Не найдено"}</td>
+              <td><code>{peak.match ? `${formatSignedDelta(peak.match.delta)} нм` : "—"}</code></td>
             </tr>
           ))}
         </tbody>
@@ -529,8 +556,19 @@ function useRequiredAnalysis(): WorkingAnalysis | null {
   return useAnalysisWorkspace().analysis;
 }
 
-function formatDelta(delta: number): string {
-  return delta === 0 ? "0.000" : `+${delta.toFixed(3)}`;
+function formatSignedDelta(delta: number): string {
+  if (delta === 0) return "0.000";
+  return `${delta > 0 ? "+" : ""}${delta.toFixed(3)}`;
+}
+
+function formatCandidateLabel(candidate: SpectralLineCandidate): string {
+  return candidate.ion
+    ? `${candidate.elementSymbol} ${candidate.ion}`
+    : candidate.elementSymbol;
+}
+
+function formatEvidenceLabel(line: AnalysisEvidenceLine): string {
+  return line.ion ? `${line.elementSymbol} ${line.ion}` : line.elementSymbol;
 }
 
 function formatNumber(value: number): string {

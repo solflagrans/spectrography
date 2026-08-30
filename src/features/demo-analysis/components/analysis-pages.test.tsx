@@ -10,15 +10,34 @@ import {
 import { createRaw8Fixture } from "@/fixtures/raw8-test-fixture";
 
 import { PeakSettingsPanel } from "./analysis-side-panels";
-import { DataAnalysisPage, ProcessingAnalysisPage } from "./analysis-pages";
+import { DataAnalysisPage, PeaksAnalysisPage, ProcessingAnalysisPage } from "./analysis-pages";
 
 vi.mock("./spectrum-chart", () => ({
-  SpectrumChart: (props: { showLayerControls?: boolean; preparedDataset?: unknown }) => (
+  SpectrumChart: (props: {
+    showLayerControls?: boolean;
+    preparedDataset?: unknown;
+    label: string;
+    peaks?: readonly { id: string; wavelength: number }[];
+    selectedPeakId?: string | null;
+    onPeakSelect?: (peakId: string) => void;
+  }) => (
     <div
       data-testid="spectrum-chart"
       data-layer-controls={String(props.showLayerControls ?? true)}
       data-has-prepared={String(Boolean(props.preparedDataset))}
-    />
+      data-selected-peak={props.selectedPeakId ?? ""}
+      role="img"
+      aria-label={props.label}
+    >
+      {props.onPeakSelect ? props.peaks?.map((peak) => (
+        <button
+          key={peak.id}
+          type="button"
+          aria-label={`График: выбрать пик ${peak.wavelength.toFixed(2)} нм`}
+          onClick={() => props.onPeakSelect?.(peak.id)}
+        />
+      )) : null}
+    </div>
   ),
 }));
 
@@ -28,7 +47,7 @@ afterEach(() => {
 });
 
 function AnalysisProbe() {
-  const { analysis, calculationStatus } = useAnalysisWorkspace();
+  const { analysis, calculationStatus, selectedPeakId } = useAnalysisWorkspace();
   return (
     <div>
       <output data-testid="peak-count">{analysis?.peaks.length ?? "—"}</output>
@@ -36,7 +55,19 @@ function AnalysisProbe() {
       <output data-testid="calculation-status">{calculationStatus}</output>
       <output data-testid="file-name">{analysis?.source.fileName ?? "—"}</output>
       <output data-testid="point-count">{analysis?.rawDataset.wavelengths.length ?? "—"}</output>
+      <output data-testid="selected-peak">{selectedPeakId ?? "—"}</output>
     </div>
+  );
+}
+
+function PeakSelectionScenario() {
+  return (
+    <AnalysisWorkspaceProvider>
+      <DataAnalysisPage />
+      <PeaksAnalysisPage />
+      <PeakSettingsPanel />
+      <AnalysisProbe />
+    </AnalysisWorkspaceProvider>
   );
 }
 
@@ -166,6 +197,72 @@ describe("interactive demo analysis", () => {
     const dataChart = screen.getAllByTestId("spectrum-chart")[0];
     expect(dataChart.getAttribute("data-layer-controls")).toBe("false");
     expect(dataChart.getAttribute("data-has-prepared")).toBe("false");
+  });
+
+  it("synchronizes peak selection between chart, table and side panel", () => {
+    render(<PeakSelectionScenario />);
+    fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
+
+    fireEvent.click(screen.getByRole("tab", { name: "Выбранный пик" }));
+    expect(screen.getByText(/Выберите пик на графике или в таблице/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("tab", { name: "Параметры" }));
+
+    const graphButtons = screen.getAllByRole("button", { name: /График: выбрать пик/ });
+    fireEvent.click(graphButtons[0]);
+
+    const selectedId = screen.getByTestId("selected-peak").textContent;
+    expect(selectedId).not.toBe("—");
+    expect(screen.getByRole("tab", { name: "Выбранный пик" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByText("Исходная интенсивность")).toBeTruthy();
+    expect(screen.getByText("Подготовленная интенсивность")).toBeTruthy();
+    expect(screen.getByText("Предложено")).toBeTruthy();
+
+    const chart = screen.getByRole("img", { name: "Подготовленный спектр с отмеченными пиками" });
+    expect(chart.getAttribute("data-selected-peak")).toBe(selectedId);
+    const selectedRow = document.querySelector('tr[aria-selected="true"]');
+    expect(selectedRow?.getAttribute("data-peak-id")).toBe(selectedId);
+
+    const selectableRows = [...document.querySelectorAll("tr[data-peak-id]")];
+    fireEvent.click(selectableRows[1]);
+    const nextId = selectableRows[1].getAttribute("data-peak-id");
+    expect(screen.getByTestId("selected-peak").textContent).toBe(nextId);
+    expect(chart.getAttribute("data-selected-peak")).toBe(nextId);
+    expect(selectableRows[1].getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByText(/подходящих линий нет/)).toBeTruthy();
+  });
+
+  it("preserves a selected source point when it remains a peak and resets it otherwise", async () => {
+    vi.useFakeTimers();
+    render(<PeakSelectionScenario />);
+    fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
+    fireEvent.click(screen.getAllByRole("button", { name: /График: выбрать пик/ })[0]);
+    const selectedId = screen.getByTestId("selected-peak").textContent;
+
+    fireEvent.click(screen.getByRole("tab", { name: "Параметры" }));
+    fireEvent.change(screen.getByLabelText(/Допуск сопоставления/), { target: { value: "0.4" } });
+    await act(async () => vi.advanceTimersByTime(181));
+    expect(screen.getByTestId("selected-peak").textContent).toBe(selectedId);
+
+    fireEvent.change(screen.getByLabelText(/Минимальная выраженность/), { target: { value: "1" } });
+    await act(async () => vi.advanceTimersByTime(181));
+    expect(screen.getByTestId("selected-peak").textContent).toBe("—");
+    fireEvent.click(screen.getByRole("tab", { name: "Выбранный пик" }));
+    expect(screen.getByText("При текущих параметрах пики не найдены.")).toBeTruthy();
+  });
+
+  it("always resets the selected peak after opening another source", async () => {
+    render(<PeakSelectionScenario />);
+    fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
+    fireEvent.click(screen.getAllByRole("button", { name: /График: выбрать пик/ })[0]);
+    expect(screen.getByTestId("selected-peak").textContent).not.toBe("—");
+
+    const imported = JSON.stringify([[500, 501, 502, 503, 504], [0, 0, 1, 0, 0]]);
+    fireEvent.change(screen.getByLabelText("Файл спектра"), {
+      target: { files: [createFile("another.json", imported)] },
+    });
+
+    await waitFor(() => expect(screen.getByTestId("file-name").textContent).toBe("another.json"));
+    expect(screen.getByTestId("selected-peak").textContent).toBe("—");
   });
 });
 

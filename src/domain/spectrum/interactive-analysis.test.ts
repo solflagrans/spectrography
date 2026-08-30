@@ -46,6 +46,26 @@ describe("interactive spectrum analysis", () => {
     ).toBe(true);
   });
 
+  it("keeps peak identifiers tied to source points across recalculation", () => {
+    const source = {
+      wavelengths: [502, 500, 501],
+      intensities: [0, 0, 10],
+    };
+    const parameters = {
+      processing: { smoothingWindow: 1, normalization: "none" as const },
+      peakSearch: { threshold: 0.1, prominence: 0.1, minimumDistance: 0.1, tolerance: 0.2 },
+    };
+    const first = runInteractiveSpectrumAnalysis(source, builtinSpectralLibrary, parameters);
+    const second = runInteractiveSpectrumAnalysis(source, builtinSpectralLibrary, {
+      ...parameters,
+      peakSearch: { ...parameters.peakSearch, tolerance: 0.4 },
+    });
+
+    expect(first.peaks).toHaveLength(1);
+    expect(first.peaks[0]).toMatchObject({ id: "peak-point-3", sourceIndex: 2, wavelength: 501 });
+    expect(second.peaks[0].id).toBe(first.peaks[0].id);
+  });
+
   it("rejects an even smoothing window with a user-facing message", () => {
     expect(() => runInteractiveSpectrumAnalysis(demoSpectra.fe12, builtinSpectralLibrary, {
       ...DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS,

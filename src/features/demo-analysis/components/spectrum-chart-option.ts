@@ -1,6 +1,6 @@
 import type { EChartsCoreOption } from "echarts/core";
 
-import type { MatchedPeak, SpectrumDataset } from "@/domain/spectrum";
+import type { AnalyzedPeak, SpectrumDataset } from "@/domain/spectrum";
 
 export type SpectrumChartLayer = "raw" | "prepared" | "threshold" | "peaks" | "referenceLines";
 
@@ -12,7 +12,8 @@ export interface SpectrumReferenceLine {
 export interface SpectrumChartData {
   readonly rawDataset?: SpectrumDataset;
   readonly preparedDataset?: SpectrumDataset;
-  readonly peaks?: readonly MatchedPeak[];
+  readonly peaks?: readonly AnalyzedPeak[];
+  readonly selectedPeakId?: string | null;
   readonly threshold?: number;
   readonly referenceLines?: readonly SpectrumReferenceLine[];
 }
@@ -110,9 +111,26 @@ export function createSpectrumChartOption(
       id: "detected-peaks",
       name: SPECTRUM_SERIES_NAMES.peaks,
       type: "scatter",
-      data: data.peaks.map((peak) => [peak.wavelength, peak.intensity]),
+      data: data.peaks.map((peak) => {
+        const selected = peak.id === data.selectedPeakId;
+        return {
+          id: peak.id,
+          value: [peak.wavelength, peak.intensity],
+          symbolSize: selected ? 13 : 8,
+          itemStyle: selected
+            ? {
+                color: palette.peak,
+                borderColor: palette.reference,
+                borderWidth: 3,
+                shadowBlur: 5,
+                shadowColor: withAlpha(palette.reference, 0.35),
+              }
+            : undefined,
+        };
+      }),
       yAxisIndex: preparedAxisIndex,
       symbolSize: 8,
+      cursor: "pointer",
       itemStyle: { color: palette.peak, borderColor: palette.surface, borderWidth: 1.5 },
       z: 5,
     });
@@ -361,12 +379,12 @@ function findNearestSampleIndex(wavelengths: readonly number[], target: number):
 }
 
 function findPeakAtWavelength(
-  peaks: readonly MatchedPeak[],
+  peaks: readonly AnalyzedPeak[],
   wavelength: number,
   wavelengths: readonly number[],
-): MatchedPeak | undefined {
+): AnalyzedPeak | undefined {
   const tolerance = Math.max(getMedianStep(wavelengths) * 0.55, 1e-7);
-  return peaks.reduce<MatchedPeak | undefined>((nearest, peak) => {
+  return peaks.reduce<AnalyzedPeak | undefined>((nearest, peak) => {
     const distance = Math.abs(peak.wavelength - wavelength);
     if (distance > tolerance) return nearest;
     return !nearest || distance < Math.abs(nearest.wavelength - wavelength) ? peak : nearest;
@@ -404,9 +422,17 @@ function formatTooltipTextRow(color: string, label: string, value: string): stri
   return `<span style="display:inline-block;width:8px;height:8px;margin-right:8px;border-radius:50%;background:${escapeHtml(color)}"></span>${escapeHtml(label)}: <strong>${value}</strong>`;
 }
 
-function formatPeakMatch(peak: MatchedPeak): string {
+function formatPeakMatch(peak: AnalyzedPeak): string {
   if (!peak.match) return "нет";
-  return `${escapeHtml(peak.match.elementSymbol)} I · ${formatWavelength(peak.match.line)} нм (Δ ${peak.match.delta.toFixed(3)} нм)`;
+  const label = peak.match.ion
+    ? `${peak.match.elementSymbol} ${peak.match.ion}`
+    : peak.match.elementSymbol;
+  return `${escapeHtml(label)} · ${formatWavelength(peak.match.line)} нм (${formatSignedDelta(peak.match.delta)} нм)`;
+}
+
+function formatSignedDelta(value: number): string {
+  if (value === 0) return "Δ 0.000";
+  return `Δ ${value > 0 ? "+" : ""}${value.toFixed(3)}`;
 }
 
 function formatWavelength(value: number): string {
