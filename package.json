@@ -13,10 +13,18 @@
     "start": "next start",
     "library:build": "tsx scripts/build-spectral-library.ts",
     "library:check": "tsx scripts/build-spectral-library.ts --check",
+    "molecular:source": "tsx scripts/import-moose-molecular-source.ts",
+    "molecular:build": "tsx scripts/build-molecular-library.ts",
+    "molecular:check": "tsx scripts/build-molecular-library.ts --check",
+    "experimental:import": "tsx scripts/import-open-air-plasma-spectrum.ts",
+    "experimental:check": "tsx scripts/import-open-air-plasma-spectrum.ts --check",
+    "regression:air-plasma": "tsx scripts/run-air-plasma-regression.ts",
+    "verify:identification": "tsx scripts/run-identification-verification.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "check": "pnpm library:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+    "test:e2e": "playwright test",
+    "check": "pnpm library:check && pnpm molecular:check && pnpm experimental:check && pnpm verify:identification && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm test:e2e"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -29,6 +37,7 @@
     "zod": "^4.5.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@testing-library/react": "^16.3.3",
     "@types/node": "26.4.0",
     "@types/react": "19.2.18",

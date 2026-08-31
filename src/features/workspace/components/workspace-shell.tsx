@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 import {
+  AnalysisSidePanel,
   IdentificationLinesPanel,
-  PeakSettingsPanel,
   ProcessingSettingsPanel,
 } from "@/features/demo-analysis/components/analysis-side-panels";
 import { useAnalysisWorkspace } from "@/features/demo-analysis/model/analysis-workspace-context";
@@ -21,8 +21,8 @@ export function WorkspaceShell({ children }: Readonly<{ children: ReactNode }>) 
   const sidePanel = analysis
     ? pathname.startsWith("/processing")
       ? <ProcessingSettingsPanel />
-      : pathname.startsWith("/peaks")
-        ? <PeakSettingsPanel />
+      : pathname.startsWith("/analysis")
+        ? <AnalysisSidePanel />
         : pathname.startsWith("/identification")
           ? <IdentificationLinesPanel />
           : null
@@ -48,7 +48,7 @@ export function WorkspaceShell({ children }: Readonly<{ children: ReactNode }>) 
 
       <div className={clsx(styles.workspace, sidePanel && styles.workspaceWithPanel)}>
         {sidePanel ? (
-          <aside className={styles.leftPanel} aria-label="Панель текущего раздела">
+          <aside className={clsx(styles.leftPanel, pathname.startsWith("/analysis") && styles.analysisLeftPanel)} aria-label="Панель текущего раздела">
             {sidePanel}
           </aside>
         ) : null}

@@ -1,0 +1,25 @@
+{
+  "id": "zenodo-14843545-fig2-total",
+  "title": "Characterization of a laser filament-induced plasma in air at 10 kHz using optical emission spectroscopy — Fig_2_total.dat",
+  "datasetVersion": "Zenodo record 14843545, v1, published 2025-02-10",
+  "sourceUrl": "https://zenodo.org/records/14843545/files/Fig_2_total.dat?download=1",
+  "recordDoi": "10.5281/zenodo.14843545",
+  "publicationDoi": "10.1364/OE.564268",
+  "authors": "M. C. Schroeder, R. Löscher, N. Bibinov, I. Korolov, P. Awakowicz, T. Mussenbrock, C. J. Saraceno",
+  "conditions": "Optical emission spectrum of an atmospheric-air laser filament produced by a high-average-power femtosecond laser at 10 kHz; exact figure-specific processing is described by the source publication and repository notebook.",
+  "license": "CC BY 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+  "retrievedAt": "2026-08-31",
+  "originalFile": {
+    "name": "Fig_2_total.dat",
+    "bytes": 390942,
+    "md5FromZenodo": "087cace9b4f153f3fbec00bc2f977f46",
+    "sha256": "3f828cbeccc2069778f4d43717fe4aa0add7f62d946438464a1a7242b1b1ecf3"
+  },
+  "derivedFile": {
+    "name": "zenodo-14843545-fig2-total-300-400nm.tsv",
+    "selection": "Rows from 300 through 400 nm inclusive; every second source row retained in original order; intensities unchanged.",
+    "rowCount": 5664,
+    "sha256": "cb5b2c5af4fc2a1b1d974202a1f380daca47c4d03df245e61e24d7a5f030f767"
+  }
+}

@@ -1,5 +1,6 @@
-import { ResultAnalysisPage } from "@/features/demo-analysis/components/analysis-pages";
+import type { Route } from "next";
+import { redirect } from "next/navigation";
 
 export default function ResultPage() {
-  return <ResultAnalysisPage />;
+  redirect("/analysis" as Route);
 }

@@ -3,6 +3,7 @@ import {
   BUILTIN_LIBRARY_VERSION,
   builtinSpectralLibraryIndex,
 } from "@/domain/spectral-library/builtin-library";
+import { BUILTIN_MOLECULAR_LIBRARY_VERSION } from "@/domain/molecular-spectrum";
 import {
   DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS,
   isDatasetSortedByWavelength,
@@ -16,6 +17,7 @@ import type {
   SpectrumChannelInput,
   SpectrumDataset,
   SpectrumStats,
+  SpectrumType,
 } from "@/domain/spectrum";
 import { demoSpectra } from "@/fixtures/demo-spectra";
 
@@ -46,7 +48,9 @@ export interface WorkingAnalysis extends InteractiveSpectrumAnalysis {
   readonly source: AnalysisSource;
   readonly libraryVersion: string;
   readonly libraryLabel: string;
+  readonly molecularLibraryVersion: string;
   readonly rawDataset: SpectrumDataset;
+  readonly spectrumType: SpectrumType;
   readonly rawStats: SpectrumStats;
   readonly wavelengthRange: {
     readonly minimum: number;
@@ -64,6 +68,7 @@ export interface CreateWorkingAnalysisInput {
   readonly title: string;
   readonly source: AnalysisSource;
   readonly rawDataset: SpectrumDataset;
+  readonly spectrumType?: SpectrumType;
   /** Optional unified multi-channel input; rawDataset remains the primary-channel compatibility alias. */
   readonly channels?: readonly SpectrumChannelInput[];
   readonly auxiliaryData?: Raw8AuxiliaryData;
@@ -91,7 +96,8 @@ export function createWorkingAnalysis(
   const channelInput = input.channels
     ? { channels: input.channels.map((channel) => ({ ...channel, dataset: copyDataset(channel.dataset) })) }
     : { channels: [{ id: "channel-1", name: "Канал 1", dataset: rawDataset }] };
-  const result = runInteractiveSpectrumAnalysis(channelInput, builtinSpectralLibraryIndex, parameters);
+  const spectrumType = input.spectrumType ?? "unspecified";
+  const result = runInteractiveSpectrumAnalysis(channelInput, builtinSpectralLibraryIndex, parameters, spectrumType);
   const minimumWavelength = Math.min(...rawDataset.wavelengths);
   const maximumWavelength = Math.max(...rawDataset.wavelengths);
   const wasSorted = isDatasetSortedByWavelength(rawDataset);
@@ -103,7 +109,9 @@ export function createWorkingAnalysis(
     source: input.source,
     libraryVersion: BUILTIN_LIBRARY_VERSION,
     libraryLabel: BUILTIN_LIBRARY_LABEL,
+    molecularLibraryVersion: BUILTIN_MOLECULAR_LIBRARY_VERSION,
     rawDataset,
+    spectrumType,
     rawStats: getSpectrumStats(rawDataset.intensities),
     wavelengthRange: {
       minimum: minimumWavelength,

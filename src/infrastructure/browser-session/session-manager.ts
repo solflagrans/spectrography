@@ -1,6 +1,10 @@
-import { createAnalysisSession } from "@/domain/session/model";
+import {
+  ANALYSIS_SESSION_SCHEMA_VERSION,
+  createAnalysisSession,
+} from "@/domain/session/model";
 import type { AnalysisSession } from "@/domain/session/model";
 import type { AnalysisSessionRepository } from "@/domain/session/repository";
+import { DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS } from "@/domain/spectrum";
 
 import { IndexedDbAnalysisSessionRepository } from "./indexed-db-session-repository";
 
@@ -14,10 +18,34 @@ export async function loadOrCreateBrowserSession(
 
   if (activeSessionId) {
     const existingSession = await repository.findById(activeSessionId);
-    if (existingSession) return existingSession;
+    if (existingSession) {
+      if (existingSession.schemaVersion === ANALYSIS_SESSION_SCHEMA_VERSION) return existingSession;
+
+      const migratedSession = migrateLegacySession(existingSession);
+      await repository.save(migratedSession);
+      return migratedSession;
+    }
   }
 
   return startNewBrowserSession(repository);
+}
+
+function migrateLegacySession(session: AnalysisSession): AnalysisSession {
+  const legacySession = session as unknown as Omit<AnalysisSession, "schemaVersion" | "spectrumType"> & {
+    readonly schemaVersion?: number;
+    readonly spectrumType?: AnalysisSession["spectrumType"];
+  };
+
+  return {
+    ...legacySession,
+    schemaVersion: ANALYSIS_SESSION_SCHEMA_VERSION,
+    spectrumType: legacySession.spectrumType ?? "unspecified",
+    analysisOptions: {
+      ...legacySession.analysisOptions,
+      wavelengthCalibration: legacySession.analysisOptions?.wavelengthCalibration
+        ?? DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.wavelengthCalibration,
+    },
+  };
 }
 
 export async function startNewBrowserSession(

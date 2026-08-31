@@ -4,9 +4,10 @@ import type {
   InteractiveAnalysisParameters,
   InteractiveSpectrumAnalysis,
   SpectrumDataset,
+  SpectrumType,
 } from "@/domain/spectrum";
 
-export const ANALYSIS_SESSION_SCHEMA_VERSION = 1 as const;
+export const ANALYSIS_SESSION_SCHEMA_VERSION = 3 as const;
 
 export type AnalysisSessionStatus = "empty" | "dataset-ready" | "analyzed";
 
@@ -16,6 +17,7 @@ export interface AnalysisSession {
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly status: AnalysisSessionStatus;
+  readonly spectrumType: SpectrumType;
   readonly dataset: SpectrumDataset | null;
   readonly analysisOptions: InteractiveAnalysisParameters;
   readonly analysisResult: InteractiveSpectrumAnalysis | null;
@@ -37,6 +39,7 @@ export function createAnalysisSession({ id, now = new Date() }: CreateAnalysisSe
     createdAt: timestamp,
     updatedAt: timestamp,
     status: "empty",
+    spectrumType: "unspecified",
     dataset: null,
     analysisOptions: DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS,
     analysisResult: null,

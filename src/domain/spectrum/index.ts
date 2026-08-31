@@ -14,6 +14,10 @@ export {
   savitzkyGolaySmooth,
   validateInteractiveAnalysisParameters,
 } from "./interactive-analysis";
+export { IDENTIFICATION_QUALITY_PROFILE } from "./quality-profile";
+export { calculateAdaptiveTolerance, findLineCandidates, matchPeaks } from "./matching";
+export { assessChannelSuitability, combineSuitability } from "./measurement-quality";
+export { estimateInitialCalibrationUncertaintyNm, estimateWavelengthCalibration } from "./wavelength-calibration";
 export type {
   AnalysisEvidenceLine,
   AnalyzedPeak,
@@ -38,4 +42,14 @@ export type {
   SpectrumNormalizationMethod,
   SpectrumProcessingParameters,
   SpectrumStats,
+  SpectrumType,
+  WavelengthCalibrationAnchor,
+  WavelengthCalibrationParameters,
+  WavelengthCalibrationResult,
+  WavelengthUncertaintyComponents,
+  ChannelSuitabilityAssessment,
+  MeasurementSuitabilityAssessment,
+  SuitabilityIssue,
+  SuitabilityIssueCode,
+  SuitabilityStatus,
 } from "./types";

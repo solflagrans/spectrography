@@ -1,8 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  ChartNoAxesCombined,
+  BookOpen,
   Database,
-  FileCheck2,
   ScanSearch,
   SlidersHorizontal,
 } from "lucide-react";
@@ -15,7 +14,7 @@ export const workspaceSections = [
     index: "01",
     icon: Database,
     description:
-      "Здесь появятся импорт спектра, проверка формата и диагностика качества исходного измерения.",
+      "Загрузка, сведения об измерении, тип спектра и краткая оценка качества.",
   },
   {
     id: "processing",
@@ -24,34 +23,25 @@ export const workspaceSections = [
     index: "02",
     icon: SlidersHorizontal,
     description:
-      "Здесь появятся обратимые преобразования: сглаживание, нормализация и коррекция базовой линии.",
+      "Основные параметры подготовки и график автоматически обработанного спектра.",
   },
   {
-    id: "peaks",
-    href: "/peaks",
-    label: "Пики",
+    id: "analysis",
+    href: "/analysis",
+    label: "Анализ",
     index: "03",
-    icon: ChartNoAxesCombined,
-    description:
-      "Здесь появятся поиск, ручная проверка и редактирование обнаруженных пиков.",
-  },
-  {
-    id: "identification",
-    href: "/identification",
-    label: "Идентификация",
-    index: "04",
     icon: ScanSearch,
     description:
-      "Здесь появятся кандидаты спектральных линий и объяснимые гипотезы состава.",
+      "Состав, пики и прослеживаемые доказательства идентификации.",
   },
   {
-    id: "result",
-    href: "/result",
-    label: "Результат",
-    index: "05",
-    icon: FileCheck2,
+    id: "library",
+    href: "/library",
+    label: "Библиотека",
+    index: "04",
+    icon: BookOpen,
     description:
-      "Здесь появятся итоговое заключение, история решений и экспорт воспроизводимого отчёта.",
+      "Самостоятельный справочный раздел по атомным линиям и молекулярным системам.",
   },
 ] as const satisfies readonly {
   id: string;

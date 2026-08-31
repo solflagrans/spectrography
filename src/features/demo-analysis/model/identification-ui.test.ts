@@ -24,10 +24,10 @@ describe("identification UI projections", () => {
   });
 
   it("filters by element name or symbol and supports every requested stable ordering", () => {
-    const byName = getIdentificationEntries(analysis, "diagnostics", "Железо", "ranking");
-    const bySymbol = getIdentificationEntries(analysis, "diagnostics", "Fe", "ranking");
+    const byName = getIdentificationEntries(analysis, "diagnostics", "Магний", "ranking");
+    const bySymbol = getIdentificationEntries(analysis, "diagnostics", "Mg", "ranking");
     expect(byName.map((entry) => entry.id)).toEqual(bySymbol.map((entry) => entry.id));
-    expect(byName[0]?.hypothesis.symbol).toBe("Fe");
+    expect(byName[0]?.hypothesis.symbol).toBe("Mg");
 
     const characteristic = getIdentificationEntries(analysis, "diagnostics", "", "characteristic");
     const independent = getIdentificationEntries(analysis, "diagnostics", "", "independent");

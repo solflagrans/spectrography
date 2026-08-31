@@ -1,0 +1,22 @@
+{
+  "name": "Moose/MassiveOES nitrogen molecular emission line databases",
+  "datasetVersion": "Moose commit 454ace8e83ca122ce5f6a4a2427bac7b7eeb5397 (2026-08-31 snapshot)",
+  "retrievedAt": "2026-08-31",
+  "repository": "https://github.com/AntoineTUE/Moose",
+  "license": "MIT",
+  "licenseUrl": "https://github.com/AntoineTUE/Moose/blob/454ace8e83ca122ce5f6a4a2427bac7b7eeb5397/LICENSE",
+  "attribution": "Moose by Antoine Salden; databases compiled by J. Voráč and P. Synek from the cited primary spectroscopic sources.",
+  "citations": [
+    "J. Luque and D. R. Crosley, LIFBASE: Database and Spectral Simulation Program, Version 1.5, SRI International Report MP 99-009 (1999).",
+    "H. Nassar et al., J. Phys. D: Appl. Phys. 37 (2004) 1904, doi:10.1088/0022-3727/37/14/005.",
+    "C. O. Laux and C. H. Kruger, J. Quant. Spectrosc. Radiat. Transfer 48 (1992) 9–24, doi:10.1016/0022-4073(92)90003-M.",
+    "G. Faure and S. Shko'nik, J. Phys. D: Appl. Phys. 31 (1998) 1212, doi:10.1088/0022-3727/31/10/013."
+  ],
+  "originalFiles": [
+    { "name": "N2CB.db", "sha256": "af63d35c45415bb4d1f931a13a434b917271dde2cdeed0e85f70f20af9b4ba9b" },
+    { "name": "N2PlusBX.db", "sha256": "74660ba7f919838620f45de2a72bb025feb5c812e77dafe9829e213899f50d80" },
+    { "name": "data_sources.txt", "sha256": "3d524e382065a6c9f9bb053eb421bebd7814fb134ac50918a140c7751f026525" },
+    { "name": "LICENSE", "sha256": "9ca14f9de3c95005f5e7c9c02cdfbfb3f27c333ae4b91db3bc5e6773a4c6bbfd" }
+  ],
+  "filteredSourceSha256": "06e403732bce076c892b48b55c238bf20cc136d3fa0d59e62d1773e85a2a3b19"
+}

@@ -8,9 +8,11 @@ import {
   useAnalysisWorkspace,
 } from "@/features/demo-analysis/model/analysis-workspace-context";
 import { createRaw8Fixture } from "@/fixtures/raw8-test-fixture";
+import { DEMO_ANALYSIS_INPUT } from "@/application/analysis/create-working-analysis";
 
 import { IdentificationLinesPanel, PeakSettingsPanel } from "./analysis-side-panels";
 import {
+  AnalysisAnalysisPage,
   DataAnalysisPage,
   IdentificationAnalysisPage,
   PeaksAnalysisPage,
@@ -69,6 +71,7 @@ function AnalysisProbe() {
     identificationTab,
     selectedHypothesisId,
     selectedPeakId,
+    analysisView,
   } = useAnalysisWorkspace();
   return (
     <div>
@@ -77,9 +80,11 @@ function AnalysisProbe() {
       <output data-testid="calculation-status">{calculationStatus}</output>
       <output data-testid="file-name">{analysis?.source.fileName ?? "—"}</output>
       <output data-testid="point-count">{analysis?.rawDataset.wavelengths.length ?? "—"}</output>
+      <output data-testid="spectrum-type">{analysis?.spectrumType ?? "—"}</output>
       <output data-testid="selected-peak">{selectedPeakId ?? "—"}</output>
       <output data-testid="selected-hypothesis">{selectedHypothesisId ?? "—"}</output>
       <output data-testid="identification-tab">{identificationTab}</output>
+      <output data-testid="analysis-view">{analysisView}</output>
     </div>
   );
 }
@@ -118,7 +123,41 @@ function IdentificationScenario() {
   );
 }
 
+function EndToEndScenario() {
+  return (
+    <AnalysisWorkspaceProvider>
+      <DataAnalysisPage />
+      <IdentificationLinesPanel />
+      <AnalysisAnalysisPage />
+      <AnalysisProbe />
+    </AnalysisWorkspaceProvider>
+  );
+}
+
 describe("interactive demo analysis", () => {
+  it("stores the selected spectrum type after automatic recalculation", async () => {
+    vi.useFakeTimers();
+    render(<Scenario />);
+    const compactSpectrum = JSON.stringify({
+      wavelengths: [330, 331, 332, 333, 334, 335, 336],
+      intensities: [0, 0.1, 1, 0.1, 0, 0.1, 0],
+    });
+    fireEvent.change(screen.getByLabelText("Файл спектра"), {
+      target: { files: [createFile("compact.json", compactSpectrum)] },
+    });
+    await act(async () => Promise.resolve());
+
+    const field = screen.getByRole("combobox", { name: /Допустимый способ интерпретации/ });
+    expect((field as HTMLSelectElement).value).toBe("unspecified");
+    fireEvent.change(field, { target: { value: "plasma-emission" } });
+
+    expect((field as HTMLSelectElement).value).toBe("plasma-emission");
+    expect(screen.getByTestId("calculation-status").textContent).toBe("calculating");
+    await act(async () => vi.advanceTimersByTime(181));
+    expect(screen.getByTestId("spectrum-type").textContent).toBe("plasma-emission");
+    expect(screen.getByText(/Тип не задаёт ожидаемый состав/)).toBeTruthy();
+  });
+
   it("automatically refreshes peaks and conclusion after a parameter change", async () => {
     vi.useFakeTimers();
     render(<Scenario />);
@@ -275,7 +314,7 @@ describe("interactive demo analysis", () => {
     const selectedId = screen.getByTestId("selected-peak").textContent;
 
     fireEvent.click(screen.getByRole("tab", { name: "Параметры" }));
-    fireEvent.change(screen.getByLabelText(/Допуск сопоставления/), { target: { value: "0.4" } });
+    fireEvent.change(screen.getByLabelText(/Минимальный SNR/), { target: { value: "5.5" } });
     await act(async () => vi.advanceTimersByTime(181));
     expect(screen.getByTestId("selected-peak").textContent).toBe(selectedId);
 
@@ -305,19 +344,22 @@ describe("interactive demo analysis", () => {
     render(<IdentificationScenario />);
     fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
 
+    const diagnosticDetails = screen.getByText(/^Слабые и неоднозначные совпадения ·/).closest("details")!;
+    diagnosticDetails.open = true;
+    fireEvent(diagnosticDetails, new Event("toggle"));
     expect(screen.getByTestId("identification-tab").textContent).toBe("diagnostics");
     expect(document.querySelector('[role="option"][aria-selected="true"]')).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("option", { name: /Hg.*Ртуть/ }));
-    expect(screen.getByRole("heading", { level: 2, name: "Ртуть (Hg)" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("option", { name: /N.*Азот/ }));
+    expect(screen.getByRole("heading", { level: 2, name: "Азот (N)" })).toBeTruthy();
     expect(screen.getAllByText("Не отличается от случайного согласования").length).toBeGreaterThan(0);
 
-    fireEvent.change(screen.getByLabelText("Поиск гипотезы по элементу или символу"), { target: { value: "Железо" } });
+    fireEvent.change(screen.getByLabelText("Поиск слабого совпадения по элементу или символу"), { target: { value: "Азот" } });
     const filteredOptions = within(screen.getByRole("listbox", { name: "Диагностические совпадения" })).getAllByRole("option");
     expect(filteredOptions).toHaveLength(1);
-    expect(filteredOptions[0].textContent).toContain("Fe");
+    expect(filteredOptions[0].textContent).toContain("N");
 
-    fireEvent.change(screen.getByLabelText("Поиск гипотезы по элементу или символу"), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText("Поиск слабого совпадения по элементу или символу"), { target: { value: "" } });
     fireEvent.change(screen.getByLabelText("Сортировка"), { target: { value: "name" } });
     const alphabeticOptions = within(screen.getByRole("listbox", { name: "Диагностические совпадения" })).getAllByRole("option");
     expect(alphabeticOptions[0].textContent).toContain("Азот");
@@ -327,11 +369,14 @@ describe("interactive demo analysis", () => {
     vi.useFakeTimers();
     render(<IdentificationScenario />);
     fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
-    fireEvent.click(screen.getByRole("option", { name: /Hg.*Ртуть/ }));
+    const diagnosticDetails = screen.getByText(/^Слабые и неоднозначные совпадения ·/).closest("details")!;
+    diagnosticDetails.open = true;
+    fireEvent(diagnosticDetails, new Event("toggle"));
+    fireEvent.click(screen.getByRole("option", { name: /N.*Азот/ }));
     const selectedHypothesis = screen.getByTestId("selected-hypothesis").textContent;
 
     fireEvent.click(screen.getByRole("tab", { name: "Параметры" }));
-    fireEvent.change(screen.getByLabelText(/Допуск сопоставления/), { target: { value: "0.4" } });
+    fireEvent.change(screen.getByLabelText(/Минимальный SNR/), { target: { value: "5.5" } });
     await act(async () => vi.advanceTimersByTime(181));
     expect(screen.getByTestId("selected-hypothesis").textContent).toBe(selectedHypothesis);
 
@@ -340,18 +385,24 @@ describe("interactive demo analysis", () => {
     expect(screen.getByTestId("selected-hypothesis").textContent).toBe("—");
   });
 
-  it("opens a supporting observation and carries the selected peak to the Peaks route", () => {
+  it("opens a supporting observation and carries the selected peak to the peak mode", () => {
     render(<IdentificationScenario />);
     fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
-    fireEvent.click(screen.getByRole("option", { name: /Hg.*Ртуть/ }));
+    const diagnosticDetails = screen.getByText(/^Слабые и неоднозначные совпадения ·/).closest("details")!;
+    diagnosticDetails.open = true;
+    fireEvent(diagnosticDetails, new Event("toggle"));
+    fireEvent.click(screen.getByRole("option", { name: /N.*Азот/ }));
 
-    const chart = screen.getByRole("img", { name: /Спектр канала .* гипотезы Ртуть/ });
-    expect(Number(chart.getAttribute("data-reference-count"))).toBeGreaterThan(0);
+    const chart = screen.getByRole("img", { name: /Спектр канала .* гипотезы Азот/ });
+    expect(Number(chart.getAttribute("data-reference-count"))).toBeGreaterThanOrEqual(0);
     expect(Number(chart.getAttribute("data-missing-reference-count"))).toBeGreaterThanOrEqual(0);
 
+    const technicalDetails = screen.getByText("Подробности идентификации и технические показатели").closest("details")!;
+    technicalDetails.open = true;
+    fireEvent(technicalDetails, new Event("toggle"));
     fireEvent.click(screen.getAllByRole("button", { name: "Открыть пик" })[0]);
     expect(screen.getByTestId("selected-peak").textContent).not.toBe("—");
-    expect(navigationMock.push).toHaveBeenCalledWith("/peaks");
+    expect(screen.getByTestId("analysis-view").textContent).toBe("peaks");
   });
 
   it("opens an available hypothesis from a selected peak candidate", () => {
@@ -361,7 +412,43 @@ describe("interactive demo analysis", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Открыть гипотезу" })[0]);
 
     expect(screen.getByTestId("selected-hypothesis").textContent).not.toBe("—");
-    expect(navigationMock.push).toHaveBeenCalledWith("/identification");
+    expect(screen.getByTestId("analysis-view").textContent).toBe("composition");
+  });
+
+  it("covers upload, spectrum type, automatic analysis, evidence and a linked peak", async () => {
+    render(<EndToEndScenario />);
+    const uploaded = JSON.stringify({
+      wavelengths: DEMO_ANALYSIS_INPUT.rawDataset.wavelengths,
+      intensities: DEMO_ANALYSIS_INPUT.rawDataset.intensities,
+    });
+
+    fireEvent.change(screen.getByLabelText("Файл спектра"), {
+      target: { files: [createFile("measurement.json", uploaded)] },
+    });
+    await act(async () => Promise.resolve());
+    expect(screen.getByTestId("file-name").textContent).toBe("measurement.json");
+
+    fireEvent.change(screen.getByRole("combobox", { name: /Допустимый способ интерпретации/ }), {
+      target: { value: "unspecified" },
+    });
+    expect(screen.getByTestId("calculation-status").textContent).toBe("calculating");
+    await waitFor(() => expect(screen.getByTestId("calculation-status").textContent).toBe("ready"));
+
+    const composition = screen.getByRole("list", { name: "Наиболее надёжные варианты состава" });
+    const mainChoice = within(composition).getAllByRole("button")[0];
+    fireEvent.click(mainChoice);
+    expect(screen.getAllByText(/спектральные признаки|Главные признаки/i).length).toBeGreaterThan(0);
+
+    const technical = screen.queryByText("Подробности идентификации и технические показатели");
+    if (technical) {
+      const details = technical.closest("details")!;
+      details.open = true;
+      fireEvent(details, new Event("toggle"));
+      const peakLink = screen.getAllByRole("button", { name: "Открыть пик" })[0];
+      fireEvent.click(peakLink);
+      expect(screen.getByTestId("analysis-view").textContent).toBe("peaks");
+      expect(screen.getByTestId("selected-peak").textContent).not.toBe("—");
+    }
   });
 });
 

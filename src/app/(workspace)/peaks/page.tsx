@@ -1,5 +1,6 @@
-import { PeaksAnalysisPage } from "@/features/demo-analysis/components/analysis-pages";
+import type { Route } from "next";
+import { redirect } from "next/navigation";
 
 export default function PeaksPage() {
-  return <PeaksAnalysisPage />;
+  redirect("/analysis" as Route);
 }

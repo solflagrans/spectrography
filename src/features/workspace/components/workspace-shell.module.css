@@ -342,6 +342,10 @@
     border-bottom: 1px solid var(--color-border-default);
   }
 
+  .analysisLeftPanel {
+    display: none;
+  }
+
   .canvas {
     padding: var(--spacing-md);
   }

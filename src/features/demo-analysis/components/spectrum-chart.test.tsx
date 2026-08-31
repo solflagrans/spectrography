@@ -37,6 +37,7 @@ vi.mock("echarts/components", () => ({
   DataZoomInsideComponent: {},
   DataZoomSliderComponent: {},
   GridComponent: {},
+  MarkAreaComponent: {},
   MarkLineComponent: {},
   TooltipComponent: {},
 }));
@@ -65,13 +66,25 @@ const match = {
   wavelengthType: "observed" as const,
   wavelengthMedium: "air" as const,
   delta: -0.05,
+  adaptiveToleranceNm: 0.2,
+  combinedUncertaintyNm: 0.08,
+  normalizedDelta: 0.25,
+  toleranceCapped: false,
+  uncertainty: { gridSamplingNm: 0.03, spectralResolutionNm: 0.03, peakWidthNm: 0.02, peakPositionNm: 0.03, referenceLineNm: 0, calibrationNm: 0.05 },
 };
 const peak: AnalyzedPeak = {
   id: "peak-point-2",
   channelId: "channel-1",
   sourceIndex: 1,
   index: 1,
+  sampledWavelength: 401,
+  refinedWavelength: 401,
   wavelength: 401,
+  refinementOffsetNm: 0,
+  localGridStepNm: 1,
+  positionUncertaintyNm: 0.29,
+  positionMethod: "sample-maximum",
+  positionRefined: false,
   rawIntensity: 240,
   intensity: 0.8,
   prominence: 0.62,
@@ -87,6 +100,7 @@ const palette: SpectrumChartPalette = {
   threshold: "#b86800",
   reference: "#5856d6",
   missingReference: "#8a96a3",
+  region: "#5856d6",
   text: "#546273",
   border: "#dce0e5",
   surface: "#ffffff",
@@ -180,6 +194,28 @@ describe("spectrum chart configuration", () => {
     ]);
     expect(series[1].markLine?.data?.[0].lineStyle).toMatchObject({ type: "solid", color: palette.reference });
     expect(series[2].markLine?.data?.[0].lineStyle).toMatchObject({ type: "dashed", color: palette.missingReference, opacity: 0.34 });
+  });
+
+  it("highlights molecular evidence as wavelength regions", () => {
+    const option = createSpectrumChartOption(
+      {
+        preparedDataset,
+        highlightedRegions: [{ label: "N₂ region", minimum: 400.2, maximum: 401.8 }],
+      },
+      new Set(["prepared", "regions"]),
+      palette,
+      FULL_SPECTRUM_ZOOM,
+    );
+    const series = option.series as Array<{
+      name: string;
+      markArea?: { data?: Array<Array<{ name?: string; xAxis: number }>> };
+    }>;
+
+    expect(series.map((item) => item.name)).toEqual(["Подготовленный спектр", "Характерные области"]);
+    expect(series[1].markArea?.data?.[0]).toEqual([
+      { name: "N₂ region", xAxis: 400.2 },
+      { xAxis: 401.8 },
+    ]);
   });
 
   it("shows real values for every visible layer and peak evidence in the tooltip", () => {

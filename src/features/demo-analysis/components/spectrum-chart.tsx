@@ -5,6 +5,7 @@ import {
   DataZoomInsideComponent,
   DataZoomSliderComponent,
   GridComponent,
+  MarkAreaComponent,
   MarkLineComponent,
   TooltipComponent,
 } from "echarts/components";
@@ -26,6 +27,7 @@ import type {
   SpectrumChartData,
   SpectrumChartLayer,
   SpectrumChartPalette,
+  SpectrumHighlightedRegion,
   SpectrumReferenceLine,
   SpectrumZoomRange,
 } from "./spectrum-chart-option";
@@ -34,12 +36,15 @@ registerCharts([
   LineChart,
   ScatterChart,
   GridComponent,
+  MarkAreaComponent,
   MarkLineComponent,
   TooltipComponent,
   DataZoomInsideComponent,
   DataZoomSliderComponent,
   CanvasRenderer,
 ]);
+
+const zoomRangesBySource = new Map<string, SpectrumZoomRange>();
 
 interface SpectrumChartProps {
   readonly rawDataset?: SpectrumDataset;
@@ -53,6 +58,7 @@ interface SpectrumChartProps {
   readonly thresholdDataset?: SpectrumDataset;
   readonly referenceLines?: readonly SpectrumReferenceLine[];
   readonly missingReferenceLines?: readonly SpectrumReferenceLine[];
+  readonly highlightedRegions?: readonly SpectrumHighlightedRegion[];
   readonly showLayerControls?: boolean;
   readonly compact?: boolean;
   readonly fill?: boolean;
@@ -65,6 +71,7 @@ const layerLabels: Record<SpectrumChartLayer, string> = {
   peaks: "Пики",
   referenceLines: "Линии",
   missingReferenceLines: "Без пика",
+  regions: "Области",
 };
 
 export function SpectrumChart({
@@ -79,6 +86,7 @@ export function SpectrumChart({
   thresholdDataset,
   referenceLines,
   missingReferenceLines,
+  highlightedRegions,
   showLayerControls = true,
   compact = false,
   fill = false,
@@ -86,7 +94,8 @@ export function SpectrumChart({
   const chartElement = useRef<HTMLDivElement>(null);
   const chartInstance = useRef<ReturnType<typeof init> | null>(null);
   const previousSourceKey = useRef<string | undefined>(undefined);
-  const zoomRange = useRef<SpectrumZoomRange>(FULL_SPECTRUM_ZOOM);
+  const zoomRange = useRef<SpectrumZoomRange>(zoomRangesBySource.get(sourceKey) ?? FULL_SPECTRUM_ZOOM);
+  const activeSourceKey = useRef(sourceKey);
   const onPeakSelectRef = useRef(onPeakSelect);
   const [visibleLayers, setVisibleLayers] = useState<ReadonlySet<SpectrumChartLayer>>(
     () => new Set(defaultVisibleLayers),
@@ -99,7 +108,8 @@ export function SpectrumChart({
     thresholdDataset,
     referenceLines,
     missingReferenceLines,
-  }), [missingReferenceLines, peaks, preparedDataset, rawDataset, referenceLines, selectedPeakId, thresholdDataset]);
+    highlightedRegions,
+  }), [highlightedRegions, missingReferenceLines, peaks, preparedDataset, rawDataset, referenceLines, selectedPeakId, thresholdDataset]);
   const availableLayers = getAvailableLayers(chartData);
 
   useEffect(() => {
@@ -113,6 +123,7 @@ export function SpectrumChart({
     chartInstance.current = chart;
     const handleDataZoom = (event: unknown) => {
       zoomRange.current = readZoomRange(event, zoomRange.current);
+      zoomRangesBySource.set(activeSourceKey.current, zoomRange.current);
     };
     const handleChartClick = (event: unknown) => {
       const peakId = getPeakIdFromChartEvent(event);
@@ -139,12 +150,11 @@ export function SpectrumChart({
     const chart = chartInstance.current;
     if (!chart) return;
 
-    zoomRange.current = preserveZoomForSource(
-      zoomRange.current,
-      previousSourceKey.current,
-      sourceKey,
-    );
+    zoomRange.current = previousSourceKey.current && previousSourceKey.current !== sourceKey
+      ? zoomRangesBySource.get(sourceKey) ?? FULL_SPECTRUM_ZOOM
+      : preserveZoomForSource(zoomRange.current, previousSourceKey.current, sourceKey);
     previousSourceKey.current = sourceKey;
+    activeSourceKey.current = sourceKey;
     chart.setOption(
       createSpectrumChartOption(chartData, visibleLayers, getChartPalette(), zoomRange.current),
       { replaceMerge: ["series", "yAxis", "dataZoom"] },
@@ -162,6 +172,7 @@ export function SpectrumChart({
 
   const resetZoom = () => {
     zoomRange.current = FULL_SPECTRUM_ZOOM;
+    zoomRangesBySource.set(activeSourceKey.current, FULL_SPECTRUM_ZOOM);
     chartInstance.current?.dispatchAction({
       type: "dataZoom",
       start: FULL_SPECTRUM_ZOOM.start,
@@ -225,6 +236,7 @@ function getAvailableLayers(data: SpectrumChartData): readonly SpectrumChartLaye
     ...(data.peaks !== undefined ? ["peaks" as const] : []),
     ...(data.referenceLines !== undefined ? ["referenceLines" as const] : []),
     ...(data.missingReferenceLines !== undefined ? ["missingReferenceLines" as const] : []),
+    ...(data.highlightedRegions !== undefined ? ["regions" as const] : []),
   ];
 }
 
@@ -241,6 +253,7 @@ function getChartPalette(): SpectrumChartPalette {
     threshold: token("--color-status-warning", "#b86800"),
     reference: token("--color-data-series-1", "#5856d6"),
     missingReference: token("--color-text-secondary", "#8a96a3"),
+    region: token("--color-data-series-1", "#5856d6"),
     text: token("--color-text-secondary", "#546273"),
     border: token("--color-border-default", "#dce0e5"),
     surface: token("--color-background-surface", "#ffffff"),

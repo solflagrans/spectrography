@@ -17,6 +17,7 @@ export const diagnosticReasonLabels: Record<RejectedHypothesisReason, string> = 
   "random-like-agreement": "Не отличается от случайного согласования",
   "insufficient-characteristic-lines": "Недостаточно характерных линий в диапазоне",
   "missing-key-characteristic-lines": "Ключевые характерные линии не найдены",
+  "weak-evidence-dominated": "Результат построен преимущественно на слабых совпадениях",
 };
 
 export function getIdentificationEntries(
@@ -63,11 +64,12 @@ function compareEntries(
   sort: IdentificationSort,
 ): number {
   if (sort === "characteristic") {
-    return right.hypothesis.foundCharacteristicLineCount - left.hypothesis.foundCharacteristicLineCount
+    return right.hypothesis.strongCharacteristicGroupCount - left.hypothesis.strongCharacteristicGroupCount
+      || right.hypothesis.reliableCharacteristicGroupCount - left.hypothesis.reliableCharacteristicGroupCount
       || left.rank - right.rank;
   }
   if (sort === "independent") {
-    return right.hypothesis.independentMatchedLineCount - left.hypothesis.independentMatchedLineCount
+    return right.hypothesis.independentMatchedGroupCount - left.hypothesis.independentMatchedGroupCount
       || left.rank - right.rank;
   }
   if (sort === "deviation") {

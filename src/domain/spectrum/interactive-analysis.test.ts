@@ -48,6 +48,24 @@ describe("robust spectrum preparation", () => {
 });
 
 describe("SNR-aware peak detection", () => {
+  it("refines a high-quality maximum from the local profile without claiming sub-grid certainty", () => {
+    const wavelengths = Array.from({ length: 21 }, (_, index) => index * 0.2);
+    const trueCenter = 2.13;
+    const intensities = wavelengths.map((wavelength) => Math.exp(-4 * Math.log(2) * Math.pow((wavelength - trueCenter) / 0.7, 2)));
+    const result = detectInteractivePeaks({
+      channelId: "refined",
+      preparedDataset: { wavelengths, intensities },
+      rawDataset: { wavelengths, intensities },
+      noiseDataset: { wavelengths, intensities: intensities.map(() => 0.01) },
+      sourceIndices: wavelengths.map((_, index) => index),
+    }, { minimumSnr: 5, prominence: 0.2, minimumWidth: 0.2, maximumWidth: 2, minimumDistance: 0.2 });
+    const peak = result.peaks[0];
+
+    expect(peak.positionRefined).toBe(true);
+    expect(Math.abs(peak.refinedWavelength - trueCenter)).toBeLessThan(Math.abs(peak.sampledWavelength - trueCenter));
+    expect(peak.positionUncertaintyNm).toBeGreaterThanOrEqual(peak.localGridStepNm / Math.sqrt(12) - 1e-8);
+  });
+
   it("filters peaks by SNR, physical width and local prominence", () => {
     const wavelengths = [0, 0.4, 1, 1.8, 2.7, 3.9, 5.2, 6.8, 8.5];
     const intensities = [0, 0.1, 0.6, 1, 0.55, 0.05, 0.08, 0.2, 0.02];
@@ -57,7 +75,7 @@ describe("SNR-aware peak detection", () => {
       rawDataset: { wavelengths, intensities: intensities.map((value) => value * 100) },
       noiseDataset: { wavelengths, intensities: new Array(wavelengths.length).fill(0.05) },
       sourceIndices: wavelengths.map((_, index) => index),
-    }, { minimumSnr: 5, prominence: 0.2, minimumWidth: 0.5, maximumWidth: 4, minimumDistance: 0.5, tolerance: 0.2 });
+    }, { minimumSnr: 5, prominence: 0.2, minimumWidth: 0.5, maximumWidth: 4, minimumDistance: 0.5 });
     expect(result.peaks).toHaveLength(1);
     expect(result.peaks[0]).toMatchObject({ channelId: "c1", sourceIndex: 3, rawIntensity: 100 });
     expect(result.peaks[0].snr).toBe(20);
@@ -73,7 +91,7 @@ describe("SNR-aware peak detection", () => {
       rawDataset: { wavelengths, intensities },
       noiseDataset: { wavelengths, intensities: [0.05, 0.05, 0.05, 0.05, 0.05] },
       sourceIndices: [0, 1, 2, 3, 4],
-    }, { minimumSnr: 3, prominence: 0, minimumWidth: 0, maximumWidth: 10, minimumDistance: 0.1, tolerance: 0.2 });
+    }, { minimumSnr: 3, prominence: 0, minimumWidth: 0, maximumWidth: 10, minimumDistance: 0.1 });
     expect(result.peaks).toHaveLength(0);
   });
 
@@ -85,7 +103,7 @@ describe("SNR-aware peak detection", () => {
       rawDataset: { wavelengths, intensities: [0, 10, 0] },
       noiseDataset: { wavelengths, intensities: [0, 0, 0] },
       sourceIndices: [0, 1, 2],
-    }, { minimumSnr: 5, prominence: 0.1, minimumWidth: 0, maximumWidth: 10, minimumDistance: 0.1, tolerance: 0.2 });
+    }, { minimumSnr: 5, prominence: 0.1, minimumWidth: 0, maximumWidth: 10, minimumDistance: 0.1 });
     expect(result.peaks).toHaveLength(1);
     expect(result.peaks[0].snr).toBe(Number.POSITIVE_INFINITY);
   });
@@ -96,10 +114,11 @@ describe("interactive analysis compatibility", () => {
     const source = { wavelengths: [502, 500, 501, 503, 504], intensities: [0, 0, 10, 0, 0] };
     const parameters = {
       processing: { ...DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.processing, smoothingWindow: 1, baselineSmoothness: 100, noiseWindowNm: 0.4, normalization: "none" as const },
-      peakSearch: { ...DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.peakSearch, minimumSnr: 0, prominence: 1, minimumWidth: 0, maximumWidth: 4, minimumDistance: 0.1, tolerance: 0.2 },
+      peakSearch: { ...DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.peakSearch, minimumSnr: 0, prominence: 1, minimumWidth: 0, maximumWidth: 4, minimumDistance: 0.1 },
+      wavelengthCalibration: DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.wavelengthCalibration,
     };
     const first = runInteractiveSpectrumAnalysis(source, builtinSpectralLibraryIndex, parameters);
-    const second = runInteractiveSpectrumAnalysis(source, builtinSpectralLibraryIndex, { ...parameters, peakSearch: { ...parameters.peakSearch, tolerance: 0.4 } });
+    const second = runInteractiveSpectrumAnalysis(source, builtinSpectralLibraryIndex, { ...parameters, wavelengthCalibration: { allowAutomaticCorrection: false } });
     expect(first.peaks).toHaveLength(1);
     expect(first.peaks[0]).toMatchObject({ id: "peak-channel-1-point-3", sourceIndex: 2, wavelength: 501 });
     expect(second.peaks[0].id).toBe(first.peaks[0].id);

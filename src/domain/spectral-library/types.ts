@@ -58,7 +58,7 @@ export interface SpectralLineBibliography {
 }
 
 export interface SpectralLineSource {
-  readonly name: "NIST ASD";
+  readonly name: "NIST ASD" | "Synthetic verification fixture";
   readonly datasetVersion: string;
   readonly retrievedAt: string;
 }

@@ -12,9 +12,10 @@ describe("createAnalysisSession", () => {
     });
 
     expect(session).toMatchObject({
-      schemaVersion: 1,
+      schemaVersion: 3,
       id: "session-1",
       status: "empty",
+      spectrumType: "unspecified",
       dataset: null,
       analysisResult: null,
       spectralLibraryVersion: BUILTIN_LIBRARY_VERSION,

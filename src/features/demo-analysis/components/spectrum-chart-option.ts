@@ -2,11 +2,17 @@ import type { EChartsCoreOption } from "echarts/core";
 
 import type { AnalyzedPeak, SpectrumDataset } from "@/domain/spectrum";
 
-export type SpectrumChartLayer = "raw" | "prepared" | "threshold" | "peaks" | "referenceLines" | "missingReferenceLines";
+export type SpectrumChartLayer = "raw" | "prepared" | "threshold" | "peaks" | "referenceLines" | "missingReferenceLines" | "regions";
 
 export interface SpectrumReferenceLine {
   readonly label: string;
   readonly wavelength: number;
+}
+
+export interface SpectrumHighlightedRegion {
+  readonly label: string;
+  readonly minimum: number;
+  readonly maximum: number;
 }
 
 export interface SpectrumChartData {
@@ -17,6 +23,7 @@ export interface SpectrumChartData {
   readonly thresholdDataset?: SpectrumDataset;
   readonly referenceLines?: readonly SpectrumReferenceLine[];
   readonly missingReferenceLines?: readonly SpectrumReferenceLine[];
+  readonly highlightedRegions?: readonly SpectrumHighlightedRegion[];
 }
 
 export interface SpectrumChartPalette {
@@ -26,6 +33,7 @@ export interface SpectrumChartPalette {
   readonly threshold: string;
   readonly reference: string;
   readonly missingReference: string;
+  readonly region: string;
   readonly text: string;
   readonly border: string;
   readonly surface: string;
@@ -45,6 +53,7 @@ export const SPECTRUM_SERIES_NAMES = {
   peaks: "Найденные пики",
   referenceLines: "Справочные линии",
   missingReferenceLines: "Характерные линии без пика",
+  regions: "Характерные области",
 } as const;
 
 export function createSpectrumChartOption(
@@ -59,7 +68,8 @@ export function createSpectrumChartOption(
   const peaksVisible = visibleLayers.has("peaks") && data.peaks !== undefined;
   const referenceLinesVisible = visibleLayers.has("referenceLines") && data.referenceLines !== undefined;
   const missingReferenceLinesVisible = visibleLayers.has("missingReferenceLines") && data.missingReferenceLines !== undefined;
-  const preparedAxisRequired = preparedVisible || thresholdVisible || peaksVisible || referenceLinesVisible || missingReferenceLinesVisible;
+  const regionsVisible = visibleLayers.has("regions") && data.highlightedRegions !== undefined;
+  const preparedAxisRequired = preparedVisible || thresholdVisible || peaksVisible || referenceLinesVisible || missingReferenceLinesVisible || regionsVisible;
   const dualAxis = rawVisible && preparedAxisRequired;
   const preparedAxisIndex = dualAxis ? 1 : 0;
   const [minimumWavelength, maximumWavelength] = getWavelengthExtent(data);
@@ -188,6 +198,29 @@ export function createSpectrumChartOption(
           lineStyle: { color: palette.missingReference, opacity: 0.34, type: "dashed", width: 1 },
           label: { show: false },
         })),
+      },
+      z: 1,
+    });
+  }
+
+  if (regionsVisible && data.highlightedRegions) {
+    series.push({
+      id: "highlighted-regions",
+      name: SPECTRUM_SERIES_NAMES.regions,
+      type: "line",
+      data: [],
+      yAxisIndex: preparedAxisIndex,
+      showSymbol: false,
+      silent: true,
+      lineStyle: { opacity: 0 },
+      markArea: {
+        silent: true,
+        itemStyle: { color: withAlpha(palette.region, 0.12) },
+        label: { color: palette.region, fontSize: 10, position: "insideTop" },
+        data: data.highlightedRegions.map((region) => [
+          { name: region.label, xAxis: region.minimum },
+          { xAxis: region.maximum },
+        ]),
       },
       z: 1,
     });

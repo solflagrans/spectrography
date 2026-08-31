@@ -1,7 +1,6 @@
 "use client";
 
 import { ArrowRight, CircleAlert, LoaderCircle, RotateCcw, Search } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
@@ -22,6 +21,7 @@ export function ProcessingSettingsPanel() {
     parameterError,
     resetProcessingParameters,
     updateProcessingParameters,
+    updateWavelengthCalibrationParameters,
   } = useAnalysisWorkspace();
 
   return (
@@ -83,6 +83,19 @@ export function ProcessingSettingsPanel() {
             <option value="none">Без нормализации</option>
           </select>
         </label>
+      </section>
+      <section className={styles.sideParameterGroup}>
+        <h3>Шкала длин волн</h3>
+        <label className={styles.selectField} htmlFor="automatic-wavelength-calibration">
+          <span>Автоматическая коррекция</span>
+          <input
+            id="automatic-wavelength-calibration"
+            type="checkbox"
+            checked={parameters.wavelengthCalibration.allowAutomaticCorrection}
+            onChange={(event) => updateWavelengthCalibrationParameters({ allowAutomaticCorrection: event.target.checked })}
+          />
+        </label>
+        <p>Применяется только после проверки на независимых опорных признаках; исходный спектр не меняется.</p>
       </section>
       <CalculationFeedback status={calculationStatus} error={parameterError} />
     </div>
@@ -191,16 +204,7 @@ export function PeakSettingsPanel() {
           </section>
           <section className={styles.sideParameterGroup}>
             <h3>Сопоставление линий</h3>
-            <NumberParameter
-              id="matching-tolerance"
-              label="Допуск сопоставления"
-              unit="нм"
-              value={parameters.peakSearch.tolerance}
-              min={0.01}
-              max={5}
-              step={0.01}
-              onChange={(value) => updatePeakSearchParameters({ tolerance: value })}
-            />
+            <p>Допуск рассчитывается отдельно для каждого пика и линии по разрешению, сетке, SNR и неопределённости калибровки.</p>
           </section>
           <CalculationFeedback status={calculationStatus} error={parameterError} />
         </div>
@@ -221,6 +225,11 @@ export function PeakSettingsPanel() {
   );
 }
 
+export function AnalysisSidePanel() {
+  const { analysisView } = useAnalysisWorkspace();
+  return analysisView === "composition" ? <IdentificationLinesPanel /> : <PeakSettingsPanel />;
+}
+
 function SelectedPeakContent({
   analysis,
   selectedPeak,
@@ -228,8 +237,7 @@ function SelectedPeakContent({
   analysis: ReturnType<typeof useAnalysisWorkspace>["analysis"];
   selectedPeak: NonNullable<ReturnType<typeof useAnalysisWorkspace>["analysis"]>["peaks"][number] | null;
 }>) {
-  const router = useRouter();
-  const { selectHypothesisForElement } = useAnalysisWorkspace();
+  const { selectHypothesisForElement, setAnalysisView } = useAnalysisWorkspace();
   if (!analysis?.peaks.length) {
     return <PanelEmptyState>При текущих параметрах пики не найдены.</PanelEmptyState>;
   }
@@ -244,6 +252,9 @@ function SelectedPeakContent({
       <h2 className={styles.sidePanelTitle}>Пик {selectedPeak.wavelength.toFixed(2)} нм</h2>
       <dl className={styles.selectedPeakDetails}>
         <PeakDetail label="Длина волны" value={`${selectedPeak.wavelength.toFixed(3)} нм`} />
+        <PeakDetail label="Исходная точка сетки" value={`${selectedPeak.sampledWavelength.toFixed(3)} нм`} />
+        <PeakDetail label="Уточнение максимума" value={selectedPeak.positionRefined ? `${selectedPeak.refinementOffsetNm >= 0 ? "+" : ""}${selectedPeak.refinementOffsetNm.toFixed(4)} нм` : "Не применялось"} />
+        <PeakDetail label="Неопределённость положения" value={`≥ ${selectedPeak.positionUncertaintyNm.toFixed(4)} нм`} />
         <PeakDetail label="Исходная интенсивность" value={formatValue(rawIntensity, 4)} />
         <PeakDetail label="Подготовленная интенсивность" value={formatValue(selectedPeak.intensity, 4)} />
         <PeakDetail label="Выраженность" value={formatValue(selectedPeak.prominence, 4)} />
@@ -268,12 +279,13 @@ function SelectedPeakContent({
                   <span>{formatCandidateLine(candidate)} нм</span>
                   <code>{formatSigned(candidate.delta)} нм</code>
                 </div>
+                <small>Адаптивный допуск ±{candidate.adaptiveToleranceNm.toFixed(3)} нм</small>
                 {hasHypothesisForElement(analysis, candidate.elementSymbol) ? (
                   <button
                     className={styles.candidateLink}
                     type="button"
                     onClick={() => {
-                      if (selectHypothesisForElement(candidate.elementSymbol)) router.push("/identification");
+                      if (selectHypothesisForElement(candidate.elementSymbol)) setAnalysisView("composition");
                     }}
                   >
                     Открыть гипотезу
@@ -287,7 +299,7 @@ function SelectedPeakContent({
           </ol>
         ) : (
           <PanelEmptyState>
-            В пределах допуска ±{analysis.parameters.peakSearch.tolerance.toFixed(2)} нм подходящих линий нет.
+            В пределах рассчитанных для этого пика адаптивных допусков подходящих линий нет.
           </PanelEmptyState>
         )}
       </section>
@@ -322,60 +334,95 @@ export function IdentificationLinesPanel() {
       </div>
     );
   }
-  const entries = getIdentificationEntries(analysis, identificationTab, query, sort);
+  const hypotheses = getIdentificationEntries(analysis, "hypotheses");
+  const diagnostics = getIdentificationEntries(analysis, "diagnostics", query, sort);
+  const molecules = analysis.molecularHypotheses;
 
   return (
     <div className={`${styles.sidePanelContent} ${styles.identificationMaster}`}>
-      <h2 className={styles.sidePanelTitle}>Гипотезы элементов</h2>
-      <div className={styles.sidePanelTabs} role="tablist" aria-label="Списки идентификации">
-        <button id="identification-hypotheses-tab" type="button" role="tab" aria-selected={identificationTab === "hypotheses"} aria-controls="identification-list-panel" onClick={() => setIdentificationTab("hypotheses")}>Гипотезы · {analysis.hypotheses.length}</button>
-        <button id="identification-diagnostics-tab" type="button" role="tab" aria-selected={identificationTab === "diagnostics"} aria-controls="identification-list-panel" onClick={() => setIdentificationTab("diagnostics")}>Диагностика · {analysis.rejectedHypotheses.length}</button>
-      </div>
-      <label className={styles.hypothesisSearch} htmlFor="hypothesis-search">
-        <Search size={14} aria-hidden="true" />
-        <input id="hypothesis-search" type="search" aria-label="Поиск гипотезы по элементу или символу" placeholder="Элемент или символ" value={query} onChange={(event) => setQuery(event.target.value)} />
-      </label>
-      <label className={styles.hypothesisSort} htmlFor="hypothesis-sort">
-        <span>Сортировка</span>
-        <select id="hypothesis-sort" value={sort} onChange={(event) => setSort(event.target.value as IdentificationSort)}>
-          <option value="ranking">Автоматическое ранжирование</option>
-          <option value="characteristic">Характерные линии</option>
-          <option value="independent">Независимые совпадения</option>
-          <option value="deviation">Среднее отклонение</option>
-          <option value="name">Название</option>
-        </select>
-      </label>
-      <div id="identification-list-panel" role="tabpanel" aria-labelledby={identificationTab === "hypotheses" ? "identification-hypotheses-tab" : "identification-diagnostics-tab"}>
-        {entries.length ? (
-          <div className={styles.hypothesisMasterList} role="listbox" aria-label={identificationTab === "hypotheses" ? "Основные гипотезы" : "Диагностические совпадения"}>
-            {entries.map((entry) => (
-              <button key={entry.id} type="button" role="option" aria-selected={selectedHypothesisId === entry.id} className={styles.hypothesisMasterItem} onClick={() => selectHypothesis(entry.id, identificationTab)}>
+      <h2 className={styles.sidePanelTitle}>Обнаруженный состав</h2>
+      {molecules.length ? (
+        <div className={styles.hypothesisMasterList} role="listbox" aria-label="Обнаруженные молекулы">
+          {molecules.map((hypothesis) => (
+            <button
+              key={hypothesis.id}
+              type="button"
+              role="option"
+              aria-selected={selectedHypothesisId === hypothesis.id}
+              className={styles.hypothesisMasterItem}
+              onClick={() => selectHypothesis(hypothesis.id, "hypotheses")}
+            >
+              <span className={styles.hypothesisMasterHeading}>
+                <strong>{hypothesis.formula}</strong>
+                <span>{hypothesis.displayName}</span>
+                <code>полоса</code>
+              </span>
+              <span className={styles.hypothesisMasterMetrics}>
+                <span>Поддержано участков {hypothesis.supportedRegionIds.length}</span>
+                <span>Общее смещение {formatSigned(hypothesis.commonShiftNm)} нм</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {hypotheses.length ? (
+        <div className={styles.hypothesisMasterList} role="listbox" aria-label="Основные гипотезы">
+          {hypotheses.map((entry) => (
+            <button key={entry.id} type="button" role="option" aria-selected={selectedHypothesisId === entry.id} className={styles.hypothesisMasterItem} onClick={() => selectHypothesis(entry.id, "hypotheses")}>
+              <span className={styles.hypothesisMasterHeading}>
+                <strong>{entry.hypothesis.symbol}</strong>
+                <span>{entry.hypothesis.name}</span>
+                <code>{entry.hypothesis.reliability === "tentative" ? "осторожно" : `#${entry.rank}`}</code>
+              </span>
+              <span className={styles.hypothesisMasterMetrics}>
+                <span>Сильные группы {entry.hypothesis.strongCharacteristicGroupCount}</span>
+                <span>Качественные {entry.hypothesis.reliableCharacteristicGroupCount}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      ) : <PanelEmptyState>Надёжных гипотез нет. Слабые совпадения доступны в подробностях.</PanelEmptyState>}
+
+      <details
+        className={styles.identificationDisclosure}
+        open={identificationTab === "diagnostics"}
+        onToggle={(event) => setIdentificationTab(event.currentTarget.open ? "diagnostics" : "hypotheses")}
+      >
+        <summary>Слабые и неоднозначные совпадения · {analysis.rejectedHypotheses.length}</summary>
+        <label className={styles.hypothesisSearch} htmlFor="hypothesis-search">
+          <Search size={14} aria-hidden="true" />
+          <input id="hypothesis-search" type="search" aria-label="Поиск слабого совпадения по элементу или символу" placeholder="Элемент или символ" value={query} onChange={(event) => setQuery(event.target.value)} />
+        </label>
+        <label className={styles.hypothesisSort} htmlFor="hypothesis-sort">
+          <span>Сортировка</span>
+          <select id="hypothesis-sort" value={sort} onChange={(event) => setSort(event.target.value as IdentificationSort)}>
+            <option value="ranking">Автоматическое ранжирование</option>
+            <option value="characteristic">Качественные группы</option>
+            <option value="independent">Независимые группы</option>
+            <option value="deviation">Среднее отклонение</option>
+            <option value="name">Название</option>
+          </select>
+        </label>
+        {diagnostics.length ? (
+          <div className={styles.hypothesisMasterList} role="listbox" aria-label="Диагностические совпадения">
+            {diagnostics.map((entry) => (
+              <button key={entry.id} type="button" role="option" aria-selected={selectedHypothesisId === entry.id} className={styles.hypothesisMasterItem} onClick={() => selectHypothesis(entry.id, "diagnostics")}>
                 <span className={styles.hypothesisMasterHeading}>
                   <strong>{entry.hypothesis.symbol}</strong>
                   <span>{entry.hypothesis.name}</span>
-                  {identificationTab === "hypotheses" ? <code>#{entry.rank}</code> : null}
                 </span>
                 <span className={styles.hypothesisMasterMetrics}>
-                  <span>Характерные {entry.hypothesis.foundCharacteristicLineCount}/{entry.hypothesis.availableCharacteristicLineCount}</span>
-                  <span>Линии {entry.hypothesis.independentMatchedLineCount}</span>
-                  <span>Δ {entry.hypothesis.meanAbsoluteDelta.toFixed(3)} нм</span>
+                  <span>Качественные группы {entry.hypothesis.reliableCharacteristicGroupCount}</span>
+                  <span>Слабые {entry.hypothesis.weakEvidenceGroupCount}</span>
                 </span>
                 {entry.rejectionReasons.length ? <span className={styles.diagnosticReasonCompact}>{diagnosticReasonLabels[entry.rejectionReasons[0]]}</span> : null}
               </button>
             ))}
           </div>
         ) : (
-          <PanelEmptyState>
-            {query
-              ? "По вашему запросу элементы не найдены."
-              : identificationTab === "hypotheses"
-                ? analysis.rejectedHypotheses.length
-                  ? "Основных гипотез нет. Перейдите во вкладку «Диагностика», чтобы изучить слабые совпадения."
-                  : "Основные гипотезы не сформированы."
-                : "Диагностических совпадений нет."}
-          </PanelEmptyState>
+          <PanelEmptyState>{query ? "По вашему запросу элементы не найдены." : "Слабых совпадений нет."}</PanelEmptyState>
         )}
-      </div>
+      </details>
     </div>
   );
 }
