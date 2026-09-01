@@ -30,6 +30,7 @@ import type {
   AnalysisEvidenceLine,
   AnalyzedPeak,
   ElementInterpretation,
+  NewAnalysisSpectrumType,
   SpectralLineCandidate,
 } from "@/domain/spectrum";
 import { useAnalysisWorkspace } from "@/features/demo-analysis/model/analysis-workspace-context";
@@ -40,6 +41,10 @@ import {
 
 import styles from "./analysis-page.module.css";
 import { SpectrumChart } from "./spectrum-chart";
+
+const SPECTRUM_TYPE_OPTIONS = [
+  { value: "plasma-emission", label: "Эмиссия плазмы/разряда" },
+] as const satisfies readonly { value: NewAnalysisSpectrumType; label: string }[];
 
 export function DataAnalysisPage() {
   const { analysis, selectedSpectrumType, updateSpectrumType } = useAnalysisWorkspace();
@@ -110,10 +115,11 @@ export function DataAnalysisPage() {
           <select
             id="spectrum-type"
             value={selectedSpectrumType}
-            onChange={(event) => updateSpectrumType(event.target.value as "plasma-emission" | "unspecified")}
+            onChange={(event) => updateSpectrumType(event.target.value as NewAnalysisSpectrumType)}
           >
-            <option value="unspecified">Не указан</option>
-            <option value="plasma-emission">Эмиссия плазмы/разряда</option>
+            {SPECTRUM_TYPE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
           </select>
           <small>Тип не задаёт ожидаемый состав. Он только разрешает анализ формы молекулярных эмиссионных полос.</small>
         </label>
@@ -1093,7 +1099,10 @@ function PeakTable({
             <th>№</th>
             <th>Длина волны</th>
             <th>Интенсивность</th>
-            <th>Справочная линия</th>
+            <th>
+              <span>Ближайший кандидат</span>
+              <small className={styles.tableHeaderExplanation}>В пределах адаптивного допуска; не итоговая идентификация</small>
+            </th>
             <th>Отклонение</th>
           </tr>
         </thead>

@@ -126,10 +126,30 @@ describe("interactive analysis compatibility", () => {
 
   it("returns the unified channel model for the legacy single-dataset call", () => {
     const result = runInteractiveSpectrumAnalysis(demoSpectra.fe12, builtinSpectralLibraryIndex);
+    expect(result.spectrumType).toBe("plasma-emission");
+    expect(result.molecularAnalysisSkippedReason).toBeUndefined();
     expect(result.channels).toHaveLength(1);
     expect(result.channels[0].id).toBe("channel-1");
     expect(result.preparedDataset).toBe(result.channels[0].preparedDataset);
     expect(result.thresholdDataset.intensities).toHaveLength(result.preparedDataset.intensities.length);
+  });
+
+  it("gates only molecular matching when the legacy spectrum type is used", () => {
+    const plasma = runInteractiveSpectrumAnalysis(demoSpectra.fe12, builtinSpectralLibraryIndex);
+    const legacy = runInteractiveSpectrumAnalysis(
+      demoSpectra.fe12,
+      builtinSpectralLibraryIndex,
+      DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS,
+      "unspecified",
+    );
+
+    expect(legacy.molecularAnalysisSkippedReason).toBe("spectrum-type-not-supported");
+    expect(plasma.channels).toEqual(legacy.channels);
+    expect(plasma.suitability).toEqual(legacy.suitability);
+    expect(plasma.peaks).toEqual(legacy.peaks);
+    expect(plasma.hypotheses).toEqual(legacy.hypotheses);
+    expect(plasma.rejectedHypotheses).toEqual(legacy.rejectedHypotheses);
+    expect(plasma.unmatchedPeaks).toEqual(legacy.unmatchedPeaks);
   });
 
   it("is deterministic", () => {

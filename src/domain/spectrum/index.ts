@@ -18,6 +18,7 @@ export { IDENTIFICATION_QUALITY_PROFILE } from "./quality-profile";
 export { calculateAdaptiveTolerance, findLineCandidates, matchPeaks } from "./matching";
 export { assessChannelSuitability, combineSuitability } from "./measurement-quality";
 export { estimateInitialCalibrationUncertaintyNm, estimateWavelengthCalibration } from "./wavelength-calibration";
+export { DEFAULT_SPECTRUM_TYPE, normalizeSpectrumType } from "./types";
 export type {
   AnalysisEvidenceLine,
   AnalyzedPeak,
@@ -32,6 +33,7 @@ export type {
   IonizationEvidenceGroup,
   MatchedPeak,
   MultiChannelSpectrumInput,
+  NewAnalysisSpectrumType,
   PeakSearchParameters,
   RejectedElementHypothesis,
   RejectedHypothesisReason,

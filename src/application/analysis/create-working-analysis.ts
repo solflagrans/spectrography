@@ -7,6 +7,7 @@ import { BUILTIN_MOLECULAR_LIBRARY_VERSION } from "@/domain/molecular-spectrum";
 import {
   DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS,
   isDatasetSortedByWavelength,
+  normalizeSpectrumType,
   runInteractiveSpectrumAnalysis,
   validateDataset,
 } from "@/domain/spectrum";
@@ -14,6 +15,7 @@ import { getSpectrumStats, round } from "@/domain/spectrum/math";
 import type {
   InteractiveAnalysisParameters,
   InteractiveSpectrumAnalysis,
+  NewAnalysisSpectrumType,
   SpectrumChannelInput,
   SpectrumDataset,
   SpectrumStats,
@@ -50,7 +52,7 @@ export interface WorkingAnalysis extends InteractiveSpectrumAnalysis {
   readonly libraryLabel: string;
   readonly molecularLibraryVersion: string;
   readonly rawDataset: SpectrumDataset;
-  readonly spectrumType: SpectrumType;
+  readonly spectrumType: NewAnalysisSpectrumType;
   readonly rawStats: SpectrumStats;
   readonly wavelengthRange: {
     readonly minimum: number;
@@ -96,7 +98,7 @@ export function createWorkingAnalysis(
   const channelInput = input.channels
     ? { channels: input.channels.map((channel) => ({ ...channel, dataset: copyDataset(channel.dataset) })) }
     : { channels: [{ id: "channel-1", name: "Канал 1", dataset: rawDataset }] };
-  const spectrumType = input.spectrumType ?? "unspecified";
+  const spectrumType = normalizeSpectrumType(input.spectrumType);
   const result = runInteractiveSpectrumAnalysis(channelInput, builtinSpectralLibraryIndex, parameters, spectrumType);
   const minimumWavelength = Math.min(...rawDataset.wavelengths);
   const maximumWavelength = Math.max(...rawDataset.wavelengths);

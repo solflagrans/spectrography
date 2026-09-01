@@ -10,7 +10,7 @@ import {
 import { createRaw8Fixture } from "@/fixtures/raw8-test-fixture";
 import { DEMO_ANALYSIS_INPUT } from "@/application/analysis/create-working-analysis";
 
-import { IdentificationLinesPanel, PeakSettingsPanel } from "./analysis-side-panels";
+import { AnalysisSidePanel, IdentificationLinesPanel, PeakSettingsPanel } from "./analysis-side-panels";
 import {
   AnalysisAnalysisPage,
   DataAnalysisPage,
@@ -127,7 +127,7 @@ function EndToEndScenario() {
   return (
     <AnalysisWorkspaceProvider>
       <DataAnalysisPage />
-      <IdentificationLinesPanel />
+      <AnalysisSidePanel />
       <AnalysisAnalysisPage />
       <AnalysisProbe />
     </AnalysisWorkspaceProvider>
@@ -135,8 +135,7 @@ function EndToEndScenario() {
 }
 
 describe("interactive demo analysis", () => {
-  it("stores the selected spectrum type after automatic recalculation", async () => {
-    vi.useFakeTimers();
+  it("shows one plasma-emission option and assigns it to an imported analysis", async () => {
     render(<Scenario />);
     const compactSpectrum = JSON.stringify({
       wavelengths: [330, 331, 332, 333, 334, 335, 336],
@@ -148,12 +147,9 @@ describe("interactive demo analysis", () => {
     await act(async () => Promise.resolve());
 
     const field = screen.getByRole("combobox", { name: /Допустимый способ интерпретации/ });
-    expect((field as HTMLSelectElement).value).toBe("unspecified");
-    fireEvent.change(field, { target: { value: "plasma-emission" } });
-
     expect((field as HTMLSelectElement).value).toBe("plasma-emission");
-    expect(screen.getByTestId("calculation-status").textContent).toBe("calculating");
-    await act(async () => vi.advanceTimersByTime(181));
+    expect(within(field).getAllByRole("option")).toHaveLength(1);
+    expect(within(field).getByRole("option").textContent).toBe("Эмиссия плазмы/разряда");
     expect(screen.getByTestId("spectrum-type").textContent).toBe("plasma-emission");
     expect(screen.getByText(/Тип не задаёт ожидаемый состав/)).toBeTruthy();
   });
@@ -290,7 +286,7 @@ describe("interactive demo analysis", () => {
     expect(screen.getByRole("tab", { name: "Выбранный пик" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.getByText("Исходная интенсивность")).toBeTruthy();
     expect(screen.getByText("Подготовленная интенсивность")).toBeTruthy();
-    expect(screen.getByText("Предложено")).toBeTruthy();
+    expect(screen.getByText("Ближайшая по длине волны")).toBeTruthy();
 
     const chart = screen.getByRole("img", { name: "Подготовленный спектр с отмеченными пиками" });
     expect(chart.getAttribute("data-selected-peak")).toBe(selectedId);
@@ -303,7 +299,56 @@ describe("interactive demo analysis", () => {
     expect(screen.getByTestId("selected-peak").textContent).toBe(nextId);
     expect(chart.getAttribute("data-selected-peak")).toBe(nextId);
     expect(selectableRows[1].getAttribute("aria-selected")).toBe("true");
-    expect(screen.getByText("Предложено")).toBeTruthy();
+    expect(screen.getByText("Ближайшая по длине волны")).toBeTruthy();
+  });
+
+  it("distinguishes assignments from the nearest candidate and keeps the compact list bounded", () => {
+    render(<PeakSelectionScenario />);
+    fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
+    fireEvent.click(screen.getAllByRole("button", { name: /График: выбрать пик/ })[0]);
+
+    expect(screen.getByText("Ближайший кандидат", { selector: "span" })).toBeTruthy();
+    expect(screen.getByText(/не итоговая идентификация/)).toBeTruthy();
+    expect(screen.queryByText("Предложено")).toBeNull();
+
+    const assignments = screen.getByRole("heading", { name: "Назначения в гипотезах" }).closest("section")!;
+    const nearest = screen.getByRole("heading", { name: "Ближайший кандидат" }).closest("section")!;
+    const alternatives = screen.getByRole("heading", { name: "Альтернативы" }).closest("section")!;
+    expect(within(assignments).getAllByText(/Участвует в гипотезе/).length).toBeGreaterThan(0);
+    expect(within(nearest).getByText("Ближайшая по длине волны")).toBeTruthy();
+    expect(within(nearest).queryByText(/Участвует в гипотезе/)).toBeNull();
+    expect(alternatives.querySelectorAll("[data-candidate-group]").length).toBeLessThanOrEqual(5);
+  });
+
+  it("opens, filters and collapses the full local candidate list", () => {
+    render(<PeakSelectionScenario />);
+    fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
+    fireEvent.click(screen.getAllByRole("button", { name: /График: выбрать пик/ })[0]);
+
+    const showAll = screen.getByRole("button", { name: /Показать все кандидаты ·/ });
+    expect(showAll.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(showAll);
+    expect(screen.getByRole("heading", { name: "Все кандидаты" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Свернуть" }).getAttribute("aria-expanded")).toBe("true");
+
+    const search = screen.getByLabelText("Поиск кандидата по названию элемента или символу");
+    fireEvent.change(search, { target: { value: "Железо" } });
+    const byName = screen.getByText(/Найдено справочных записей:/).textContent;
+    expect(byName).not.toContain("записей: 0");
+    fireEvent.change(search, { target: { value: "Fe" } });
+    expect(screen.getByText(/Найдено справочных записей:/).textContent).toBe(byName);
+
+    fireEvent.change(search, { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText("Степень ионизации"), { target: { value: "2" } });
+    expect(screen.getByText(/Найдено справочных записей:/).textContent).not.toContain("записей: 0");
+    fireEvent.change(screen.getByLabelText("Отношение к гипотезам"), { target: { value: "diagnostic" } });
+    expect(screen.getAllByText(/диагностическая гипотеза элемента/).length).toBeGreaterThan(0);
+
+    fireEvent.change(search, { target: { value: "несуществующий элемент" } });
+    expect(screen.getByText("По выбранным условиям кандидаты не найдены.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Свернуть" }));
+    expect(screen.getByRole("heading", { name: "Альтернативы" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Все кандидаты" })).toBeNull();
   });
 
   it("preserves a selected source point when it remains a peak and resets it otherwise", async () => {
@@ -415,6 +460,29 @@ describe("interactive demo analysis", () => {
     expect(screen.getByTestId("analysis-view").textContent).toBe("composition");
   });
 
+  it("preserves the selected peak through the full list, filtering, hypothesis and return flow", () => {
+    render(<EndToEndScenario />);
+    fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Все пики" }));
+    fireEvent.click(document.querySelector("tr[data-peak-id]")!);
+    const selectedPeak = screen.getByTestId("selected-peak").textContent;
+
+    fireEvent.click(screen.getByRole("button", { name: /Показать все кандидаты ·/ }));
+    fireEvent.change(screen.getByLabelText("Поиск кандидата по названию элемента или символу"), {
+      target: { value: "N" },
+    });
+    fireEvent.change(screen.getByLabelText("Отношение к гипотезам"), {
+      target: { value: "diagnostic" },
+    });
+    fireEvent.click(screen.getAllByRole("button", { name: "Открыть гипотезу" })[0]);
+
+    expect(screen.getByTestId("analysis-view").textContent).toBe("composition");
+    expect(screen.getByTestId("selected-peak").textContent).toBe(selectedPeak);
+    fireEvent.click(screen.getByRole("tab", { name: "Все пики" }));
+    expect(screen.getByTestId("selected-peak").textContent).toBe(selectedPeak);
+    expect(document.querySelector('tr[aria-selected="true"]')?.getAttribute("data-peak-id")).toBe(selectedPeak);
+  });
+
   it("covers upload, spectrum type, automatic analysis, evidence and a linked peak", async () => {
     render(<EndToEndScenario />);
     const uploaded = JSON.stringify({
@@ -428,11 +496,9 @@ describe("interactive demo analysis", () => {
     await act(async () => Promise.resolve());
     expect(screen.getByTestId("file-name").textContent).toBe("measurement.json");
 
-    fireEvent.change(screen.getByRole("combobox", { name: /Допустимый способ интерпретации/ }), {
-      target: { value: "unspecified" },
-    });
-    expect(screen.getByTestId("calculation-status").textContent).toBe("calculating");
-    await waitFor(() => expect(screen.getByTestId("calculation-status").textContent).toBe("ready"));
+    const spectrumTypeField = screen.getByRole("combobox", { name: /Допустимый способ интерпретации/ });
+    expect((spectrumTypeField as HTMLSelectElement).value).toBe("plasma-emission");
+    expect(within(spectrumTypeField).getAllByRole("option")).toHaveLength(1);
 
     const composition = screen.getByRole("list", { name: "Наиболее надёжные варианты состава" });
     const mainChoice = within(composition).getAllByRole("button")[0];

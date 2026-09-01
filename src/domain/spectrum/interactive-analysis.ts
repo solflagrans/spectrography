@@ -14,6 +14,7 @@ import {
   estimateInitialCalibrationUncertaintyNm,
   estimateWavelengthCalibration,
 } from "./wavelength-calibration";
+import { DEFAULT_SPECTRUM_TYPE } from "./types";
 import type {
   AnalyzedPeak,
   InteractiveAnalysisParameters,
@@ -50,7 +51,7 @@ export function runInteractiveSpectrumAnalysis(
   input: SpectrumDataset | MultiChannelSpectrumInput,
   library: readonly SpectralLine[] | SpectralLibraryWavelengthIndex,
   parameters: InteractiveAnalysisParameters = DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS,
-  spectrumType: SpectrumType = "unspecified",
+  spectrumType: SpectrumType = DEFAULT_SPECTRUM_TYPE,
 ): InteractiveSpectrumAnalysis {
   validateInteractiveAnalysisParameters(parameters);
   const channelInputs = isMultiChannelInput(input)

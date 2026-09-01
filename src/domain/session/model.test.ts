@@ -15,7 +15,7 @@ describe("createAnalysisSession", () => {
       schemaVersion: 3,
       id: "session-1",
       status: "empty",
-      spectrumType: "unspecified",
+      spectrumType: "plasma-emission",
       dataset: null,
       analysisResult: null,
       spectralLibraryVersion: BUILTIN_LIBRARY_VERSION,

@@ -12,12 +12,16 @@ import type {
   WorkingAnalysis,
 } from "@/application/analysis/create-working-analysis";
 import { parseSpectrumFile } from "@/application/import-spectrum/parse-dataset";
-import { DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS } from "@/domain/spectrum";
+import {
+  DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS,
+  DEFAULT_SPECTRUM_TYPE,
+  normalizeSpectrumType,
+} from "@/domain/spectrum";
 import type {
   InteractiveAnalysisParameters,
+  NewAnalysisSpectrumType,
   PeakSearchParameters,
   SpectrumProcessingParameters,
-  SpectrumType,
   WavelengthCalibrationParameters,
 } from "@/domain/spectrum";
 import type { IdentificationTab } from "./identification-ui";
@@ -46,12 +50,12 @@ interface AnalysisWorkspaceContextValue {
   readonly selectedIdentificationChannelId: string | null;
   readonly hypothesisSelectionNotice: boolean;
   readonly analysisView: AnalysisView;
-  readonly selectedSpectrumType: SpectrumType;
+  readonly selectedSpectrumType: NewAnalysisSpectrumType;
   readonly openDemoAnalysis: () => void;
   readonly importSpectrumFile: (file: SpectrumFileLike) => Promise<void>;
   readonly updateProcessingParameters: (patch: Partial<SpectrumProcessingParameters>) => void;
   readonly updatePeakSearchParameters: (patch: Partial<PeakSearchParameters>) => void;
-  readonly updateSpectrumType: (spectrumType: SpectrumType) => void;
+  readonly updateSpectrumType: (spectrumType: NewAnalysisSpectrumType) => void;
   readonly updateWavelengthCalibrationParameters: (patch: Partial<WavelengthCalibrationParameters>) => void;
   readonly resetProcessingParameters: () => void;
   readonly resetPeakSearchParameters: () => void;
@@ -82,7 +86,7 @@ export function AnalysisWorkspaceProvider({ children }: Readonly<{ children: Rea
   const [selectedIdentificationChannelId, setSelectedIdentificationChannelId] = useState<string | null>(null);
   const [hypothesisSelectionNotice, setHypothesisSelectionNotice] = useState(false);
   const [analysisView, setAnalysisViewState] = useState<AnalysisView>("composition");
-  const [selectedSpectrumType, setSelectedSpectrumType] = useState<SpectrumType>("unspecified");
+  const [selectedSpectrumType, setSelectedSpectrumType] = useState<NewAnalysisSpectrumType>(DEFAULT_SPECTRUM_TYPE);
   const recalculationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const calculationRequest = useRef(0);
   const sourceRef = useRef<CreateWorkingAnalysisInput | null>(null);
@@ -166,7 +170,7 @@ export function AnalysisWorkspaceProvider({ children }: Readonly<{ children: Rea
     setSelectedPeakId(null);
     setPeakPanelSection("parameters");
     setAnalysisViewState("composition");
-    setSelectedSpectrumType(source.spectrumType ?? "unspecified");
+    setSelectedSpectrumType(normalizeSpectrumType(source.spectrumType));
     const nextAnalysis = createWorkingAnalysis(source, DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS);
     const initialHypothesis = getInitialHypothesisSelection(nextAnalysis);
     setSelectedHypothesisId(initialHypothesis.id);
@@ -244,7 +248,7 @@ export function AnalysisWorkspaceProvider({ children }: Readonly<{ children: Rea
     [calculate],
   );
 
-  const updateSpectrumType = useCallback((spectrumType: SpectrumType) => {
+  const updateSpectrumType = useCallback((spectrumType: NewAnalysisSpectrumType) => {
     const source = sourceRef.current;
     if (!source || source.spectrumType === spectrumType) return;
     const nextSource = { ...source, spectrumType };

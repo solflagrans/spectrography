@@ -8,6 +8,8 @@ describe("createWorkingAnalysis", () => {
     const peakIds = new Set(analysis.peaks.map((peak) => peak.id));
 
     expect(analysis.rawDataset).not.toBe(analysis.preparedDataset);
+    expect(analysis.spectrumType).toBe("plasma-emission");
+    expect(analysis.molecularAnalysisSkippedReason).toBeUndefined();
     expect(analysis.rawDataset.wavelengths).toHaveLength(1_024);
     expect(analysis.peaks.length).toBeGreaterThan(0);
     expect([...analysis.hypotheses, ...analysis.rejectedHypotheses.map((item) => item.hypothesis)]
@@ -38,8 +40,19 @@ describe("createWorkingAnalysis", () => {
     });
 
     expect(analysis.rawDataset.wavelengths).toEqual([530, 420, 480]);
+    expect(analysis.spectrumType).toBe("plasma-emission");
     expect(analysis.preparedDataset.wavelengths).toEqual([420, 480, 530]);
     expect(analysis.transformations[0].id).toBe("sorting");
+  });
+
+  it("normalizes the legacy unspecified value for a newly created analysis", () => {
+    const analysis = createWorkingAnalysis({
+      ...DEMO_ANALYSIS_INPUT,
+      spectrumType: "unspecified",
+    });
+
+    expect(analysis.spectrumType).toBe("plasma-emission");
+    expect(analysis.molecularAnalysisSkippedReason).toBeUndefined();
   });
 
   it("пересчитывает зависимые результаты при изменении минимального SNR", () => {

@@ -29,11 +29,11 @@ class MemorySessionRepository implements AnalysisSessionRepository {
 beforeEach(() => window.localStorage.clear());
 
 describe("browser analysis session migration", () => {
-  it("adds an unspecified spectrum type to a legacy session without assuming plasma emission", async () => {
+  it("adds plasma emission to a legacy session without a spectrum type", async () => {
     const repository = new MemorySessionRepository();
     const current = createAnalysisSession({ id: "legacy-session", now: new Date("2026-01-01T00:00:00Z") });
     const { spectrumType, ...legacy } = current;
-    expect(spectrumType).toBe("unspecified");
+    expect(spectrumType).toBe("plasma-emission");
     const { wavelengthCalibration, ...legacyAnalysisOptions } = current.analysisOptions;
     expect(wavelengthCalibration.allowAutomaticCorrection).toBe(true);
     repository.sessions.set(current.id, { ...legacy, schemaVersion: 1, analysisOptions: legacyAnalysisOptions } as unknown as AnalysisSession);
@@ -42,9 +42,28 @@ describe("browser analysis session migration", () => {
     const migrated = await loadOrCreateBrowserSession(repository);
 
     expect(migrated.schemaVersion).toBe(3);
-    expect(migrated.spectrumType).toBe("unspecified");
+    expect(migrated.spectrumType).toBe("plasma-emission");
     expect(migrated.analysisOptions.wavelengthCalibration.allowAutomaticCorrection).toBe(true);
     expect(repository.sessions.get(current.id)).toEqual(migrated);
+  });
+
+  it("migrates a saved unspecified value without changing the source measurement", async () => {
+    const repository = new MemorySessionRepository();
+    const dataset = { wavelengths: [400, 500], intensities: [1, 2] };
+    const legacy = {
+      ...createAnalysisSession({ id: "unspecified-session" }),
+      spectrumType: "unspecified" as const,
+      status: "dataset-ready" as const,
+      dataset,
+    };
+    repository.sessions.set(legacy.id, legacy);
+    window.localStorage.setItem(ACTIVE_SESSION_KEY, legacy.id);
+
+    const migrated = await loadOrCreateBrowserSession(repository);
+
+    expect(migrated.spectrumType).toBe("plasma-emission");
+    expect(migrated.dataset).toBe(dataset);
+    expect(repository.sessions.get(legacy.id)).toEqual(migrated);
   });
 
   it("keeps an explicitly saved plasma-emission type", async () => {

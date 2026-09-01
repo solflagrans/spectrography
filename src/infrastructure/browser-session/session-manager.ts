@@ -4,7 +4,10 @@ import {
 } from "@/domain/session/model";
 import type { AnalysisSession } from "@/domain/session/model";
 import type { AnalysisSessionRepository } from "@/domain/session/repository";
-import { DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS } from "@/domain/spectrum";
+import {
+  DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS,
+  normalizeSpectrumType,
+} from "@/domain/spectrum";
 
 import { IndexedDbAnalysisSessionRepository } from "./indexed-db-session-repository";
 
@@ -19,7 +22,11 @@ export async function loadOrCreateBrowserSession(
   if (activeSessionId) {
     const existingSession = await repository.findById(activeSessionId);
     if (existingSession) {
-      if (existingSession.schemaVersion === ANALYSIS_SESSION_SCHEMA_VERSION) return existingSession;
+      if (
+        existingSession.schemaVersion === ANALYSIS_SESSION_SCHEMA_VERSION
+        && existingSession.spectrumType !== undefined
+        && existingSession.spectrumType !== "unspecified"
+      ) return existingSession;
 
       const migratedSession = migrateLegacySession(existingSession);
       await repository.save(migratedSession);
@@ -39,7 +46,7 @@ function migrateLegacySession(session: AnalysisSession): AnalysisSession {
   return {
     ...legacySession,
     schemaVersion: ANALYSIS_SESSION_SCHEMA_VERSION,
-    spectrumType: legacySession.spectrumType ?? "unspecified",
+    spectrumType: normalizeSpectrumType(legacySession.spectrumType),
     analysisOptions: {
       ...legacySession.analysisOptions,
       wavelengthCalibration: legacySession.analysisOptions?.wavelengthCalibration

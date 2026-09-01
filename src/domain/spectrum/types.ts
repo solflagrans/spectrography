@@ -3,6 +3,19 @@ import type { MolecularHypothesis, MolecularHypothesisReason } from "@/domain/mo
 
 export type SpectrumType = "plasma-emission" | "unspecified";
 
+/** `unspecified` is retained only for reading legacy persisted data. */
+export type NewAnalysisSpectrumType = Exclude<SpectrumType, "unspecified">;
+
+export const DEFAULT_SPECTRUM_TYPE = "plasma-emission" as const satisfies NewAnalysisSpectrumType;
+
+export function normalizeSpectrumType(
+  spectrumType: SpectrumType | undefined,
+): NewAnalysisSpectrumType {
+  return spectrumType === undefined || spectrumType === "unspecified"
+    ? DEFAULT_SPECTRUM_TYPE
+    : spectrumType;
+}
+
 export interface SpectrumDataset {
   readonly wavelengths: readonly number[];
   readonly intensities: readonly number[];

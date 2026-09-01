@@ -1,16 +1,21 @@
 "use client";
 
 import { ArrowRight, CircleAlert, LoaderCircle, RotateCcw, Search } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
-import type { SpectralLineCandidate } from "@/domain/spectrum";
 import { useAnalysisWorkspace } from "@/features/demo-analysis/model/analysis-workspace-context";
 import {
   diagnosticReasonLabels,
   getIdentificationEntries,
   type IdentificationSort,
 } from "@/features/demo-analysis/model/identification-ui";
+import {
+  createPeakCandidateView,
+  filterCandidateGroups,
+  type CandidateDisplayGroup,
+  type CandidateRelationFilter,
+} from "@/features/demo-analysis/model/peak-candidates-ui";
 
 import styles from "./analysis-page.module.css";
 
@@ -237,7 +242,6 @@ function SelectedPeakContent({
   analysis: ReturnType<typeof useAnalysisWorkspace>["analysis"];
   selectedPeak: NonNullable<ReturnType<typeof useAnalysisWorkspace>["analysis"]>["peaks"][number] | null;
 }>) {
-  const { selectHypothesisForElement, setAnalysisView } = useAnalysisWorkspace();
   if (!analysis?.peaks.length) {
     return <PanelEmptyState>При текущих параметрах пики не найдены.</PanelEmptyState>;
   }
@@ -266,37 +270,7 @@ function SelectedPeakContent({
       <section className={styles.candidateSection} aria-labelledby="candidate-lines-title">
         <h3 id="candidate-lines-title">Кандидаты в пределах допуска</h3>
         {selectedPeak.candidates.length ? (
-          <ol className={styles.candidateList}>
-            {selectedPeak.candidates.map((candidate, index) => (
-              <li key={candidate.lineId}>
-                <div className={styles.candidateHeading}>
-                  <strong>{candidate.elementName} ({candidate.elementSymbol})</strong>
-                  <span className={index === 0 ? styles.suggestedCandidate : styles.alternativeCandidate}>
-                    {index === 0 ? "Предложено" : "Альтернатива"}
-                  </span>
-                </div>
-                <div className={styles.candidateValues}>
-                  <span>{formatCandidateLine(candidate)} нм</span>
-                  <code>{formatSigned(candidate.delta)} нм</code>
-                </div>
-                <small>Адаптивный допуск ±{candidate.adaptiveToleranceNm.toFixed(3)} нм</small>
-                {hasHypothesisForElement(analysis, candidate.elementSymbol) ? (
-                  <button
-                    className={styles.candidateLink}
-                    type="button"
-                    onClick={() => {
-                      if (selectHypothesisForElement(candidate.elementSymbol)) setAnalysisView("composition");
-                    }}
-                  >
-                    Открыть гипотезу
-                    <ArrowRight size={13} aria-hidden="true" />
-                  </button>
-                ) : (
-                  <span className={styles.candidateUnavailable}>Доступной гипотезы нет</span>
-                )}
-              </li>
-            ))}
-          </ol>
+          <PeakCandidateBrowser key={selectedPeak.id} analysis={analysis} selectedPeak={selectedPeak} />
         ) : (
           <PanelEmptyState>
             В пределах рассчитанных для этого пика адаптивных допусков подходящих линий нет.
@@ -304,6 +278,222 @@ function SelectedPeakContent({
         )}
       </section>
     </>
+  );
+}
+
+function PeakCandidateBrowser({
+  analysis,
+  selectedPeak,
+}: Readonly<{
+  analysis: NonNullable<ReturnType<typeof useAnalysisWorkspace>["analysis"]>;
+  selectedPeak: NonNullable<ReturnType<typeof useAnalysisWorkspace>["analysis"]>["peaks"][number];
+}>) {
+  const { selectHypothesis, setAnalysisView } = useAnalysisWorkspace();
+  const [expanded, setExpanded] = useState(false);
+  const [query, setQuery] = useState("");
+  const [ionizationStage, setIonizationStage] = useState<number | "all">("all");
+  const [relation, setRelation] = useState<CandidateRelationFilter>("all");
+  const view = useMemo(
+    () => createPeakCandidateView(analysis, selectedPeak),
+    [analysis, selectedPeak],
+  );
+  const filteredGroups = useMemo(
+    () => filterCandidateGroups(view.groups, { query, ionizationStage, relation }),
+    [view.groups, query, ionizationStage, relation],
+  );
+  const ionizationStages = useMemo(() => [...new Set(view.groups.map((group) => (
+    group.representative.ionizationStage
+  )))].sort((left, right) => left - right), [view.groups]);
+  const shownRecordCount = filteredGroups.reduce((sum, group) => sum + group.candidates.length, 0);
+
+  const openHypothesis = (group: CandidateDisplayGroup) => {
+    if (!group.hypothesis) return;
+    selectHypothesis(
+      group.hypothesis.id,
+      group.hypothesis.role === "diagnostic" ? "diagnostics" : "hypotheses",
+    );
+    setAnalysisView("composition");
+  };
+
+  return (
+    <>
+      <p className={styles.candidateExplanation}>
+        Ближайшая линия определяется только по длине волны в пределах адаптивного допуска и не является итоговой идентификацией пика.
+      </p>
+
+      {!expanded ? (
+        <div className={styles.compactCandidateView}>
+          {view.acceptedAssignments.length ? (
+            <section className={styles.candidateGroupSection} aria-labelledby={`candidate-assignments-${selectedPeak.id}`}>
+              <h4 id={`candidate-assignments-${selectedPeak.id}`}>Назначения в гипотезах</h4>
+              <ol className={styles.candidateList}>
+                {view.acceptedAssignments.map((group) => (
+                  <CandidateCard key={group.id} group={group} onOpenHypothesis={openHypothesis} />
+                ))}
+              </ol>
+            </section>
+          ) : null}
+
+          {view.nearest ? (
+            <section className={styles.candidateGroupSection} aria-labelledby={`candidate-nearest-${selectedPeak.id}`}>
+              <h4 id={`candidate-nearest-${selectedPeak.id}`}>Ближайший кандидат</h4>
+              <ol className={styles.candidateList}>
+                <CandidateCard group={view.nearest} onOpenHypothesis={openHypothesis} />
+              </ol>
+            </section>
+          ) : null}
+
+          {view.compactAlternatives.length ? (
+            <section className={styles.candidateGroupSection} aria-labelledby={`candidate-alternatives-${selectedPeak.id}`}>
+              <h4 id={`candidate-alternatives-${selectedPeak.id}`}>Альтернативы</h4>
+              <ol className={styles.candidateList}>
+                {view.compactAlternatives.map((group) => (
+                  <CandidateCard key={group.id} group={group} onOpenHypothesis={openHypothesis} />
+                ))}
+              </ol>
+            </section>
+          ) : null}
+        </div>
+      ) : (
+        <section className={styles.fullCandidateView} aria-labelledby={`all-candidates-${selectedPeak.id}`}>
+          <h4 id={`all-candidates-${selectedPeak.id}`}>Все кандидаты</h4>
+          <div className={styles.candidateFilters}>
+            <label className={styles.searchField} htmlFor={`candidate-search-${selectedPeak.id}`}>
+              <Search size={14} aria-hidden="true" />
+              <input
+                id={`candidate-search-${selectedPeak.id}`}
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Элемент или символ"
+                aria-label="Поиск кандидата по названию элемента или символу"
+              />
+            </label>
+            <label className={styles.selectField} htmlFor={`candidate-ionization-${selectedPeak.id}`}>
+              <span>Степень ионизации</span>
+              <select
+                id={`candidate-ionization-${selectedPeak.id}`}
+                value={ionizationStage}
+                onChange={(event) => setIonizationStage(event.target.value === "all" ? "all" : Number(event.target.value))}
+              >
+                <option value="all">Все степени</option>
+                {ionizationStages.map((stage) => <option key={stage} value={stage}>{stage}</option>)}
+              </select>
+            </label>
+            <label className={styles.selectField} htmlFor={`candidate-relation-${selectedPeak.id}`}>
+              <span>Отношение к гипотезам</span>
+              <select
+                id={`candidate-relation-${selectedPeak.id}`}
+                value={relation}
+                onChange={(event) => setRelation(event.target.value as CandidateRelationFilter)}
+              >
+                <option value="all">Все отношения</option>
+                <option value="accepted">Участвует в принятой гипотезе</option>
+                <option value="diagnostic">Диагностическая гипотеза</option>
+                <option value="other">Остальные</option>
+              </select>
+            </label>
+          </div>
+          <output className={styles.candidateCount} aria-live="polite">
+            Найдено справочных записей: {shownRecordCount} · карточек: {filteredGroups.length}
+          </output>
+          {filteredGroups.length ? (
+            <ol className={styles.candidateList}>
+              {filteredGroups.map((group) => (
+                <CandidateCard key={group.id} group={group} onOpenHypothesis={openHypothesis} />
+              ))}
+            </ol>
+          ) : (
+            <PanelEmptyState>По выбранным условиям кандидаты не найдены.</PanelEmptyState>
+          )}
+        </section>
+      )}
+
+      <button
+        className={styles.candidateToggle}
+        type="button"
+        aria-expanded={expanded}
+        onClick={() => setExpanded((current) => !current)}
+      >
+        {expanded ? "Свернуть" : `Показать все кандидаты · ${view.candidateCount}`}
+      </button>
+    </>
+  );
+}
+
+function CandidateCard({
+  group,
+  onOpenHypothesis,
+}: Readonly<{
+  group: CandidateDisplayGroup;
+  onOpenHypothesis: (group: CandidateDisplayGroup) => void;
+}>) {
+  const candidate = group.representative;
+  const acceptedRole = group.acceptedAssignment?.role === "main"
+    ? "Основная гипотеза"
+    : "Принятая альтернативная гипотеза";
+  const relationLabel = group.acceptedAssignment
+    ? `Участвует в гипотезе · ${acceptedRole}`
+    : group.hypothesis?.role === "diagnostic"
+      ? "Альтернатива · диагностическая гипотеза элемента"
+      : group.hypothesis
+        ? "Альтернатива · элемент принятой гипотезы"
+        : "Альтернатива";
+
+  return (
+    <li data-candidate-group={group.id} data-candidate-record-count={group.candidates.length}>
+      <div className={styles.candidateHeading}>
+        <strong>{candidate.elementName} ({candidate.elementSymbol})</strong>
+        {group.candidates.length > 1 ? (
+          <span className={styles.candidateRecordCount}>{group.candidates.length} записи</span>
+        ) : null}
+      </div>
+      <div className={styles.candidateStatuses}>
+        {group.isNearest ? <span className={styles.nearestCandidate}>Ближайшая по длине волны</span> : null}
+        <span className={group.acceptedAssignment ? styles.assignedCandidate : styles.alternativeCandidate}>
+          {relationLabel}
+        </span>
+      </div>
+      <div className={styles.candidateValues}>
+        <span>{formatCandidateGroupLine(group)} нм</span>
+        <code>Δ {formatSigned(candidate.delta)} нм</code>
+      </div>
+      <small>Степень ионизации {candidate.ionizationLabel || candidate.ionizationStage} · адаптивный допуск ±{candidate.adaptiveToleranceNm.toFixed(3)} нм</small>
+      <details className={styles.candidateTechnicalDetails}>
+        <summary>Технические подробности</summary>
+        <dl>
+          <PeakDetail label="Происхождение длины" value={candidate.wavelengthType === "observed" ? "Observed" : "Ritz"} />
+          <PeakDetail label="Среда" value={candidate.wavelengthMedium === "air" ? "Воздух" : "Вакуум"} />
+          <PeakDetail label="Нормированное отклонение" value={candidate.normalizedDelta.toFixed(4)} />
+          <PeakDetail label="Объединённая неопределённость" value={`${candidate.combinedUncertaintyNm.toFixed(4)} нм`} />
+          <PeakDetail label="Шаг сетки" value={`${candidate.uncertainty.gridSamplingNm.toFixed(4)} нм`} />
+          <PeakDetail label="Разрешение" value={`${candidate.uncertainty.spectralResolutionNm.toFixed(4)} нм`} />
+          <PeakDetail label="Ширина пика" value={`${candidate.uncertainty.peakWidthNm.toFixed(4)} нм`} />
+          <PeakDetail label="Положение пика" value={`${candidate.uncertainty.peakPositionNm.toFixed(4)} нм`} />
+          <PeakDetail label="Справочная линия" value={`${candidate.uncertainty.referenceLineNm.toFixed(4)} нм`} />
+          <PeakDetail label="Калибровка" value={`${candidate.uncertainty.calibrationNm.toFixed(4)} нм`} />
+          <PeakDetail label="Достигнут максимум допуска" value={candidate.toleranceCapped ? "Да" : "Нет"} />
+        </dl>
+        <div className={styles.candidateSourceRecords}>
+          <strong>Справочные записи и исходные метаданные</strong>
+          <ul>
+            {group.sourceRecords.map((record) => (
+              <li key={record.id}>
+                <code>{record.id}</code>
+                {record.sourceName ? <span>{record.sourceName} · {record.datasetVersion}</span> : null}
+                {record.rawWavelength ? <span>Исходная длина: {record.rawWavelength}{record.notation ?? ""}</span> : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </details>
+      {group.hypothesis ? (
+        <button className={styles.candidateLink} type="button" onClick={() => onOpenHypothesis(group)}>
+          Открыть гипотезу
+          <ArrowRight size={13} aria-hidden="true" />
+        </button>
+      ) : null}
+    </li>
   );
 }
 
@@ -427,14 +617,6 @@ export function IdentificationLinesPanel() {
   );
 }
 
-function hasHypothesisForElement(
-  analysis: NonNullable<ReturnType<typeof useAnalysisWorkspace>["analysis"]>,
-  symbol: string,
-): boolean {
-  return analysis.hypotheses.some((hypothesis) => hypothesis.symbol === symbol)
-    || analysis.rejectedHypotheses.some((item) => item.hypothesis.symbol === symbol);
-}
-
 function SidePanelHeader({ title, onReset }: Readonly<{ title: string; onReset: () => void }>) {
   return (
     <header className={styles.sidePanelHeader}>
@@ -529,9 +711,16 @@ function formatValue(value: number | undefined, precision: number): string {
   return value === undefined ? "—" : value.toFixed(precision);
 }
 
-function formatCandidateLine(candidate: SpectralLineCandidate): string {
+function formatCandidateGroupLine(group: CandidateDisplayGroup): string {
+  const candidate = group.representative;
   const label = candidate.ionizationLabel
     ? `${candidate.elementSymbol} ${candidate.ionizationLabel}`
     : candidate.elementSymbol;
-  return `${label} · ${candidate.line.toFixed(3)}`;
+  const wavelengths = group.candidates.map((item) => item.line);
+  const minimum = Math.min(...wavelengths);
+  const maximum = Math.max(...wavelengths);
+  const wavelength = maximum - minimum < 0.0005
+    ? candidate.line.toFixed(3)
+    : `${minimum.toFixed(3)}–${maximum.toFixed(3)}`;
+  return `${label} · ${wavelength}`;
 }

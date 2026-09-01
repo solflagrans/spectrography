@@ -1,5 +1,5 @@
 import { BUILTIN_LIBRARY_VERSION } from "@/domain/spectral-library/builtin-library";
-import { DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS } from "@/domain/spectrum";
+import { DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS, DEFAULT_SPECTRUM_TYPE } from "@/domain/spectrum";
 import type {
   InteractiveAnalysisParameters,
   InteractiveSpectrumAnalysis,
@@ -39,7 +39,7 @@ export function createAnalysisSession({ id, now = new Date() }: CreateAnalysisSe
     createdAt: timestamp,
     updatedAt: timestamp,
     status: "empty",
-    spectrumType: "unspecified",
+    spectrumType: DEFAULT_SPECTRUM_TYPE,
     dataset: null,
     analysisOptions: DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS,
     analysisResult: null,

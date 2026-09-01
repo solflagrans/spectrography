@@ -333,7 +333,7 @@ export function formatSpectrumTooltip(
         `<span>Выраженность: <strong>${peak.prominence.toFixed(4)}</strong></span>`,
         `<span>SNR: <strong>${Number.isFinite(peak.snr) ? peak.snr.toFixed(2) : "∞"}</strong></span>`,
         `<span>Ширина: <strong>${peak.widthNm.toFixed(3)} нм</strong></span>`,
-        `<span>Совпадение: <strong>${formatPeakMatch(peak)}</strong></span>`,
+        `<span>Ближайший кандидат: <strong>${formatPeakMatch(peak)}</strong></span>`,
       );
     }
   }
