@@ -2556,3 +2556,465 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Compact desktop workspace refinements. */
+.page,
+.analysisCurrent,
+.analysisUpdating,
+.card,
+.tableScroll,
+.hypothesisOverview,
+.technicalDisclosure,
+.dataSummaryGrid {
+  min-width: 0;
+}
+
+.page {
+  gap: var(--spacing-md);
+}
+
+.pageHeader {
+  align-items: center;
+  min-height: 2.25rem;
+}
+
+.pageActions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-xs);
+}
+
+.pageSummary {
+  max-width: 60rem;
+  margin: var(--spacing-2xs) 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-navigation);
+}
+
+.welcome,
+.unavailable {
+  min-height: clamp(22rem, calc(100dvh - 8rem), 34rem);
+  padding: clamp(var(--spacing-xl), 6vw, 4rem);
+  box-shadow: none;
+}
+
+.welcome .importPanel {
+  max-width: 36rem;
+  margin-top: var(--spacing-lg);
+}
+
+.compactImport {
+  min-width: 0;
+}
+
+.replaceFileButton {
+  min-height: 2.25rem;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--color-background-surface);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--font-size-navigation);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.replaceFileButton:hover {
+  border-color: color-mix(in srgb, var(--color-action-primary) 48%, var(--color-border-default));
+}
+
+.replaceFileButton:focus-visible {
+  outline: 2px solid var(--color-action-primary);
+  outline-offset: 2px;
+}
+
+.card,
+.metricCard,
+.analysisConclusion,
+.hypothesisOverview,
+.libraryIntro {
+  box-shadow: none;
+}
+
+.card {
+  padding: var(--spacing-md);
+}
+
+.cardHeader {
+  margin-bottom: var(--spacing-sm);
+}
+
+.metricGrid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--spacing-xs);
+}
+
+.metric {
+  padding: var(--spacing-sm);
+  gap: var(--spacing-2xs);
+}
+
+.dataSummaryGrid {
+  display: grid;
+  grid-template-columns: minmax(16rem, 1.05fr) minmax(15rem, 0.8fr) minmax(19rem, 1.15fr);
+  gap: var(--spacing-md);
+  container-type: inline-size;
+}
+
+.qualityReason {
+  max-width: 42rem;
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.dataSummaryGrid .technicalDisclosure {
+  margin-top: var(--spacing-sm);
+}
+
+.analysisCurrent,
+.analysisUpdating {
+  gap: var(--spacing-md);
+}
+
+.analysisModeTabs {
+  box-shadow: none;
+}
+
+.analysisModeTabs button[aria-selected="true"],
+.sidePanelTabs button[aria-selected="true"] {
+  box-shadow: inset 0 -2px var(--color-action-primary);
+}
+
+.analysisConclusion {
+  display: block;
+  padding: var(--spacing-md);
+}
+
+.analysisConclusionCopy h2 {
+  margin: 0;
+}
+
+.analysisConclusionCopy > p {
+  max-width: 70rem;
+  margin: var(--spacing-xs) 0 0;
+  color: var(--color-text-secondary);
+}
+
+.analysisConclusionCopy > p strong {
+  color: var(--color-text-primary);
+}
+
+.mobileHypothesisSelect {
+  display: none;
+}
+
+.hypothesisOverview {
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+}
+
+.hypothesisOverviewHeading p {
+  max-width: 68rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reliableEvidenceSummary {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.reliableEvidenceSummary li {
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--color-background-canvas);
+}
+
+.reliableEvidenceSummary li code {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-data);
+  font-weight: 650;
+}
+
+.evidenceSection > h3 {
+  margin: 0 0 var(--spacing-sm);
+  font-size: var(--font-size-body);
+}
+
+.tableScroll {
+  max-width: 100%;
+  overflow: auto;
+  overscroll-behavior-inline: contain;
+  container-type: inline-size;
+}
+
+.table {
+  min-width: 42rem;
+}
+
+.table th {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+}
+
+.tableHeaderWithInfo,
+.infoLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2xs);
+}
+
+.tableHeaderWithInfo svg,
+.infoLabel svg {
+  flex: 0 0 auto;
+  color: var(--color-text-secondary);
+}
+
+.selectableRowSelected,
+.selectableRowSelected:hover {
+  background: color-mix(in srgb, var(--color-action-primary) 13%, white);
+  box-shadow: inset 4px 0 var(--color-action-primary), inset 0 0 0 1px color-mix(in srgb, var(--color-action-primary) 22%, transparent);
+}
+
+.evidenceTable {
+  min-width: 46rem;
+  table-layout: fixed;
+}
+
+.evidenceTable th:nth-child(n + 3),
+.evidenceTable td:nth-child(n + 3) {
+  text-align: right;
+}
+
+.evidenceTable td:first-child small {
+  display: block;
+  margin-top: var(--spacing-2xs);
+  color: var(--color-text-secondary);
+}
+
+.qualityCell {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: var(--spacing-xs);
+}
+
+.qualityCell code {
+  color: var(--color-text-secondary);
+}
+
+.evidenceDetailRow > td {
+  padding: 0 var(--spacing-sm) var(--spacing-xs);
+  white-space: normal;
+}
+
+.evidenceDetailRow details {
+  text-align: left;
+}
+
+.evidenceDetailRow summary {
+  width: fit-content;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-label);
+  cursor: pointer;
+}
+
+.rowDetailsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--spacing-sm);
+  margin: var(--spacing-sm) 0;
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  background: var(--color-background-canvas);
+}
+
+.rowDetailsGrid div {
+  min-width: 0;
+}
+
+.rowDetailsGrid dt {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-label);
+}
+
+.rowDetailsGrid dd {
+  margin: var(--spacing-2xs) 0 0;
+  overflow-wrap: anywhere;
+}
+
+.sideParameterGroup {
+  gap: var(--spacing-xs);
+  padding-block: var(--spacing-md);
+}
+
+.iconButton:disabled {
+  border-color: transparent;
+  background: transparent;
+  color: var(--color-border-default);
+  cursor: default;
+}
+
+.widthRangeGroup {
+  display: grid;
+  gap: var(--spacing-xs);
+  color: var(--color-text-secondary);
+}
+
+.pairedFields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-xs);
+}
+
+.pairedFields .numberField + .numberField {
+  margin-top: 0;
+}
+
+.peakSummaryLine {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--spacing-xs);
+  margin: var(--spacing-md) 0 0;
+}
+
+.peakSummaryLine > div {
+  display: grid;
+  gap: var(--spacing-2xs);
+  min-width: 0;
+}
+
+.peakSummaryLine dt {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-label);
+}
+
+.peakSummaryLine dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-data);
+}
+
+.peakTechnicalDisclosure {
+  margin-top: var(--spacing-lg);
+  border-top: 1px solid var(--color-border-default);
+}
+
+.peakTechnicalDisclosure > summary {
+  padding-top: var(--spacing-md);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.candidateHypothesisLink {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-action-primary);
+  font: inherit;
+  font-size: var(--font-size-navigation);
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+}
+
+.candidateHypothesisLink:focus-visible {
+  outline: 2px solid var(--color-action-primary);
+  outline-offset: 2px;
+}
+
+.candidateValues {
+  font-size: var(--font-size-label);
+}
+
+.hypothesisMasterMetrics {
+  display: block;
+  font-size: var(--font-size-label);
+}
+
+.hypothesisMasterHeading {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.elementChips {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: var(--spacing-2xs);
+}
+
+.elementChips span {
+  padding: var(--spacing-xs);
+  border: 0;
+  background: transparent;
+}
+
+.page small,
+.sidePanelContent small,
+.candidateCount,
+.diagnosticReasonCompact,
+.candidateToggle,
+.candidateTechnicalDetails,
+.candidateRecordCount,
+.ionizationGroups dt,
+.ionizationLineSummary strong,
+.ionizationLineSummary > div > span,
+.ionizationLineSummary li,
+.numberInputWrap > span {
+  font-size: var(--font-size-label);
+}
+
+@container (max-width: 56rem) {
+  .dataSummaryGrid > .card {
+    min-width: 0;
+  }
+}
+
+@container (max-width: 48rem) {
+  .evidenceTable {
+    min-width: 44rem;
+  }
+}
+
+@media (min-width: 51.3125rem) and (max-width: 70rem) {
+  .dataSummaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dataSummaryGrid > :last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 51.25rem) {
+  .dataSummaryGrid,
+  .metricGrid,
+  .rowDetailsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .pageActions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .mobileHypothesisSelect {
+    display: grid;
+    gap: var(--spacing-xs);
+    margin-top: var(--spacing-md);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-label);
+  }
+
+  .mobileHypothesisSelect select {
+    width: 100%;
+  }
+}

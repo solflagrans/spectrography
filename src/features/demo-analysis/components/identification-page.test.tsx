@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   push: vi.fn(),
   selectChannel: vi.fn(),
   selectPeak: vi.fn(),
+  setAnalysisView: vi.fn(),
   workspace: vi.fn(),
 }));
 
@@ -61,12 +62,13 @@ describe("multi-channel identification detail", () => {
       selectedPeakId: null,
       selectIdentificationChannel: mocks.selectChannel,
       selectPeak: mocks.selectPeak,
+      setAnalysisView: mocks.setAnalysisView,
     });
 
     render(<IdentificationAnalysisPage />);
 
     const channelSelect = screen.getByLabelText("Канал");
-    expect(screen.getAllByRole("option")).toHaveLength(2);
+    expect(channelSelect.querySelectorAll("option")).toHaveLength(2);
     fireEvent.change(channelSelect, { target: { value: "channel-b" } });
     expect(mocks.selectChannel).toHaveBeenCalledWith("channel-b");
 
@@ -74,8 +76,12 @@ describe("multi-channel identification detail", () => {
     expect(chart.getAttribute("data-source-key")).toBe("multi-channel-demo:channel-a");
     expect(Number(chart.getAttribute("data-reference-lines"))).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Канал B" })[0]);
-    expect(mocks.selectChannel).toHaveBeenLastCalledWith("channel-b");
-    expect(mocks.selectPeak).toHaveBeenCalledWith(expect.stringContaining("peak-channel-b-point-"));
+    const evidenceDetails = screen.getByText("Доказательства и показатели").closest("details")!;
+    evidenceDetails.open = true;
+    fireEvent(evidenceDetails, new Event("toggle"));
+    fireEvent.click(evidenceDetails.querySelector('tr[tabindex="0"]')!);
+    expect(mocks.selectChannel).toHaveBeenLastCalledWith("channel-a");
+    expect(mocks.selectPeak).toHaveBeenCalledWith(expect.stringContaining("peak-channel-a-point-"));
+    expect(mocks.setAnalysisView).toHaveBeenCalledWith("peaks");
   });
 });

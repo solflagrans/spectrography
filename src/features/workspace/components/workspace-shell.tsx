@@ -31,20 +31,21 @@ export function WorkspaceShell({ children }: Readonly<{ children: ReactNode }>) 
   return (
     <div className={styles.shell}>
       <header className={styles.topBar}>
-        <div className={styles.logo} aria-label="Логотип">
+        <div className={styles.logo} aria-label="Интерпретатор спектра">
           <span className={styles.logoMark} aria-hidden="true">
             <Activity size={17} strokeWidth={1.8} />
           </span>
+          <span className={styles.productName}>Интерпретатор спектра</span>
         </div>
+
+        <WorkspaceNavigation />
 
         {analysis ? (
           <p className={styles.topSummary} aria-label="Сводка анализа">
-            {analysis.source.fileName} · {analysis.source.format} · {formatCount(analysis.rawDataset.wavelengths.length, "точка", "точки", "точек")} · {formatRange(analysis.wavelengthRange)} · {formatCount(analysis.peaks.length, "пик", "пика", "пиков")}
+            {analysis.source.fileName} · {formatRange(analysis.wavelengthRange)}
           </p>
         ) : null}
       </header>
-
-      <WorkspaceNavigation />
 
       <div className={clsx(styles.workspace, sidePanel && styles.workspaceWithPanel)}>
         {sidePanel ? (
@@ -67,19 +68,6 @@ function formatRange(range: WorkingRange): string {
 
 function formatNumber(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(2);
-}
-
-function formatCount(value: number, one: string, few: string, many: string): string {
-  const mod100 = value % 100;
-  const mod10 = value % 10;
-  const form = mod100 >= 11 && mod100 <= 14
-    ? many
-    : mod10 === 1
-      ? one
-      : mod10 >= 2 && mod10 <= 4
-        ? few
-        : many;
-  return `${value} ${form}`;
 }
 
 interface WorkingRange {

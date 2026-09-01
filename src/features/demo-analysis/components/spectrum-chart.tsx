@@ -100,6 +100,7 @@ export function SpectrumChart({
   const [visibleLayers, setVisibleLayers] = useState<ReadonlySet<SpectrumChartLayer>>(
     () => new Set(defaultVisibleLayers),
   );
+  const [isZoomed, setIsZoomed] = useState(() => !isFullZoom(zoomRangesBySource.get(sourceKey) ?? FULL_SPECTRUM_ZOOM));
   const chartData: SpectrumChartData = useMemo(() => ({
     rawDataset,
     preparedDataset,
@@ -124,6 +125,7 @@ export function SpectrumChart({
     const handleDataZoom = (event: unknown) => {
       zoomRange.current = readZoomRange(event, zoomRange.current);
       zoomRangesBySource.set(activeSourceKey.current, zoomRange.current);
+      setIsZoomed(!isFullZoom(zoomRange.current));
     };
     const handleChartClick = (event: unknown) => {
       const peakId = getPeakIdFromChartEvent(event);
@@ -155,6 +157,7 @@ export function SpectrumChart({
       : preserveZoomForSource(zoomRange.current, previousSourceKey.current, sourceKey);
     previousSourceKey.current = sourceKey;
     activeSourceKey.current = sourceKey;
+    setIsZoomed(!isFullZoom(zoomRange.current));
     chart.setOption(
       createSpectrumChartOption(chartData, visibleLayers, getChartPalette(), zoomRange.current),
       { replaceMerge: ["series", "yAxis", "dataZoom"] },
@@ -173,6 +176,7 @@ export function SpectrumChart({
   const resetZoom = () => {
     zoomRange.current = FULL_SPECTRUM_ZOOM;
     zoomRangesBySource.set(activeSourceKey.current, FULL_SPECTRUM_ZOOM);
+    setIsZoomed(false);
     chartInstance.current?.dispatchAction({
       type: "dataZoom",
       start: FULL_SPECTRUM_ZOOM.start,
@@ -202,10 +206,12 @@ export function SpectrumChart({
             })}
           </div>
         ) : null}
-        <button className={styles.zoomResetButton} type="button" onClick={resetZoom}>
-          <RotateCcw size={14} aria-hidden="true" />
-          <span>Сбросить масштаб</span>
-        </button>
+        {isZoomed ? (
+          <button className={styles.zoomResetButton} type="button" onClick={resetZoom}>
+            <RotateCcw size={14} aria-hidden="true" />
+            <span>Сбросить масштаб</span>
+          </button>
+        ) : null}
       </div>
       <div
         ref={chartElement}
@@ -215,6 +221,10 @@ export function SpectrumChart({
       />
     </div>
   );
+}
+
+function isFullZoom(range: SpectrumZoomRange): boolean {
+  return range.start <= FULL_SPECTRUM_ZOOM.start && range.end >= FULL_SPECTRUM_ZOOM.end;
 }
 
 function getPeakIdFromChartEvent(event: unknown): string | null {

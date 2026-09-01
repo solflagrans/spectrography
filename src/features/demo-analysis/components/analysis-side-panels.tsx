@@ -1,10 +1,11 @@
 "use client";
 
-import { ArrowRight, CircleAlert, LoaderCircle, RotateCcw, Search } from "lucide-react";
+import { CircleAlert, Info, LoaderCircle, RotateCcw, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
 import { useAnalysisWorkspace } from "@/features/demo-analysis/model/analysis-workspace-context";
+import { DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS } from "@/domain/spectrum";
 import {
   diagnosticReasonLabels,
   getIdentificationEntries,
@@ -28,16 +29,22 @@ export function ProcessingSettingsPanel() {
     updateProcessingParameters,
     updateWavelengthCalibrationParameters,
   } = useAnalysisWorkspace();
+  const canReset = parameters.processing.baselineSmoothness !== DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.processing.baselineSmoothness
+    || parameters.processing.noiseWindowNm !== DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.processing.noiseWindowNm
+    || parameters.processing.smoothingWindow !== DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.processing.smoothingWindow
+    || parameters.processing.normalization !== DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.processing.normalization
+    || parameters.wavelengthCalibration.allowAutomaticCorrection !== DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.wavelengthCalibration.allowAutomaticCorrection;
 
   return (
     <div className={styles.sidePanelContent}>
-      <SidePanelHeader title="Настройки обработки" onReset={resetProcessingParameters} />
+      <SidePanelHeader title="Настройки обработки" onReset={resetProcessingParameters} resetDisabled={!canReset} />
       <section className={styles.sideParameterGroup}>
         <h3>Базовая линия и шум</h3>
         <NumberParameter
           id="baseline-smoothness"
-          label="Гладкость AsLS"
-          unit="λ"
+          label="Гладкость базовой линии"
+          help="Метод AsLS"
+          unit=""
           value={parameters.processing.baselineSmoothness}
           min={100}
           max={10_000_000}
@@ -46,7 +53,8 @@ export function ProcessingSettingsPanel() {
         />
         <NumberParameter
           id="noise-window"
-          label="Окно локального MAD"
+          label="Окно оценки шума"
+          help="Локальная оценка MAD первых разностей"
           unit="нм"
           value={parameters.processing.noiseWindowNm}
           min={0.05}
@@ -58,7 +66,7 @@ export function ProcessingSettingsPanel() {
       <section className={styles.sideParameterGroup}>
         <h3>Сглаживание</h3>
         <div className={styles.rangeHeading}>
-          <label htmlFor="smoothing-window">Окно Савицкого—Голея</label>
+          <label htmlFor="smoothing-window" className={styles.infoLabel}>Окно сглаживания <Info size={14} aria-label="Метод Савицкого—Голея" /></label>
           <output htmlFor="smoothing-window">{parameters.processing.smoothingWindow} пт</output>
         </div>
         <input
@@ -71,12 +79,11 @@ export function ProcessingSettingsPanel() {
           value={parameters.processing.smoothingWindow}
           onChange={(event) => updateProcessingParameters({ smoothingWindow: Number(event.target.value) })}
         />
-        <p>Уменьшает высокочастотный шум без уширения основных пиков.</p>
       </section>
       <section className={styles.sideParameterGroup}>
         <h3>Нормализация</h3>
         <label className={styles.selectField} htmlFor="normalization-method">
-          <span>Метод нормирования</span>
+          <span>Масштаб интенсивности</span>
           <select
             id="normalization-method"
             value={parameters.processing.normalization}
@@ -84,15 +91,15 @@ export function ProcessingSettingsPanel() {
               normalization: event.target.value === "none" ? "none" : "maximum",
             })}
           >
-            <option value="maximum">По максимальному пику (0…1)</option>
-            <option value="none">Без нормализации</option>
+            <option value="maximum">К максимуму (0–1)</option>
+            <option value="none">Не нормировать</option>
           </select>
         </label>
       </section>
       <section className={styles.sideParameterGroup}>
         <h3>Шкала длин волн</h3>
         <label className={styles.selectField} htmlFor="automatic-wavelength-calibration">
-          <span>Автоматическая коррекция</span>
+          <span className={styles.infoLabel}>Автоматически уточнять шкалу <Info size={14} aria-label="Коррекция применяется только после проверки по независимым опорным признакам" /></span>
           <input
             id="automatic-wavelength-calibration"
             type="checkbox"
@@ -100,7 +107,6 @@ export function ProcessingSettingsPanel() {
             onChange={(event) => updateWavelengthCalibrationParameters({ allowAutomaticCorrection: event.target.checked })}
           />
         </label>
-        <p>Применяется только после проверки на независимых опорных признаках; исходный спектр не меняется.</p>
       </section>
       <CalculationFeedback status={calculationStatus} error={parameterError} />
     </div>
@@ -120,6 +126,11 @@ export function PeakSettingsPanel() {
     updatePeakSearchParameters,
   } = useAnalysisWorkspace();
   const selectedPeak = analysis?.peaks.find((peak) => peak.id === selectedPeakId) ?? null;
+  const canReset = parameters.peakSearch.minimumSnr !== DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.peakSearch.minimumSnr
+    || parameters.peakSearch.minimumWidth !== DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.peakSearch.minimumWidth
+    || parameters.peakSearch.maximumWidth !== DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.peakSearch.maximumWidth
+    || parameters.peakSearch.prominence !== DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.peakSearch.prominence
+    || parameters.peakSearch.minimumDistance !== DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.peakSearch.minimumDistance;
 
   return (
     <div className={styles.sidePanelContent}>
@@ -148,11 +159,11 @@ export function PeakSettingsPanel() {
 
       {peakPanelSection === "parameters" ? (
         <div role="tabpanel" id="peak-parameters-panel" aria-labelledby="peak-parameters-tab">
-          <SidePanelHeader title="Параметры пиков" onReset={resetPeakSearchParameters} />
+          <SidePanelHeader title="Параметры пиков" onReset={resetPeakSearchParameters} resetDisabled={!canReset} />
           <section className={styles.sideParameterGroup}>
             <h3>Поиск пиков</h3>
             <div className={styles.rangeHeading}>
-              <label htmlFor="detection-threshold">Минимальный SNR</label>
+              <label htmlFor="detection-threshold" className={styles.infoLabel}>Минимальный SNR <Info size={14} aria-label="Минимальное превышение локального уровня шума" /></label>
               <output htmlFor="detection-threshold">{parameters.peakSearch.minimumSnr.toFixed(1)}</output>
             </div>
             <input
@@ -165,30 +176,17 @@ export function PeakSettingsPanel() {
               value={parameters.peakSearch.minimumSnr}
               onChange={(event) => updatePeakSearchParameters({ minimumSnr: Number(event.target.value) })}
             />
-            <p>Пик должен быть выше локального уровня шума в указанное число раз.</p>
-            <NumberParameter
-              id="minimum-width"
-              label="Минимальная ширина"
-              unit="нм"
-              value={parameters.peakSearch.minimumWidth}
-              min={0}
-              max={50}
-              step={0.01}
-              onChange={(value) => updatePeakSearchParameters({ minimumWidth: value })}
-            />
-            <NumberParameter
-              id="maximum-width"
-              label="Максимальная ширина"
-              unit="нм"
-              value={parameters.peakSearch.maximumWidth}
-              min={0.01}
-              max={100}
-              step={0.1}
-              onChange={(value) => updatePeakSearchParameters({ maximumWidth: value })}
-            />
+            <div className={styles.widthRangeGroup}>
+              <span>Ширина пика</span>
+              <div className={styles.pairedFields}>
+                <NumberParameter id="minimum-width" label="От" unit="нм" value={parameters.peakSearch.minimumWidth} min={0} max={50} step={0.01} onChange={(value) => updatePeakSearchParameters({ minimumWidth: value })} />
+                <NumberParameter id="maximum-width" label="До" unit="нм" value={parameters.peakSearch.maximumWidth} min={0.01} max={100} step={0.1} onChange={(value) => updatePeakSearchParameters({ maximumWidth: value })} />
+              </div>
+            </div>
             <NumberParameter
               id="minimum-prominence"
               label="Минимальная выраженность"
+              help="Минимальное превышение пика над ближайшим фоном"
               unit="отн. ед."
               value={parameters.peakSearch.prominence}
               min={0}
@@ -198,7 +196,7 @@ export function PeakSettingsPanel() {
             />
             <NumberParameter
               id="minimum-distance"
-              label="Минимальное расстояние"
+              label="Расстояние между пиками"
               unit="нм"
               value={parameters.peakSearch.minimumDistance}
               min={0.01}
@@ -206,10 +204,6 @@ export function PeakSettingsPanel() {
               step={0.1}
               onChange={(value) => updatePeakSearchParameters({ minimumDistance: value })}
             />
-          </section>
-          <section className={styles.sideParameterGroup}>
-            <h3>Сопоставление линий</h3>
-            <p>Допуск рассчитывается отдельно для каждого пика и линии по разрешению, сетке, SNR и неопределённости калибровки.</p>
           </section>
           <CalculationFeedback status={calculationStatus} error={parameterError} />
         </div>
@@ -254,21 +248,14 @@ function SelectedPeakContent({
   return (
     <>
       <h2 className={styles.sidePanelTitle}>Пик {selectedPeak.wavelength.toFixed(2)} нм</h2>
-      <dl className={styles.selectedPeakDetails}>
-        <PeakDetail label="Длина волны" value={`${selectedPeak.wavelength.toFixed(3)} нм`} />
-        <PeakDetail label="Исходная точка сетки" value={`${selectedPeak.sampledWavelength.toFixed(3)} нм`} />
-        <PeakDetail label="Уточнение максимума" value={selectedPeak.positionRefined ? `${selectedPeak.refinementOffsetNm >= 0 ? "+" : ""}${selectedPeak.refinementOffsetNm.toFixed(4)} нм` : "Не применялось"} />
-        <PeakDetail label="Неопределённость положения" value={`≥ ${selectedPeak.positionUncertaintyNm.toFixed(4)} нм`} />
-        <PeakDetail label="Исходная интенсивность" value={formatValue(rawIntensity, 4)} />
-        <PeakDetail label="Подготовленная интенсивность" value={formatValue(selectedPeak.intensity, 4)} />
-        <PeakDetail label="Выраженность" value={formatValue(selectedPeak.prominence, 4)} />
+      <dl className={styles.peakSummaryLine} aria-label="Краткие параметры пика">
+        <PeakDetail label="Длина" value={`${selectedPeak.wavelength.toFixed(3)} нм`} />
         <PeakDetail label="SNR" value={Number.isFinite(selectedPeak.snr) ? formatValue(selectedPeak.snr, 2) : "∞"} />
         <PeakDetail label="Ширина" value={`${formatValue(selectedPeak.widthNm, 3)} нм`} />
-        <PeakDetail label="Порог в этой точке" value={formatValue(analysis.thresholdDataset.intensities[selectedPeak.index], 4)} />
       </dl>
 
       <section className={styles.candidateSection} aria-labelledby="candidate-lines-title">
-        <h3 id="candidate-lines-title">Кандидаты в пределах допуска</h3>
+        <h3 id="candidate-lines-title">Линии и назначения</h3>
         {selectedPeak.candidates.length ? (
           <PeakCandidateBrowser key={selectedPeak.id} analysis={analysis} selectedPeak={selectedPeak} />
         ) : (
@@ -277,6 +264,19 @@ function SelectedPeakContent({
           </PanelEmptyState>
         )}
       </section>
+
+      <details className={styles.peakTechnicalDisclosure}>
+        <summary>Параметры пика</summary>
+        <dl className={styles.selectedPeakDetails}>
+          <PeakDetail label="Исходная точка сетки" value={`${selectedPeak.sampledWavelength.toFixed(3)} нм`} />
+          <PeakDetail label="Уточнение максимума" value={selectedPeak.positionRefined ? `${selectedPeak.refinementOffsetNm >= 0 ? "+" : ""}${selectedPeak.refinementOffsetNm.toFixed(4)} нм` : "Не применялось"} />
+          <PeakDetail label="Неопределённость положения" value={`≥ ${selectedPeak.positionUncertaintyNm.toFixed(4)} нм`} />
+          <PeakDetail label="Исходная интенсивность" value={formatValue(rawIntensity, 4)} />
+          <PeakDetail label="Подготовленная интенсивность" value={formatValue(selectedPeak.intensity, 4)} />
+          <PeakDetail label="Выраженность" value={formatValue(selectedPeak.prominence, 4)} />
+          <PeakDetail label="Порог в этой точке" value={formatValue(analysis.thresholdDataset.intensities[selectedPeak.index], 4)} />
+        </dl>
+      </details>
     </>
   );
 }
@@ -317,10 +317,6 @@ function PeakCandidateBrowser({
 
   return (
     <>
-      <p className={styles.candidateExplanation}>
-        Ближайшая линия определяется только по длине волны в пределах адаптивного допуска и не является итоговой идентификацией пика.
-      </p>
-
       {!expanded ? (
         <div className={styles.compactCandidateView}>
           {view.acceptedAssignments.length ? (
@@ -336,7 +332,7 @@ function PeakCandidateBrowser({
 
           {view.nearest ? (
             <section className={styles.candidateGroupSection} aria-labelledby={`candidate-nearest-${selectedPeak.id}`}>
-              <h4 id={`candidate-nearest-${selectedPeak.id}`}>Ближайший кандидат</h4>
+              <h4 id={`candidate-nearest-${selectedPeak.id}`}>Ближайшая линия</h4>
               <ol className={styles.candidateList}>
                 <CandidateCard group={view.nearest} onOpenHypothesis={openHypothesis} />
               </ol>
@@ -415,7 +411,7 @@ function PeakCandidateBrowser({
         aria-expanded={expanded}
         onClick={() => setExpanded((current) => !current)}
       >
-        {expanded ? "Свернуть" : `Показать все кандидаты · ${view.candidateCount}`}
+        {expanded ? "Свернуть" : `Все кандидаты (${view.candidateCount})`}
       </button>
     </>
   );
@@ -429,39 +425,27 @@ function CandidateCard({
   onOpenHypothesis: (group: CandidateDisplayGroup) => void;
 }>) {
   const candidate = group.representative;
-  const acceptedRole = group.acceptedAssignment?.role === "main"
-    ? "Основная гипотеза"
-    : "Принятая альтернативная гипотеза";
-  const relationLabel = group.acceptedAssignment
-    ? `Участвует в гипотезе · ${acceptedRole}`
-    : group.hypothesis?.role === "diagnostic"
-      ? "Альтернатива · диагностическая гипотеза элемента"
-      : group.hypothesis
-        ? "Альтернатива · элемент принятой гипотезы"
-        : "Альтернатива";
 
   return (
     <li data-candidate-group={group.id} data-candidate-record-count={group.candidates.length}>
       <div className={styles.candidateHeading}>
-        <strong>{candidate.elementName} ({candidate.elementSymbol})</strong>
+        {group.hypothesis ? (
+          <button className={styles.candidateHypothesisLink} type="button" onClick={() => onOpenHypothesis(group)}>
+            {candidate.elementName} ({candidate.elementSymbol})
+          </button>
+        ) : <strong>{candidate.elementName} ({candidate.elementSymbol})</strong>}
         {group.candidates.length > 1 ? (
-          <span className={styles.candidateRecordCount}>{group.candidates.length} записи</span>
+          <span className={styles.candidateRecordCount}>{group.candidates.length} {formatCountWord(group.candidates.length, "запись", "записи", "записей")}</span>
         ) : null}
-      </div>
-      <div className={styles.candidateStatuses}>
-        {group.isNearest ? <span className={styles.nearestCandidate}>Ближайшая по длине волны</span> : null}
-        <span className={group.acceptedAssignment ? styles.assignedCandidate : styles.alternativeCandidate}>
-          {relationLabel}
-        </span>
       </div>
       <div className={styles.candidateValues}>
         <span>{formatCandidateGroupLine(group)} нм</span>
         <code>Δ {formatSigned(candidate.delta)} нм</code>
       </div>
-      <small>Степень ионизации {candidate.ionizationLabel || candidate.ionizationStage} · адаптивный допуск ±{candidate.adaptiveToleranceNm.toFixed(3)} нм</small>
       <details className={styles.candidateTechnicalDetails}>
-        <summary>Технические подробности</summary>
+        <summary>Технические данные</summary>
         <dl>
+          <PeakDetail label="Адаптивный допуск" value={`±${candidate.adaptiveToleranceNm.toFixed(3)} нм`} />
           <PeakDetail label="Происхождение длины" value={candidate.wavelengthType === "observed" ? "Observed" : "Ritz"} />
           <PeakDetail label="Среда" value={candidate.wavelengthMedium === "air" ? "Воздух" : "Вакуум"} />
           <PeakDetail label="Нормированное отклонение" value={candidate.normalizedDelta.toFixed(4)} />
@@ -487,12 +471,6 @@ function CandidateCard({
           </ul>
         </div>
       </details>
-      {group.hypothesis ? (
-        <button className={styles.candidateLink} type="button" onClick={() => onOpenHypothesis(group)}>
-          Открыть гипотезу
-          <ArrowRight size={13} aria-hidden="true" />
-        </button>
-      ) : null}
     </li>
   );
 }
@@ -530,7 +508,7 @@ export function IdentificationLinesPanel() {
 
   return (
     <div className={`${styles.sidePanelContent} ${styles.identificationMaster}`}>
-      <h2 className={styles.sidePanelTitle}>Обнаруженный состав</h2>
+      <h2 className={styles.sidePanelTitle}>Состав</h2>
       {molecules.length ? (
         <div className={styles.hypothesisMasterList} role="listbox" aria-label="Обнаруженные молекулы">
           {molecules.map((hypothesis) => (
@@ -545,11 +523,9 @@ export function IdentificationLinesPanel() {
               <span className={styles.hypothesisMasterHeading}>
                 <strong>{hypothesis.formula}</strong>
                 <span>{hypothesis.displayName}</span>
-                <code>полоса</code>
               </span>
               <span className={styles.hypothesisMasterMetrics}>
-                <span>Поддержано участков {hypothesis.supportedRegionIds.length}</span>
-                <span>Общее смещение {formatSigned(hypothesis.commonShiftNm)} нм</span>
+                <span>{hypothesis.supportedRegionIds.length} {formatCountWord(hypothesis.supportedRegionIds.length, "подтверждённый участок", "подтверждённых участка", "подтверждённых участков")}</span>
               </span>
             </button>
           ))}
@@ -562,11 +538,9 @@ export function IdentificationLinesPanel() {
               <span className={styles.hypothesisMasterHeading}>
                 <strong>{entry.hypothesis.symbol}</strong>
                 <span>{entry.hypothesis.name}</span>
-                <code>{entry.hypothesis.reliability === "tentative" ? "осторожно" : `#${entry.rank}`}</code>
               </span>
               <span className={styles.hypothesisMasterMetrics}>
-                <span>Сильные группы {entry.hypothesis.strongCharacteristicGroupCount}</span>
-                <span>Качественные {entry.hypothesis.reliableCharacteristicGroupCount}</span>
+                <span>{entry.hypothesis.reliableCharacteristicGroupCount} {formatCountWord(entry.hypothesis.reliableCharacteristicGroupCount, "подтверждённая группа", "подтверждённые группы", "подтверждённых групп")}</span>
               </span>
             </button>
           ))}
@@ -578,7 +552,7 @@ export function IdentificationLinesPanel() {
         open={identificationTab === "diagnostics"}
         onToggle={(event) => setIdentificationTab(event.currentTarget.open ? "diagnostics" : "hypotheses")}
       >
-        <summary>Слабые и неоднозначные совпадения · {analysis.rejectedHypotheses.length}</summary>
+        <summary>Другие совпадения · {analysis.rejectedHypotheses.length}</summary>
         <label className={styles.hypothesisSearch} htmlFor="hypothesis-search">
           <Search size={14} aria-hidden="true" />
           <input id="hypothesis-search" type="search" aria-label="Поиск слабого совпадения по элементу или символу" placeholder="Элемент или символ" value={query} onChange={(event) => setQuery(event.target.value)} />
@@ -617,7 +591,7 @@ export function IdentificationLinesPanel() {
   );
 }
 
-function SidePanelHeader({ title, onReset }: Readonly<{ title: string; onReset: () => void }>) {
+function SidePanelHeader({ title, onReset, resetDisabled = false }: Readonly<{ title: string; onReset: () => void; resetDisabled?: boolean }>) {
   return (
     <header className={styles.sidePanelHeader}>
       <h2>{title}</h2>
@@ -627,6 +601,7 @@ function SidePanelHeader({ title, onReset }: Readonly<{ title: string; onReset: 
         onClick={onReset}
         aria-label={`Сбросить: ${title.toLowerCase()}`}
         title="Сбросить к исходным значениям"
+        disabled={resetDisabled}
       >
         <RotateCcw size={15} aria-hidden="true" />
       </button>
@@ -637,6 +612,7 @@ function SidePanelHeader({ title, onReset }: Readonly<{ title: string; onReset: 
 function NumberParameter({
   id,
   label,
+  help,
   unit,
   value,
   min,
@@ -646,6 +622,7 @@ function NumberParameter({
 }: Readonly<{
   id: string;
   label: string;
+  help?: string;
   unit: string;
   value: number;
   min: number;
@@ -655,7 +632,7 @@ function NumberParameter({
 }>) {
   return (
     <label className={styles.numberField} htmlFor={id}>
-      <span>{label}</span>
+      <span className={styles.infoLabel}>{label}{help ? <Info size={14} aria-label={help} /> : null}</span>
       <span className={styles.numberInputWrap}>
         <input
           id={id}
@@ -686,7 +663,6 @@ function CalculationFeedback({
         <div className={styles.noticeContent}>
           <strong>Не удалось обновить анализ</strong>
           <span>{error}</span>
-          <small>Последний корректный результат сохранён.</small>
         </div>
       </div>
     );
@@ -723,4 +699,13 @@ function formatCandidateGroupLine(group: CandidateDisplayGroup): string {
     ? candidate.line.toFixed(3)
     : `${minimum.toFixed(3)}–${maximum.toFixed(3)}`;
   return `${label} · ${wavelength}`;
+}
+
+function formatCountWord(value: number, one: string, few: string, many: string): string {
+  const mod100 = value % 100;
+  const mod10 = value % 10;
+  if (mod100 >= 11 && mod100 <= 14) return many;
+  if (mod10 === 1) return one;
+  if (mod10 >= 2 && mod10 <= 4) return few;
+  return many;
 }

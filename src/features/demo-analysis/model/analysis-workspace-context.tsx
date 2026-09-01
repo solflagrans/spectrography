@@ -272,6 +272,7 @@ export function AnalysisWorkspaceProvider({ children }: Readonly<{ children: Rea
     const next = {
       ...parametersRef.current,
       processing: DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.processing,
+      wavelengthCalibration: DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.wavelengthCalibration,
     };
     parametersRef.current = next;
     setParameters(next);

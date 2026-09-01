@@ -146,12 +146,12 @@ describe("interactive demo analysis", () => {
     });
     await act(async () => Promise.resolve());
 
-    const field = screen.getByRole("combobox", { name: /Допустимый способ интерпретации/ });
+    const field = screen.getByRole("combobox", { name: "Тип спектра" });
     expect((field as HTMLSelectElement).value).toBe("plasma-emission");
     expect(within(field).getAllByRole("option")).toHaveLength(1);
     expect(within(field).getByRole("option").textContent).toBe("Эмиссия плазмы/разряда");
     expect(screen.getByTestId("spectrum-type").textContent).toBe("plasma-emission");
-    expect(screen.getByText(/Тип не задаёт ожидаемый состав/)).toBeTruthy();
+    expect(screen.queryByText(/Тип не задаёт ожидаемый состав/)).toBeNull();
   });
 
   it("automatically refreshes peaks and conclusion after a parameter change", async () => {
@@ -180,12 +180,12 @@ describe("interactive demo analysis", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
     const validPeakCount = screen.getByTestId("peak-count").textContent;
-    fireEvent.change(screen.getByLabelText(/Минимальное расстояние/), { target: { value: "0" } });
+    fireEvent.change(screen.getByLabelText(/Расстояние между пиками/), { target: { value: "0" } });
 
     await act(async () => vi.advanceTimersByTime(181));
 
     expect(screen.getByRole("alert").textContent).toContain("Укажите минимальное расстояние больше 0 нм");
-    expect(screen.getByRole("alert").textContent).toContain("Последний корректный результат сохранён");
+    expect(screen.getByRole("alert").textContent).not.toContain("Последний корректный результат сохранён");
     expect(screen.getByTestId("peak-count").textContent).toBe(validPeakCount);
     expect(screen.getByTestId("calculation-status").textContent).toBe("error");
   });
@@ -210,7 +210,7 @@ describe("interactive demo analysis", () => {
     });
 
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("Выберите файл JSON, XLSX или RAW8"));
-    expect(screen.getByRole("alert").textContent).toContain("Открытый анализ сохранён");
+    expect(screen.getByRole("alert").textContent).not.toContain("Открытый анализ сохранён");
     expect(screen.getByTestId("file-name").textContent).toBe("sample.json");
     expect(screen.getByTestId("point-count").textContent).toBe("5");
   });
@@ -284,9 +284,10 @@ describe("interactive demo analysis", () => {
     const selectedId = screen.getByTestId("selected-peak").textContent;
     expect(selectedId).not.toBe("—");
     expect(screen.getByRole("tab", { name: "Выбранный пик" }).getAttribute("aria-selected")).toBe("true");
-    expect(screen.getByText("Исходная интенсивность")).toBeTruthy();
-    expect(screen.getByText("Подготовленная интенсивность")).toBeTruthy();
-    expect(screen.getByText("Ближайшая по длине волны")).toBeTruthy();
+    expect(screen.getByText("Длина")).toBeTruthy();
+    expect(screen.getByText("Ширина")).toBeTruthy();
+    expect(screen.getByText("Параметры пика")).toBeTruthy();
+    expect(screen.queryByText("Ближайшая по длине волны")).toBeNull();
 
     const chart = screen.getByRole("img", { name: "Подготовленный спектр с отмеченными пиками" });
     expect(chart.getAttribute("data-selected-peak")).toBe(selectedId);
@@ -299,7 +300,7 @@ describe("interactive demo analysis", () => {
     expect(screen.getByTestId("selected-peak").textContent).toBe(nextId);
     expect(chart.getAttribute("data-selected-peak")).toBe(nextId);
     expect(selectableRows[1].getAttribute("aria-selected")).toBe("true");
-    expect(screen.getByText("Ближайшая по длине волны")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Линии и назначения" })).toBeTruthy();
   });
 
   it("distinguishes assignments from the nearest candidate and keeps the compact list bounded", () => {
@@ -307,16 +308,15 @@ describe("interactive demo analysis", () => {
     fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
     fireEvent.click(screen.getAllByRole("button", { name: /График: выбрать пик/ })[0]);
 
-    expect(screen.getByText("Ближайший кандидат", { selector: "span" })).toBeTruthy();
-    expect(screen.getByText(/не итоговая идентификация/)).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Ближайшая линия" })).toBeTruthy();
+    expect(screen.queryByText(/не итоговая идентификация/)).toBeNull();
     expect(screen.queryByText("Предложено")).toBeNull();
 
     const assignments = screen.getByRole("heading", { name: "Назначения в гипотезах" }).closest("section")!;
-    const nearest = screen.getByRole("heading", { name: "Ближайший кандидат" }).closest("section")!;
+    const nearest = screen.getByRole("heading", { name: "Ближайшая линия" }).closest("section")!;
     const alternatives = screen.getByRole("heading", { name: "Альтернативы" }).closest("section")!;
-    expect(within(assignments).getAllByText(/Участвует в гипотезе/).length).toBeGreaterThan(0);
-    expect(within(nearest).getByText("Ближайшая по длине волны")).toBeTruthy();
-    expect(within(nearest).queryByText(/Участвует в гипотезе/)).toBeNull();
+    expect(assignments.querySelector("[data-candidate-group]")).toBeTruthy();
+    expect(nearest.querySelector("[data-candidate-group]")).toBeTruthy();
     expect(alternatives.querySelectorAll("[data-candidate-group]").length).toBeLessThanOrEqual(5);
   });
 
@@ -325,7 +325,7 @@ describe("interactive demo analysis", () => {
     fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
     fireEvent.click(screen.getAllByRole("button", { name: /График: выбрать пик/ })[0]);
 
-    const showAll = screen.getByRole("button", { name: /Показать все кандидаты ·/ });
+    const showAll = screen.getByRole("button", { name: /Все кандидаты \(\d+\)/ });
     expect(showAll.getAttribute("aria-expanded")).toBe("false");
     fireEvent.click(showAll);
     expect(screen.getByRole("heading", { name: "Все кандидаты" })).toBeTruthy();
@@ -342,7 +342,7 @@ describe("interactive demo analysis", () => {
     fireEvent.change(screen.getByLabelText("Степень ионизации"), { target: { value: "2" } });
     expect(screen.getByText(/Найдено справочных записей:/).textContent).not.toContain("записей: 0");
     fireEvent.change(screen.getByLabelText("Отношение к гипотезам"), { target: { value: "diagnostic" } });
-    expect(screen.getAllByText(/диагностическая гипотеза элемента/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Найдено справочных записей:/).textContent).not.toContain("записей: 0");
 
     fireEvent.change(search, { target: { value: "несуществующий элемент" } });
     expect(screen.getByText("По выбранным условиям кандидаты не найдены.")).toBeTruthy();
@@ -389,7 +389,7 @@ describe("interactive demo analysis", () => {
     render(<IdentificationScenario />);
     fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
 
-    const diagnosticDetails = screen.getByText(/^Слабые и неоднозначные совпадения ·/).closest("details")!;
+    const diagnosticDetails = screen.getByText(/^Другие совпадения ·/).closest("details")!;
     diagnosticDetails.open = true;
     fireEvent(diagnosticDetails, new Event("toggle"));
     expect(screen.getByTestId("identification-tab").textContent).toBe("diagnostics");
@@ -414,7 +414,7 @@ describe("interactive demo analysis", () => {
     vi.useFakeTimers();
     render(<IdentificationScenario />);
     fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
-    const diagnosticDetails = screen.getByText(/^Слабые и неоднозначные совпадения ·/).closest("details")!;
+    const diagnosticDetails = screen.getByText(/^Другие совпадения ·/).closest("details")!;
     diagnosticDetails.open = true;
     fireEvent(diagnosticDetails, new Event("toggle"));
     fireEvent.click(screen.getByRole("option", { name: /N.*Азот/ }));
@@ -433,7 +433,7 @@ describe("interactive demo analysis", () => {
   it("opens a supporting observation and carries the selected peak to the peak mode", () => {
     render(<IdentificationScenario />);
     fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
-    const diagnosticDetails = screen.getByText(/^Слабые и неоднозначные совпадения ·/).closest("details")!;
+    const diagnosticDetails = screen.getByText(/^Другие совпадения ·/).closest("details")!;
     diagnosticDetails.open = true;
     fireEvent(diagnosticDetails, new Event("toggle"));
     fireEvent.click(screen.getByRole("option", { name: /N.*Азот/ }));
@@ -442,10 +442,10 @@ describe("interactive demo analysis", () => {
     expect(Number(chart.getAttribute("data-reference-count"))).toBeGreaterThanOrEqual(0);
     expect(Number(chart.getAttribute("data-missing-reference-count"))).toBeGreaterThanOrEqual(0);
 
-    const technicalDetails = screen.getByText("Подробности идентификации и технические показатели").closest("details")!;
+    const technicalDetails = screen.getByText("Доказательства и показатели").closest("details")!;
     technicalDetails.open = true;
     fireEvent(technicalDetails, new Event("toggle"));
-    fireEvent.click(screen.getAllByRole("button", { name: "Открыть пик" })[0]);
+    fireEvent.click(technicalDetails.querySelector('tr[tabindex="0"]')!);
     expect(screen.getByTestId("selected-peak").textContent).not.toBe("—");
     expect(screen.getByTestId("analysis-view").textContent).toBe("peaks");
   });
@@ -454,7 +454,7 @@ describe("interactive demo analysis", () => {
     render(<PeakSelectionScenario />);
     fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
     fireEvent.click(screen.getAllByRole("button", { name: /График: выбрать пик/ })[0]);
-    fireEvent.click(screen.getAllByRole("button", { name: "Открыть гипотезу" })[0]);
+    fireEvent.click(document.querySelector("[data-candidate-group] button")!);
 
     expect(screen.getByTestId("selected-hypothesis").textContent).not.toBe("—");
     expect(screen.getByTestId("analysis-view").textContent).toBe("composition");
@@ -467,14 +467,14 @@ describe("interactive demo analysis", () => {
     fireEvent.click(document.querySelector("tr[data-peak-id]")!);
     const selectedPeak = screen.getByTestId("selected-peak").textContent;
 
-    fireEvent.click(screen.getByRole("button", { name: /Показать все кандидаты ·/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Все кандидаты \(\d+\)/ }));
     fireEvent.change(screen.getByLabelText("Поиск кандидата по названию элемента или символу"), {
       target: { value: "N" },
     });
     fireEvent.change(screen.getByLabelText("Отношение к гипотезам"), {
       target: { value: "diagnostic" },
     });
-    fireEvent.click(screen.getAllByRole("button", { name: "Открыть гипотезу" })[0]);
+    fireEvent.click(document.querySelector("[data-candidate-group] button")!);
 
     expect(screen.getByTestId("analysis-view").textContent).toBe("composition");
     expect(screen.getByTestId("selected-peak").textContent).toBe(selectedPeak);
@@ -496,22 +496,21 @@ describe("interactive demo analysis", () => {
     await act(async () => Promise.resolve());
     expect(screen.getByTestId("file-name").textContent).toBe("measurement.json");
 
-    const spectrumTypeField = screen.getByRole("combobox", { name: /Допустимый способ интерпретации/ });
+    const spectrumTypeField = screen.getByRole("combobox", { name: "Тип спектра" });
     expect((spectrumTypeField as HTMLSelectElement).value).toBe("plasma-emission");
     expect(within(spectrumTypeField).getAllByRole("option")).toHaveLength(1);
 
-    const composition = screen.getByRole("list", { name: "Наиболее надёжные варианты состава" });
-    const mainChoice = within(composition).getAllByRole("button")[0];
+    const composition = screen.getByRole("listbox", { name: "Основные гипотезы" });
+    const mainChoice = within(composition).getAllByRole("option")[0];
     fireEvent.click(mainChoice);
-    expect(screen.getAllByText(/спектральные признаки|Главные признаки/i).length).toBeGreaterThan(0);
+    expect(screen.getByTestId("selected-hypothesis").textContent).not.toBe("—");
 
-    const technical = screen.queryByText("Подробности идентификации и технические показатели");
+    const technical = screen.queryByText("Доказательства и показатели");
     if (technical) {
       const details = technical.closest("details")!;
       details.open = true;
       fireEvent(details, new Event("toggle"));
-      const peakLink = screen.getAllByRole("button", { name: "Открыть пик" })[0];
-      fireEvent.click(peakLink);
+      fireEvent.click(details.querySelector('tr[tabindex="0"]')!);
       expect(screen.getByTestId("analysis-view").textContent).toBe("peaks");
       expect(screen.getByTestId("selected-peak").textContent).not.toBe("—");
     }

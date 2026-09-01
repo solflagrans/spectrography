@@ -84,7 +84,7 @@ export function createSpectrumChartOption(
       yAxisIndex: 0,
       showSymbol: false,
       sampling: "lttb",
-      lineStyle: { color: palette.raw, width: 1, opacity: 0.52 },
+      lineStyle: { color: palette.raw, width: preparedVisible ? 1.1 : 1.6, opacity: preparedVisible ? 0.62 : 0.9 },
       itemStyle: { color: palette.raw },
       emphasis: { lineStyle: { opacity: 0.8 } },
       z: 1,
@@ -130,6 +130,7 @@ export function createSpectrumChartOption(
         return {
           id: peak.id,
           value: [peak.wavelength, peak.intensity],
+          symbol: selected ? "diamond" : "circle",
           symbolSize: selected ? 13 : 8,
           itemStyle: selected
             ? {
@@ -171,7 +172,7 @@ export function createSpectrumChartOption(
             color: palette.reference,
             formatter: line.label,
             position: "insideEndTop",
-            fontSize: 10,
+            fontSize: 12,
           },
         })),
       },
@@ -216,7 +217,7 @@ export function createSpectrumChartOption(
       markArea: {
         silent: true,
         itemStyle: { color: withAlpha(palette.region, 0.12) },
-        label: { color: palette.region, fontSize: 10, position: "insideTop" },
+        label: { color: palette.region, fontSize: 12, position: "insideTop" },
         data: data.highlightedRegions.map((region) => [
           { name: region.label, xAxis: region.minimum },
           { xAxis: region.maximum },
@@ -252,7 +253,8 @@ export function createSpectrumChartOption(
       nameGap: 28,
       min: minimumWavelength,
       max: maximumWavelength,
-      axisLabel: { color: palette.text, fontSize: 11 },
+      nameTextStyle: { color: palette.text, fontSize: 12, fontWeight: 600 },
+      axisLabel: { color: palette.text, fontSize: 12 },
       axisLine: { lineStyle: { color: palette.border } },
       splitLine: { show: false },
     },
@@ -283,7 +285,7 @@ export function createSpectrumChartOption(
         fillerColor: withAlpha(palette.prepared, 0.12),
         handleStyle: { color: palette.prepared, borderColor: palette.prepared },
         moveHandleStyle: { color: palette.prepared },
-        textStyle: { color: palette.text, fontSize: 10 },
+        textStyle: { color: palette.text, fontSize: 12 },
         showDetail: false,
       },
     ],
@@ -397,20 +399,20 @@ function createYAxis(
     type: "value" as const,
     name: "Исходные отсчёты",
     position: "left" as const,
-    nameTextStyle: { color: palette.raw, fontSize: 10, fontWeight: 600 },
-    axisLabel: { color: palette.raw, fontSize: 11 },
+    nameTextStyle: { color: palette.raw, fontSize: 12, fontWeight: 600 },
+    axisLabel: { color: palette.raw, fontSize: 12 },
     axisLine: { show: true, lineStyle: { color: palette.raw, opacity: 0.7 } },
-    splitLine: { lineStyle: { color: palette.border, opacity: 0.52 } },
+    splitLine: { lineStyle: { color: palette.border, opacity: 0.34 } },
     scale: true,
   };
   const preparedAxis = {
     type: "value" as const,
     name: "Подготовленная интенсивность",
     position: dualAxis ? "right" as const : "left" as const,
-    nameTextStyle: { color: palette.prepared, fontSize: 10, fontWeight: 600 },
-    axisLabel: { color: palette.prepared, fontSize: 11 },
+    nameTextStyle: { color: palette.prepared, fontSize: 12, fontWeight: 600 },
+    axisLabel: { color: palette.prepared, fontSize: 12 },
     axisLine: { show: true, lineStyle: { color: palette.prepared, opacity: 0.8 } },
-    splitLine: { lineStyle: { color: palette.border, opacity: dualAxis ? 0 : 0.52 } },
+    splitLine: { lineStyle: { color: palette.border, opacity: dualAxis ? 0 : 0.34 } },
     scale: true,
   };
 

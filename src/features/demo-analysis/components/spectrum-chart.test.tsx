@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { AnalyzedPeak, SpectrumDataset } from "@/domain/spectrum";
@@ -142,11 +142,11 @@ describe("spectrum chart configuration", () => {
       "Порог обнаружения",
       "Найденные пики",
     ]);
-    expect(series[0]).toMatchObject({ yAxisIndex: 0, lineStyle: { width: 1, opacity: 0.52 } });
+    expect(series[0]).toMatchObject({ yAxisIndex: 0, lineStyle: { width: 1.1, opacity: 0.62 } });
     expect(series[1]).toMatchObject({ yAxisIndex: 1, lineStyle: { width: 1.8 } });
     expect(series[2]).toMatchObject({ yAxisIndex: 1, lineStyle: { type: "dashed" } });
     expect(series[3]).toMatchObject({ yAxisIndex: 1, itemStyle: { color: palette.peak } });
-    expect(series[3].data?.[0]).toMatchObject({ id: peak.id, symbolSize: 13 });
+    expect(series[3].data?.[0]).toMatchObject({ id: peak.id, symbol: "diamond", symbolSize: 13 });
   });
 
   it("keeps reference lines independent from the prepared curve", () => {
@@ -273,7 +273,7 @@ describe("SpectrumChart", () => {
     );
 
     expect(screen.queryByRole("group", { name: "Слои графика" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Сбросить масштаб" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Сбросить масштаб" })).toBeNull();
     const option = echartsMock.chart.setOption.mock.calls.at(-1)?.[0] as {
       series: Array<{ name: string }>;
     };
@@ -310,7 +310,8 @@ describe("SpectrumChart", () => {
     expect(preparedToggle.getAttribute("aria-pressed")).toBe("true");
     expect(echartsMock.init).toHaveBeenCalledTimes(1);
 
-    echartsMock.events.get("datazoom")?.({ start: 25, end: 75 });
+    act(() => echartsMock.events.get("datazoom")?.({ start: 25, end: 75 }));
+    expect(screen.getByRole("button", { name: "Сбросить масштаб" })).toBeTruthy();
     rerender(
       <SpectrumChart
         rawDataset={rawDataset}
@@ -330,6 +331,14 @@ describe("SpectrumChart", () => {
     };
     expect(sameSourceOption.dataZoom[0]).toMatchObject({ start: 25, end: 75 });
 
+    fireEvent.click(screen.getByRole("button", { name: "Сбросить масштаб" }));
+    expect(echartsMock.chart.dispatchAction).toHaveBeenCalledWith({
+      type: "dataZoom",
+      start: 0,
+      end: 100,
+    });
+    expect(screen.queryByRole("button", { name: "Сбросить масштаб" })).toBeNull();
+
     rerender(
       <SpectrumChart
         rawDataset={rawDataset}
@@ -346,12 +355,6 @@ describe("SpectrumChart", () => {
       dataZoom: Array<{ start: number; end: number }>;
     };
     expect(newSourceOption.dataZoom[0]).toMatchObject(FULL_SPECTRUM_ZOOM);
-
-    fireEvent.click(screen.getByRole("button", { name: "Сбросить масштаб" }));
-    expect(echartsMock.chart.dispatchAction).toHaveBeenCalledWith({
-      type: "dataZoom",
-      start: 0,
-      end: 100,
-    });
+    expect(screen.queryByRole("button", { name: "Сбросить масштаб" })).toBeNull();
   });
 });
