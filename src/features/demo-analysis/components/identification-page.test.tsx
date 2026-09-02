@@ -7,6 +7,7 @@ import {
   createWorkingAnalysis,
   DEMO_ANALYSIS_INPUT,
 } from "@/application/analysis/create-working-analysis";
+import { InfoTooltipProvider } from "@/features/workspace/components/info-tooltip";
 
 import { IdentificationAnalysisPage } from "./analysis-pages";
 
@@ -65,7 +66,7 @@ describe("multi-channel identification detail", () => {
       setAnalysisView: mocks.setAnalysisView,
     });
 
-    render(<IdentificationAnalysisPage />);
+    render(<InfoTooltipProvider><IdentificationAnalysisPage /></InfoTooltipProvider>);
 
     const channelSelect = screen.getByLabelText("Канал");
     expect(channelSelect.querySelectorAll("option")).toHaveLength(2);

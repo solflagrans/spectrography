@@ -27,6 +27,7 @@
     "check": "pnpm library:check && pnpm molecular:check && pnpm experimental:check && pnpm verify:identification && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm test:e2e"
   },
   "dependencies": {
+    "@radix-ui/react-tooltip": "^1.2.16",
     "clsx": "^2.1.1",
     "echarts": "^6.1.0",
     "lucide-react": "^1.35.0",

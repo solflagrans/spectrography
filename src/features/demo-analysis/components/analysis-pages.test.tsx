@@ -9,8 +9,9 @@ import {
 } from "@/features/demo-analysis/model/analysis-workspace-context";
 import { createRaw8Fixture } from "@/fixtures/raw8-test-fixture";
 import { DEMO_ANALYSIS_INPUT } from "@/application/analysis/create-working-analysis";
+import { InfoTooltipProvider } from "@/features/workspace/components/info-tooltip";
 
-import { AnalysisSidePanel, IdentificationLinesPanel, PeakSettingsPanel } from "./analysis-side-panels";
+import { AnalysisSidePanel, IdentificationLinesPanel, PeakSettingsPanel, ProcessingSettingsPanel } from "./analysis-side-panels";
 import {
   AnalysisAnalysisPage,
   DataAnalysisPage,
@@ -91,50 +92,90 @@ function AnalysisProbe() {
 
 function PeakSelectionScenario() {
   return (
-    <AnalysisWorkspaceProvider>
-      <DataAnalysisPage />
-      <PeaksAnalysisPage />
-      <PeakSettingsPanel />
-      <AnalysisProbe />
-    </AnalysisWorkspaceProvider>
+    <InfoTooltipProvider>
+      <AnalysisWorkspaceProvider>
+        <DataAnalysisPage />
+        <PeaksAnalysisPage />
+        <PeakSettingsPanel />
+        <AnalysisProbe />
+      </AnalysisWorkspaceProvider>
+    </InfoTooltipProvider>
   );
 }
 
 function Scenario() {
   return (
-    <AnalysisWorkspaceProvider>
-      <DataAnalysisPage />
-      <ProcessingAnalysisPage />
-      <PeakSettingsPanel />
-      <AnalysisProbe />
-    </AnalysisWorkspaceProvider>
+    <InfoTooltipProvider>
+      <AnalysisWorkspaceProvider>
+        <DataAnalysisPage />
+        <ProcessingAnalysisPage />
+        <PeakSettingsPanel />
+        <AnalysisProbe />
+      </AnalysisWorkspaceProvider>
+    </InfoTooltipProvider>
+  );
+}
+
+function ProcessingSettingsScenario() {
+  return (
+    <InfoTooltipProvider>
+      <AnalysisWorkspaceProvider>
+        <ProcessingSettingsPanel />
+      </AnalysisWorkspaceProvider>
+    </InfoTooltipProvider>
   );
 }
 
 function IdentificationScenario() {
   return (
-    <AnalysisWorkspaceProvider>
-      <DataAnalysisPage />
-      <IdentificationLinesPanel />
-      <IdentificationAnalysisPage />
-      <PeakSettingsPanel />
-      <AnalysisProbe />
-    </AnalysisWorkspaceProvider>
+    <InfoTooltipProvider>
+      <AnalysisWorkspaceProvider>
+        <DataAnalysisPage />
+        <IdentificationLinesPanel />
+        <IdentificationAnalysisPage />
+        <PeakSettingsPanel />
+        <AnalysisProbe />
+      </AnalysisWorkspaceProvider>
+    </InfoTooltipProvider>
   );
 }
 
 function EndToEndScenario() {
   return (
-    <AnalysisWorkspaceProvider>
-      <DataAnalysisPage />
-      <AnalysisSidePanel />
-      <AnalysisAnalysisPage />
-      <AnalysisProbe />
-    </AnalysisWorkspaceProvider>
+    <InfoTooltipProvider>
+      <AnalysisWorkspaceProvider>
+        <DataAnalysisPage />
+        <AnalysisSidePanel />
+        <AnalysisAnalysisPage />
+        <AnalysisProbe />
+      </AnalysisWorkspaceProvider>
+    </InfoTooltipProvider>
   );
 }
 
 describe("interactive demo analysis", () => {
+  it("associates the wavelength switch and parameter fields with concise labels", () => {
+    render(<ProcessingSettingsScenario />);
+
+    expect(screen.getByRole("switch", { name: "Автоматически уточнять шкалу" })).toBeTruthy();
+    expect(screen.getByRole("spinbutton", { name: "Окно оценки шума" })).toBeTruthy();
+    expect(screen.queryByRole("spinbutton", { name: /MAD первых разностей/ })).toBeNull();
+    expect(screen.getByText("Гладкость базовой линии")).toBeTruthy();
+    expect(screen.getByText("Окно сглаживания")).toBeTruthy();
+    expect(screen.getByText("Масштаб интенсивности")).toBeTruthy();
+    expect(screen.getByRole("option", { name: "К максимуму (0–1)" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Не нормировать" })).toBeTruthy();
+  });
+
+  it("shows one unit for the complete peak-width range", () => {
+    render(<PeakSelectionScenario />);
+
+    const widthRange = screen.getByRole("group", { name: "Ширина пика" });
+    expect(within(widthRange).getByRole("spinbutton", { name: "Ширина пика, от" })).toBeTruthy();
+    expect(within(widthRange).getByRole("spinbutton", { name: "Ширина пика, до" })).toBeTruthy();
+    expect(within(widthRange).getAllByText("нм")).toHaveLength(1);
+  });
+
   it("shows one plasma-emission option and assigns it to an imported analysis", async () => {
     render(<Scenario />);
     const compactSpectrum = JSON.stringify({
@@ -333,16 +374,16 @@ describe("interactive demo analysis", () => {
 
     const search = screen.getByLabelText("Поиск кандидата по названию элемента или символу");
     fireEvent.change(search, { target: { value: "Железо" } });
-    const byName = screen.getByText(/Найдено справочных записей:/).textContent;
-    expect(byName).not.toContain("записей: 0");
+    const byName = document.querySelector("[data-candidate-count]")!.textContent;
+    expect(byName).not.toMatch(/^0 /);
     fireEvent.change(search, { target: { value: "Fe" } });
-    expect(screen.getByText(/Найдено справочных записей:/).textContent).toBe(byName);
+    expect(document.querySelector("[data-candidate-count]")!.textContent).toBe(byName);
 
     fireEvent.change(search, { target: { value: "" } });
     fireEvent.change(screen.getByLabelText("Степень ионизации"), { target: { value: "2" } });
-    expect(screen.getByText(/Найдено справочных записей:/).textContent).not.toContain("записей: 0");
+    expect(document.querySelector("[data-candidate-count]")!.textContent).not.toMatch(/^0 /);
     fireEvent.change(screen.getByLabelText("Отношение к гипотезам"), { target: { value: "diagnostic" } });
-    expect(screen.getByText(/Найдено справочных записей:/).textContent).not.toContain("записей: 0");
+    expect(document.querySelector("[data-candidate-count]")!.textContent).not.toMatch(/^0 /);
 
     fireEvent.change(search, { target: { value: "несуществующий элемент" } });
     expect(screen.getByText("По выбранным условиям кандидаты не найдены.")).toBeTruthy();
@@ -359,11 +400,11 @@ describe("interactive demo analysis", () => {
     const selectedId = screen.getByTestId("selected-peak").textContent;
 
     fireEvent.click(screen.getByRole("tab", { name: "Параметры" }));
-    fireEvent.change(screen.getByLabelText(/Минимальный SNR/), { target: { value: "5.5" } });
+    fireEvent.change(screen.getByRole("slider", { name: "Минимальный SNR" }), { target: { value: "5.5" } });
     await act(async () => vi.advanceTimersByTime(181));
     expect(screen.getByTestId("selected-peak").textContent).toBe(selectedId);
 
-    fireEvent.change(screen.getByLabelText(/Минимальная выраженность/), { target: { value: "1.01" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Минимальная выраженность" }), { target: { value: "1.01" } });
     await act(async () => vi.advanceTimersByTime(181));
     expect(screen.getByTestId("selected-peak").textContent).toBe("—");
     fireEvent.click(screen.getByRole("tab", { name: "Выбранный пик" }));
@@ -421,11 +462,11 @@ describe("interactive demo analysis", () => {
     const selectedHypothesis = screen.getByTestId("selected-hypothesis").textContent;
 
     fireEvent.click(screen.getByRole("tab", { name: "Параметры" }));
-    fireEvent.change(screen.getByLabelText(/Минимальный SNR/), { target: { value: "5.5" } });
+    fireEvent.change(screen.getByRole("slider", { name: "Минимальный SNR" }), { target: { value: "5.5" } });
     await act(async () => vi.advanceTimersByTime(181));
     expect(screen.getByTestId("selected-hypothesis").textContent).toBe(selectedHypothesis);
 
-    fireEvent.change(screen.getByLabelText(/Минимальная выраженность/), { target: { value: "1.01" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Минимальная выраженность" }), { target: { value: "1.01" } });
     await act(async () => vi.advanceTimersByTime(181));
     expect(screen.getByTestId("selected-hypothesis").textContent).toBe("—");
   });
@@ -514,6 +555,15 @@ describe("interactive demo analysis", () => {
       expect(screen.getByTestId("analysis-view").textContent).toBe("peaks");
       expect(screen.getByTestId("selected-peak").textContent).not.toBe("—");
     }
+  });
+
+  it("uses a concise evidence summary without internal strength classes", () => {
+    render(<EndToEndScenario />);
+    fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
+
+    const conclusion = screen.getByRole("heading", { name: "Основные гипотезы" }).closest("section")!;
+    expect(conclusion.textContent).toMatch(/подтвержд[её]нн(ая|ые|ых) групп/);
+    expect(conclusion.textContent).not.toMatch(/сильн(ая|ые|ых)|качественн(ая|ые|ых) совпад/);
   });
 });
 

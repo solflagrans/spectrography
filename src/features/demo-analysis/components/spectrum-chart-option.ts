@@ -1,6 +1,7 @@
 import type { EChartsCoreOption } from "echarts/core";
 
 import type { AnalyzedPeak, SpectrumDataset } from "@/domain/spectrum";
+import { formatDecimal, formatSignedDecimal } from "@/features/workspace/model/display-format";
 
 export type SpectrumChartLayer = "raw" | "prepared" | "threshold" | "peaks" | "referenceLines" | "missingReferenceLines" | "regions";
 
@@ -332,9 +333,9 @@ export function formatSpectrumTooltip(
       rows.push(
         "<span><strong>Найденный пик</strong></span>",
         formatTooltipRow(palette.peak, "Интенсивность", peak.intensity, 4),
-        `<span>Выраженность: <strong>${peak.prominence.toFixed(4)}</strong></span>`,
-        `<span>SNR: <strong>${Number.isFinite(peak.snr) ? peak.snr.toFixed(2) : "∞"}</strong></span>`,
-        `<span>Ширина: <strong>${peak.widthNm.toFixed(3)} нм</strong></span>`,
+        `<span>Выраженность: <strong>${formatDecimal(peak.prominence, 4)}</strong></span>`,
+        `<span>SNR: <strong>${Number.isFinite(peak.snr) ? formatDecimal(peak.snr, 2) : "∞"}</strong></span>`,
+        `<span>Ширина: <strong>${formatDecimal(peak.widthNm, 3)} нм</strong></span>`,
         `<span>Ближайший кандидат: <strong>${formatPeakMatch(peak)}</strong></span>`,
       );
     }
@@ -492,7 +493,7 @@ function getMedianStep(wavelengths: readonly number[]): number {
 }
 
 function formatTooltipRow(color: string, label: string, value: number, precision: number): string {
-  return formatTooltipTextRow(color, label, value.toFixed(precision));
+  return formatTooltipTextRow(color, label, formatDecimal(value, precision));
 }
 
 function formatTooltipTextRow(color: string, label: string, value: string): string {
@@ -508,12 +509,11 @@ function formatPeakMatch(peak: AnalyzedPeak): string {
 }
 
 function formatSignedDelta(value: number): string {
-  if (value === 0) return "Δ 0.000";
-  return `Δ ${value > 0 ? "+" : ""}${value.toFixed(3)}`;
+  return `Δ ${formatSignedDecimal(value, 3)}`;
 }
 
 function formatWavelength(value: number): string {
-  return value.toFixed(2);
+  return formatDecimal(value, 2);
 }
 
 function getZoomEventCandidate(event: unknown): { readonly start?: unknown; readonly end?: unknown } | undefined {

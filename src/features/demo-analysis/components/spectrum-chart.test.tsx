@@ -232,13 +232,13 @@ describe("spectrum chart configuration", () => {
       palette,
     );
 
-    expect(tooltip).toContain("401.00 нм");
-    expect(tooltip).toContain("Исходные отсчёты: <strong>240.000</strong>");
-    expect(tooltip).toContain("Подготовленная интенсивность: <strong>0.8000</strong>");
-    expect(tooltip).toContain("Локальный порог: <strong>0.1500</strong>");
-    expect(tooltip).toContain("Выраженность: <strong>0.6200</strong>");
-    expect(tooltip).toContain("Ближайший кандидат: <strong>Fe I · 401.05 нм (Δ -0.050 нм)</strong>");
-    expect(tooltip).toContain("Справочная линия: <strong>Fe 401.05 · 401.05 нм</strong>");
+    expect(tooltip).toContain("401,00 нм");
+    expect(tooltip).toContain("Исходные отсчёты: <strong>240,000</strong>");
+    expect(tooltip).toContain("Подготовленная интенсивность: <strong>0,8000</strong>");
+    expect(tooltip).toContain("Локальный порог: <strong>0,1500</strong>");
+    expect(tooltip).toContain("Выраженность: <strong>0,6200</strong>");
+    expect(tooltip).toContain("Ближайший кандидат: <strong>Fe I · 401,05 нм (Δ -0,050 нм)</strong>");
+    expect(tooltip).toContain("Справочная линия: <strong>Fe 401.05 · 401,05 нм</strong>");
   });
 
   it("preserves a zoom range for updates of one source and resets it for another source", () => {

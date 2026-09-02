@@ -5,7 +5,6 @@ import {
   CircleAlert,
   Database,
   FlaskConical,
-  Info,
   Link2,
   LoaderCircle,
   Ruler,
@@ -33,6 +32,8 @@ import type {
   SpectralLineCandidate,
 } from "@/domain/spectrum";
 import { useAnalysisWorkspace } from "@/features/demo-analysis/model/analysis-workspace-context";
+import { InfoTooltip } from "@/features/workspace/components/info-tooltip";
+import { formatCount, formatDecimal, formatSignedDecimal } from "@/features/workspace/model/display-format";
 import {
   diagnosticReasonLabels,
   findIdentificationEntry,
@@ -65,7 +66,7 @@ export function DataAnalysisPage() {
     ["Источник", analysis.source.kind],
     ["Формат", analysis.source.format],
     ["Единицы", analysis.source.units],
-    ["Средняя интенсивность", analysis.rawStats.mean.toFixed(2)],
+    ["Средняя интенсивность", formatDecimal(analysis.rawStats.mean, 2)],
   ];
   if (analysis.instrumentMetadata) {
     datasetDetails.push(
@@ -90,16 +91,15 @@ export function DataAnalysisPage() {
       <MetricGrid>
         <Metric label="Диапазон" value={`${formatNumber(analysis.wavelengthRange.minimum)}–${formatNumber(analysis.wavelengthRange.maximum)} нм`} />
         <Metric label="Количество точек" value={String(analysis.rawDataset.wavelengths.length)} />
-        <Metric label="Интенсивность" value={`${analysis.rawStats.minimum.toFixed(2)}–${analysis.rawStats.maximum.toFixed(2)}`} />
-        <Metric label="Средний шаг" value={`~${analysis.wavelengthStep} нм`} />
+        <Metric label="Интенсивность" value={`${formatDecimal(analysis.rawStats.minimum, 2)}–${formatDecimal(analysis.rawStats.maximum, 2)}`} />
+        <Metric label="Средний шаг" value={`~${formatDecimal(analysis.wavelengthStep, 3)} нм`} />
       </MetricGrid>
 
       <div className={styles.dataSummaryGrid}>
         <Card title="Измерение"><DefinitionList items={datasetDetails} /></Card>
         <Card title="Тип спектра">
           <label className={styles.spectrumTypeField} htmlFor="spectrum-type">
-            <span>Тип спектра</span>
-            <select id="spectrum-type" value={selectedSpectrumType} onChange={(event) => updateSpectrumType(event.target.value as NewAnalysisSpectrumType)}>
+            <select id="spectrum-type" aria-label="Тип спектра" value={selectedSpectrumType} onChange={(event) => updateSpectrumType(event.target.value as NewAnalysisSpectrumType)}>
               {SPECTRUM_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
           </label>
@@ -112,12 +112,12 @@ export function DataAnalysisPage() {
               <div key={channel.id} className={styles.traceCard}>
                 {analysis.channels.length > 1 ? <h3>{channel.name}</h3> : null}
                 <dl className={styles.randomAgreementGrid}>
-                  <div><dt>Полезный диапазон / шум</dt><dd>{Number.isFinite(channel.suitability.metrics.usefulDynamicRangeSnr) ? channel.suitability.metrics.usefulDynamicRangeSnr.toFixed(1) : "∞"}</dd></div>
-                  <div><dt>Элементов разрешения</dt><dd>{channel.suitability.metrics.resolutionElements.toFixed(1)}</dd></div>
-                  <div><dt>Дрейф базовой линии</dt><dd>{channel.suitability.metrics.baselineDriftRatio.toFixed(3)}</dd></div>
+                  <div><dt>Полезный диапазон / шум</dt><dd>{Number.isFinite(channel.suitability.metrics.usefulDynamicRangeSnr) ? formatDecimal(channel.suitability.metrics.usefulDynamicRangeSnr, 1) : "∞"}</dd></div>
+                  <div><dt>Элементов разрешения</dt><dd>{formatDecimal(channel.suitability.metrics.resolutionElements, 1)}</dd></div>
+                  <div><dt>Дрейф базовой линии</dt><dd>{formatDecimal(channel.suitability.metrics.baselineDriftRatio, 3)}</dd></div>
                   <div><dt>Одиночных выбросов</dt><dd>{channel.suitability.metrics.isolatedOutlierCount}</dd></div>
-                  <div><dt>Разрешение</dt><dd>{channel.spectralResolutionNm.toFixed(3)} нм</dd></div>
-                  <div><dt>Неопределённость шкалы</dt><dd>{channel.wavelengthCalibration.uncertaintyNm.toFixed(3)} нм</dd></div>
+                  <div><dt>Разрешение</dt><dd>{formatDecimal(channel.spectralResolutionNm, 3)} нм</dd></div>
+                  <div><dt>Неопределённость шкалы</dt><dd>{formatDecimal(channel.wavelengthCalibration.uncertaintyNm, 3)} нм</dd></div>
                 </dl>
                 <p className={styles.detailNote}>Коррекция шкалы: {channel.wavelengthCalibration.status === "applied" ? `${formatSignedDelta(channel.wavelengthCalibration.shiftNm)} нм` : "не применена"}; причина: {formatCalibrationReason(channel.wavelengthCalibration.reason)}.</p>
               </div>
@@ -314,12 +314,12 @@ export function IdentificationAnalysisPage() {
         <AnalysisConclusion analysis={analysis} />
         <InlineEmptyState>
           {!analysis.peaks.length
-            ? "Для атомной идентификации устойчивые пики не найдены."
+            ? "Устойчивые пики не найдены."
             : analysis.peaks.every((peak) => peak.candidates.length === 0)
-              ? "Для найденных пиков нет кандидатов атомных линий в пределах текущего допуска."
+              ? "Для найденных пиков нет подходящих справочных линий."
               : analysis.rejectedHypotheses.length
-            ? "Основные гипотезы отсутствуют, но диагностические совпадения доступны в левой панели."
-            : "Основные и диагностические гипотезы не сформированы."}
+            ? "Надёжных гипотез нет. Слабые совпадения доступны в подробностях."
+            : "Надёжных гипотез нет."}
         </InlineEmptyState>
       </AnalysisPage>
     );
@@ -348,7 +348,7 @@ export function IdentificationAnalysisPage() {
         <div className={styles.hypothesisOverviewHeading}>
           <div>
             <h2 id="selected-hypothesis-title">{hypothesis.name} ({hypothesis.symbol})</h2>
-            <p>{hypothesis.explanation}</p>
+            <p>{formatElementSupportSummary(hypothesis)}</p>
           </div>
         </div>
         <div className={styles.reliableEvidenceSummary}>
@@ -357,7 +357,7 @@ export function IdentificationAnalysisPage() {
             <ul>{reliableEvidence.slice(0, 5).map((line) => (
               <li key={line.groupId}>
                 <code>{formatGroupWavelength(line)}</code>
-                <span>{line.elementSymbol} {line.ionizationLabel} · {line.strength === "strong" ? "сильная группа" : "поддерживающая группа"}</span>
+                <span>{line.elementSymbol} {line.ionizationLabel} · {line.isKeyCharacteristic ? "ключевая группа" : "подтверждённая группа"}</span>
               </li>
             ))}</ul>
           ) : <span>Качественных характерных групп недостаточно.</span>}
@@ -387,7 +387,7 @@ export function IdentificationAnalysisPage() {
           peaks={supportingPeaks}
           selectedPeakId={selectedPeakId}
           onPeakSelect={selectPeak}
-          referenceLines={channelEvidence.map((line) => ({ label: `${formatEvidenceLabel(line)} ${line.referenceWavelength.toFixed(2)}`, wavelength: line.referenceWavelength }))}
+          referenceLines={channelEvidence.map((line) => ({ label: `${formatEvidenceLabel(line)} ${formatDecimal(line.referenceWavelength, 2)}`, wavelength: line.referenceWavelength }))}
           sourceKey={`${analysis.id}:${channel.id}`}
           defaultVisibleLayers={["prepared", "peaks", "referenceLines"]}
           label={`Спектр канала ${channel.name} и линии гипотезы ${hypothesis.name}`}
@@ -402,7 +402,7 @@ export function IdentificationAnalysisPage() {
           <Metric label="Степени ионизации" value={hypothesis.ionizationStages.map(toRoman).join(", ") || "—"} />
           <Metric label="Характерные группы" value={`${hypothesis.foundCharacteristicGroupCount} / ${hypothesis.availableCharacteristicGroupCount}`} />
           <Metric label="Независимые группы" value={String(hypothesis.independentMatchedGroupCount)} />
-          <Metric label="Среднее отклонение" value={`${hypothesis.meanAbsoluteDelta.toFixed(3)} нм`} />
+          <Metric label="Среднее отклонение" value={`${formatDecimal(hypothesis.meanAbsoluteDelta, 3)} нм`} />
         </div>
         </section>
         <section className={styles.evidenceSection} aria-labelledby="diagnostic-metrics-title">
@@ -411,18 +411,17 @@ export function IdentificationAnalysisPage() {
         <Card title="Основания ранжирования">
           <ul className={styles.reasonList}>{hypothesis.rankingReasons.map((reason) => <li key={reason.code}><span>{reason.description}</span><code>{formatReasonValue(reason.code, reason.value)}</code></li>)}</ul>
         </Card>
-        <Card title="Случайное согласование">
+        <Card title={<span className={styles.titleWithTooltip}>Контроль случайных совпадений <InfoTooltip label="Контроль случайных совпадений" content="Сравнение со смещёнными контрольными линиями. Показатель служит для ранжирования и не является вероятностью присутствия элемента." /></span>}>
           <dl className={styles.randomAgreementGrid}>
             <div><dt>Наблюдалось</dt><dd>{hypothesis.randomAgreement.observedAgreements}</dd></div>
-            <div><dt>Ожидание для элемента</dt><dd>{hypothesis.randomAgreement.expectedAgreements.toFixed(2)}</dd></div>
-            <div><dt>После перебора элементов</dt><dd>{hypothesis.randomAgreement.adjustedExpectedAgreements.toFixed(2)}</dd></div>
+            <div><dt>Ожидание для элемента</dt><dd>{formatDecimal(hypothesis.randomAgreement.expectedAgreements, 2)}</dd></div>
+            <div><dt>После перебора элементов</dt><dd>{formatDecimal(hypothesis.randomAgreement.adjustedExpectedAgreements, 2)}</dd></div>
             <div><dt>Проверено элементов</dt><dd>{hypothesis.randomAgreement.testedElementCount}</dd></div>
             <div><dt>Требуется групп</dt><dd>{hypothesis.randomAgreement.requiredAgreements}</dd></div>
             <div><dt>Смещённых контролей</dt><dd>{hypothesis.randomAgreement.testedOffsets}</dd></div>
             <div><dt>95-й процентиль контролей</dt><dd>{hypothesis.randomAgreement.control95PercentileAgreements}</dd></div>
             <div><dt>Согласованное созвездие</dt><dd>{hypothesis.randomAgreement.coherentConstellationOverride ? "Да" : "Нет"}</dd></div>
           </dl>
-          <p className={styles.detailNote}>Это диагностическое сравнение с теми же линиями, циклически смещёнными внутри реальных диапазонов измерения. Показатель не является вероятностью присутствия элемента.</p>
         </Card>
         </div>
         </section>
@@ -447,7 +446,7 @@ export function IdentificationAnalysisPage() {
                 <div>
                   <strong>Без найденного пика</strong>
                   {group.missingCharacteristicGroups.length ? (
-                    <ul>{group.missingCharacteristicGroups.map((item) => <li key={item.id}>{item.representativeWavelength.toFixed(3)} нм</li>)}</ul>
+                    <ul>{group.missingCharacteristicGroups.map((item) => <li key={item.id}>{formatDecimal(item.representativeWavelength, 3)} нм</li>)}</ul>
                   ) : <span>Нет пропущенных линий</span>}
                 </div>
               </div>
@@ -485,7 +484,7 @@ export function IdentificationAnalysisPage() {
         ) : hypothesis.ionizationGroups.some((group) => group.missingCharacteristicGroups.length) ? (
           <div className={styles.missingLineList}>
             {hypothesis.ionizationGroups.flatMap((group) => group.missingCharacteristicGroups).map((item) => (
-              <div key={item.id}><code>{item.representativeWavelength.toFixed(3)} нм</code><span>{hypothesis.symbol} {item.ionizationLabel}</span><span>{item.lines.length} линий в группе</span></div>
+              <div key={item.id}><code>{formatDecimal(item.representativeWavelength, 3)} нм</code><span>{hypothesis.symbol} {item.ionizationLabel}</span><span>{formatCount(item.lines.length, "линия", "линии", "линий")} в группе</span></div>
             ))}
           </div>
         ) : <InlineEmptyState>Все доступные характерные линии имеют сопоставленное наблюдение.</InlineEmptyState>}
@@ -508,11 +507,13 @@ function AnalysisConclusion({ analysis }: Readonly<{ analysis: WorkingAnalysis }
       id: hypothesis.id,
       symbol: hypothesis.symbol,
       name: hypothesis.name,
+      support: formatElementSupportSummary(hypothesis),
     })),
     ...analysis.molecularHypotheses.map((hypothesis) => ({
       id: hypothesis.id,
       symbol: hypothesis.formula,
       name: hypothesis.displayName,
+      support: formatMolecularSupportSummary(hypothesis),
     })),
   ];
   const primary = reliableItems[0];
@@ -527,8 +528,8 @@ function AnalysisConclusion({ analysis }: Readonly<{ analysis: WorkingAnalysis }
     <section className={styles.analysisConclusion} aria-labelledby="analysis-conclusion-title">
       <div className={styles.analysisConclusionCopy}>
         <h2 id="analysis-conclusion-title">Основные гипотезы</h2>
-        <p>{primary ? <><strong>{primary.name} ({primary.symbol})</strong> — основная гипотеза.{additional.length ? <> Дополнительные: {additional.map((item) => `${item.name.toLocaleLowerCase("ru-RU")} (${item.symbol})`).join(", ")}.</> : null}</> : "Надёжных гипотез о составе нет."}</p>
-        <p>Качество измерения: {formatSuitabilityShort(analysis.suitability.status)}.</p>
+        <p>{primary ? <><strong>{primary.name} ({primary.symbol})</strong> — основная гипотеза. {primary.support}{additional.length ? <> Дополнительные: {additional.map((item) => `${item.name.toLocaleLowerCase("ru-RU")} (${item.symbol})`).join(", ")}.</> : null}</> : "Надёжных гипотез о составе нет."}</p>
+        {analysis.suitability.status === "sufficient" ? null : <p>Качество измерения: {formatSuitabilityShort(analysis.suitability.status)}.</p>}
         {molecularLine ? <p>{molecularLine}</p> : null}
         {reliableItems.length ? (
           <label className={styles.mobileHypothesisSelect}>
@@ -571,7 +572,7 @@ function MolecularPrimaryDetail({
           <strong>Главные признаки</strong>
           <ul>{observations.map((observation) => (
             <li key={`${observation.channelId}-${observation.regionId}`}>
-              <code>{observation.observedRange.minimum.toFixed(1)}–{observation.observedRange.maximum.toFixed(1)} нм</code>
+              <code>{formatDecimal(observation.observedRange.minimum, 1)}–{formatDecimal(observation.observedRange.maximum, 1)} нм</code>
               <span>Форма характерного участка согласуется с системой {hypothesis.systemName}</span>
             </li>
           ))}</ul>
@@ -630,14 +631,20 @@ function EvidenceTable({
   return (
     <div className={styles.tableScroll}>
       <table className={`${styles.table} ${styles.evidenceTable}`}>
+        <colgroup>
+          <col className={styles.evidenceGroupColumn} />
+          <col className={styles.evidencePeakColumn} />
+          <col className={styles.evidenceDeltaColumn} />
+          <col className={styles.evidenceSnrColumn} />
+          <col className={styles.evidenceQualityColumn} />
+        </colgroup>
         <thead>
           <tr>
-            <th>Группа</th>
-            <th>Справочная длина</th>
+            <th>Группа и справочная длина</th>
             <th>Пик</th>
             <th>Отклонение</th>
             <th>SNR</th>
-            <th>Качество</th>
+            <th><span className={styles.titleWithTooltip}>Качество <InfoTooltip label="Качество совпадения" content="Эвристическая оценка для ранжирования совпадений; не является вероятностью." /></span></th>
           </tr>
         </thead>
         <tbody>
@@ -650,6 +657,7 @@ function EvidenceTable({
               <Fragment key={line.groupId}>
                 <tr
                   className={styles.selectableRow}
+                  data-evidence-row={line.groupId}
                   tabIndex={firstObservation ? 0 : undefined}
                   onClick={() => {
                     if (!firstObservation) return;
@@ -664,17 +672,16 @@ function EvidenceTable({
                     }
                   }}
                 >
-                  <td data-label="Группа"><strong>{formatEvidenceLabel(line)}</strong>{line.memberLineIds.length > 1 ? <small>{line.memberLineIds.length} линий</small> : null}</td>
-                  <td data-label="Справочная длина"><code>{formatGroupWavelength(line)}</code></td>
-                  <td data-label="Пик"><div className={styles.valueStack}>{line.observations.map((observation) => <code key={`${observation.channelId}-${observation.peakId}`}>{observation.peakWavelength.toFixed(3)} нм</code>)}</div></td>
+                  <td data-label="Группа и справочная длина"><div className={styles.evidenceGroupCell}><strong>{formatEvidenceLabel(line)}</strong><code>{formatGroupWavelength(line)}</code>{line.memberLineIds.length > 1 ? <small>{formatCount(line.memberLineIds.length, "линия", "линии", "линий")}</small> : null}</div></td>
+                  <td data-label="Пик"><div className={styles.valueStack}>{line.observations.map((observation) => <code key={`${observation.channelId}-${observation.peakId}`}>{formatDecimal(observation.peakWavelength, 3)} нм</code>)}</div></td>
                   <td data-label="Отклонение"><div className={styles.valueStack}>{line.observations.map((observation) => <code key={`${observation.channelId}-${observation.peakId}`}>{formatSignedDelta(observation.delta)} нм</code>)}</div></td>
-                  <td data-label="SNR"><div className={styles.valueStack}>{line.observations.map((observation) => <code key={`${observation.channelId}-${observation.peakId}`}>{Number.isFinite(observation.snr) ? observation.snr.toFixed(2) : "∞"}</code>)}</div></td>
-                  <td data-label="Качество"><span className={styles.qualityCell}>{line.strength === "strong" ? "Сильная" : line.strength === "moderate" ? "Поддерживающая" : "Слабая"}<code>{line.quality.toFixed(2)}</code></span></td>
+                  <td data-label="SNR"><div className={styles.valueStack}>{line.observations.map((observation) => <code key={`${observation.channelId}-${observation.peakId}`}>{Number.isFinite(observation.snr) ? formatDecimal(observation.snr, 2) : "∞"}</code>)}</div></td>
+                  <td data-label="Качество"><span className={styles.qualityCell}><span>{formatEvidenceQuality(line.strength)}</span><code>{formatDecimal(line.quality, 2)}</code></span></td>
                 </tr>
                 <tr className={styles.evidenceDetailRow}>
-                  <td colSpan={6}>
+                  <td colSpan={5}>
                     <details>
-                      <summary>Подробнее · {alternatives.length} {formatCountWord(alternatives.length, "альтернатива", "альтернативы", "альтернатив")}</summary>
+                      <summary>Подробнее · {formatCount(alternatives.length, "альтернатива", "альтернативы", "альтернатив")}</summary>
                       <dl className={styles.rowDetailsGrid}>
                         <div><dt>Тип длины</dt><dd>{formatWavelengthOrigin(line.wavelengthType)}</dd></div>
                         <div><dt>Среда</dt><dd>{formatWavelengthMedium(line.wavelengthMedium)}</dd></div>
@@ -713,7 +720,7 @@ export function ResultAnalysisPage() {
       </section>
 
       <div className={styles.twoColumns}>
-        <MetricCard label="Источник данных" value={`${analysis.source.kind} · ${analysis.rawDataset.wavelengths.length} точки`} />
+        <MetricCard label="Источник данных" value={`${analysis.source.kind} · ${formatCount(analysis.rawDataset.wavelengths.length, "точка", "точки", "точек")}`} />
         <MetricCard label="Справочная библиотека" value={analysis.libraryLabel} />
       </div>
 
@@ -729,14 +736,14 @@ export function ResultAnalysisPage() {
                 <Link2 size={14} aria-hidden="true" />
                 <strong>{hypothesis.symbol}</strong>
                 <span>{formatGroupWavelength(line)}</span>
-                <span className={styles.muted}>{line.strength === "strong" ? "сильная группа" : "поддерживающая группа"}</span>
+                <span className={styles.muted}>{line.isKeyCharacteristic ? "ключевая группа" : "подтверждённая группа"}</span>
               </div>
             ))}
           {analysis.molecularHypotheses.map((hypothesis) => (
             <div className={styles.evidenceRow} key={hypothesis.id}>
               <Link2 size={14} aria-hidden="true" />
               <strong>{hypothesis.formula}</strong>
-              <span>{hypothesis.supportedRegionIds.length} подтверждённых участка полосы</span>
+              <span>{formatCount(hypothesis.supportedRegionIds.length, "подтверждённый участок", "подтверждённых участка", "подтверждённых участков")}</span>
               <span className={styles.muted}>{hypothesis.displayName}</span>
             </div>
           ))}
@@ -760,9 +767,9 @@ export function ResultAnalysisPage() {
                 {hypothesis.evidence.map((line) => (
                   <div className={styles.evidenceRow} key={line.groupId}>
                     <Link2 size={14} aria-hidden="true" />
-                    <span>Пик {line.peakWavelength.toFixed(2)} нм</span>
+                    <span>Пик {formatDecimal(line.peakWavelength, 2)} нм</span>
                     <ArrowRight size={13} aria-hidden="true" />
-                    <span>{formatEvidenceLabel(line)} {line.referenceWavelength.toFixed(2)} нм</span>
+                    <span>{formatEvidenceLabel(line)} {formatDecimal(line.referenceWavelength, 2)} нм</span>
                     <span className={styles.deviationValue}>
                       <Ruler size={13} aria-hidden="true" />
                       {formatSignedDelta(line.delta)} нм
@@ -777,7 +784,6 @@ export function ResultAnalysisPage() {
               <header>
                 <div>
                   <h3>Слабые и неоднозначные альтернативы</h3>
-                  <p>Не используются в основном заключении и сохранены для проверки.</p>
                 </div>
                 <Tag tone="warning">{analysis.rejectedHypotheses.length}</Tag>
               </header>
@@ -797,7 +803,6 @@ export function ResultAnalysisPage() {
               <header>
                 <div>
                   <h3>Пики без совпадения</h3>
-                  <p>Сохранены как полноценный неопределённый результат.</p>
                 </div>
                 <Tag tone="danger">{analysis.unmatchedPeaks.length}</Tag>
               </header>
@@ -805,7 +810,7 @@ export function ResultAnalysisPage() {
                 {analysis.unmatchedPeaks.map((peak) => (
                   <div className={styles.evidenceRow} key={peak.id}>
                     <CircleAlert size={14} aria-hidden="true" />
-                    <span>Пик {peak.wavelength.toFixed(2)} нм</span>
+                    <span>Пик {formatDecimal(peak.wavelength, 2)} нм</span>
                     <span className={styles.muted}>Нет линии в пределах допуска</span>
                   </div>
                 ))}
@@ -814,7 +819,7 @@ export function ResultAnalysisPage() {
           ) : null}
           {analysis.rejectedMolecularHypotheses.length ? (
             <article className={styles.traceCard}>
-              <header><div><h3>Отклонённые молекулярные варианты</h3><p>Сохранены как нормальный отрицательный результат.</p></div></header>
+              <header><div><h3>Отклонённые молекулярные варианты</h3></div></header>
               <div className={styles.evidenceList}>
                 {analysis.rejectedMolecularHypotheses.map((hypothesis) => (
                   <div className={styles.evidenceRow} key={hypothesis.id}>
@@ -838,7 +843,7 @@ export function LibraryAnalysisPage() {
     .sort((left, right) => left.atomicNumber - right.atomicNumber);
 
   return (
-    <AnalysisPage title="Библиотека" showAnalysisModes={false} summary={`${builtinSpectralLibraryManifest.lineCount.toLocaleString("ru-RU")} атомных линий · ${elements.length} ${formatCountWord(elements.length, "элемент", "элемента", "элементов")} · ${builtinMolecularSystems.length} ${formatCountWord(builtinMolecularSystems.length, "молекулярная система", "молекулярные системы", "молекулярных систем")}`}>
+    <AnalysisPage title="Библиотека" showAnalysisModes={false} summary={`${formatCount(builtinSpectralLibraryManifest.lineCount, "атомная линия", "атомные линии", "атомных линий")} · ${formatCount(elements.length, "элемент", "элемента", "элементов")} · ${formatCount(builtinMolecularSystems.length, "молекулярная система", "молекулярные системы", "молекулярных систем")}`}>
       <div className={styles.libraryGrid}>
         <Card title="Атомные линии" accessory={<Tag tone="neutral">{builtinSpectralLibraryManifest.lineCount.toLocaleString("ru-RU")}</Tag>}>
           <DefinitionList items={[
@@ -856,7 +861,7 @@ export function LibraryAnalysisPage() {
               <article key={system.id}>
                 <strong>{system.displayName} ({system.formula})</strong>
                 <span>{system.transition}</span>
-                <small>{system.wavelengthRange.minimum.toFixed(1)}–{system.wavelengthRange.maximum.toFixed(1)} нм · {system.characteristicRegions.length} характерных участка</small>
+                <small>{formatDecimal(system.wavelengthRange.minimum, 1)}–{formatDecimal(system.wavelengthRange.maximum, 1)} нм · {formatCount(system.characteristicRegions.length, "характерный участок", "характерных участка", "характерных участков")}</small>
               </article>
             ))}
           </div>
@@ -877,8 +882,8 @@ export function LibraryAnalysisPage() {
 
 function MolecularHypothesisDetails({ hypothesis }: Readonly<{ hypothesis: MolecularHypothesis }>) {
   return (
-    <Card title={`${hypothesis.formula} · ${hypothesis.systemName}`} accessory={<Tag tone={hypothesis.accepted ? "success" : "warning"}>{hypothesis.accepted ? "Принята" : "Отклонена"}</Tag>}>
-      <p className={styles.detailNote}>{hypothesis.transition}. Числовые показатели ниже являются эвристиками сравнения формы, а не вероятностью, температурой или концентрацией.</p>
+    <Card title={<span className={styles.titleWithTooltip}>{hypothesis.formula} · {hypothesis.systemName} <InfoTooltip label="Оценка формы молекулярной полосы" content="Показатели формы используются только для ранжирования и не являются вероятностью, температурой или концентрацией." /></span>} accessory={<Tag tone={hypothesis.accepted ? "success" : "warning"}>{hypothesis.accepted ? "Принята" : "Отклонена"}</Tag>}>
+      <p className={styles.detailNote}>{hypothesis.transition}</p>
       <dl className={styles.randomAgreementGrid}>
         <div><dt>Общее смещение</dt><dd>{formatSignedDelta(hypothesis.commonShiftNm)} нм</dd></div>
         <div><dt>Подтверждено участков</dt><dd>{hypothesis.supportedRegionIds.length}</dd></div>
@@ -888,10 +893,10 @@ function MolecularHypothesisDetails({ hypothesis }: Readonly<{ hypothesis: Molec
       <div className={styles.molecularRegionTable}>
         {hypothesis.observations.map((observation) => (
           <div key={`${observation.channelId}-${observation.regionId}`}>
-            <strong>{observation.observedRange.minimum.toFixed(1)}–{observation.observedRange.maximum.toFixed(1)} нм</strong>
+            <strong>{formatDecimal(observation.observedRange.minimum, 1)}–{formatDecimal(observation.observedRange.maximum, 1)} нм</strong>
             <span>{observation.supported ? "Подтверждает систему" : "Слабое или неоднозначное совпадение"}</span>
-            <small>форма {observation.shapeCorrelation.toFixed(2)} · SNR {Number.isFinite(observation.contrastSnr) ? observation.contrastSnr.toFixed(1) : "∞"} · контраст {(observation.relativeContrast * 100).toFixed(1)}%</small>
-            {observation.overlappingAtomicPeakIds.length ? <small>Перекрывается с {observation.overlappingAtomicPeakIds.length} атомным сигналом; повторно не суммируется</small> : null}
+            <small>форма {formatDecimal(observation.shapeCorrelation, 2)} · SNR {Number.isFinite(observation.contrastSnr) ? formatDecimal(observation.contrastSnr, 1) : "∞"} · контраст {formatDecimal(observation.relativeContrast * 100, 1)}%</small>
+            {observation.overlappingAtomicPeakIds.length ? <small>Перекрывается с {formatCount(observation.overlappingAtomicPeakIds.length, "атомным сигналом", "атомными сигналами", "атомными сигналами")}</small> : null}
           </div>
         ))}
       </div>
@@ -926,17 +931,23 @@ function formatSuitabilityShort(status: WorkingAnalysis["suitability"]["status"]
   return status === "sufficient" ? "достаточное" : status === "limited" ? "ограниченное" : "недостаточное";
 }
 
-function formatCount(value: number, one: string, few: string, many: string): string {
-  return `${value} ${formatCountWord(value, one, few, many)}`;
+function formatElementSupportSummary(hypothesis: ElementInterpretation): string {
+  const groups = formatCount(
+    hypothesis.reliableCharacteristicGroupCount,
+    "подтверждённая группа",
+    "подтверждённые группы",
+    "подтверждённых групп",
+  );
+  if (!hypothesis.reliableKeyCharacteristicGroupCount) return `${groups}.`;
+  return `${groups}, включая ${formatCount(hypothesis.reliableKeyCharacteristicGroupCount, "ключевую", "ключевые", "ключевых")}.`;
 }
 
-function formatCountWord(value: number, one: string, few: string, many: string): string {
-  const mod100 = value % 100;
-  const mod10 = value % 10;
-  if (mod100 >= 11 && mod100 <= 14) return many;
-  if (mod10 === 1) return one;
-  if (mod10 >= 2 && mod10 <= 4) return few;
-  return many;
+function formatMolecularSupportSummary(hypothesis: MolecularHypothesis): string {
+  return `${formatCount(hypothesis.supportedRegionIds.length, "подтверждённая область", "подтверждённые области", "подтверждённых областей")}.`;
+}
+
+function formatEvidenceQuality(strength: AnalysisEvidenceLine["strength"]): string {
+  return strength === "strong" ? "Высокая" : strength === "moderate" ? "Средняя" : "Низкая";
 }
 
 function formatCalibrationReason(reason: WorkingAnalysis["channels"][number]["wavelengthCalibration"]["reason"]): string {
@@ -985,7 +996,7 @@ function AnalysisPage({
         {calculationStatus === "calculating" ? (
           <div className={styles.analysisUpdatingNotice} role="status" aria-live="polite">
             <LoaderCircle className={styles.spinner} size={18} aria-hidden="true" />
-            <div><strong>Обновляем анализ</strong><span>Текущий вывод временно скрыт, пока применяются новые параметры.</span></div>
+            <strong>Обновляем анализ…</strong>
           </div>
         ) : null}
         {children}
@@ -1015,7 +1026,7 @@ function Card({
   title,
   accessory,
   children,
-}: Readonly<{ title: string; accessory?: ReactNode; children: ReactNode }>) {
+}: Readonly<{ title: ReactNode; accessory?: ReactNode; children: ReactNode }>) {
   return (
     <section className={styles.card}>
       <header className={styles.cardHeader}>
@@ -1086,7 +1097,7 @@ function PeakTable({
             <th>
               <span className={styles.tableHeaderWithInfo}>
                 Ближайшая линия
-                <Info size={14} aria-label="Геометрически ближайшая справочная линия, а не итоговое назначение" />
+                <InfoTooltip label="Ближайшая линия" content="Геометрически ближайшая справочная линия, а не итоговое назначение." />
               </span>
             </th>
             <th>Отклонение</th>
@@ -1110,11 +1121,11 @@ function PeakTable({
               }}
             >
               <td>{index + 1}</td>
-              <td><code>{peak.wavelength.toFixed(2)} нм</code></td>
-              <td><code>{peak.intensity.toFixed(3)}</code></td>
-              <td>{peak.match ? `${formatCandidateLabel(peak.match)} · ${peak.match.line.toFixed(2)} нм` : "Не найдено"}</td>
+              <td><code>{formatDecimal(peak.wavelength, 2)} нм</code></td>
+              <td><code>{formatDecimal(peak.intensity, 3)}</code></td>
+              <td>{peak.match ? `${formatCandidateLabel(peak.match)} · ${formatDecimal(peak.match.line, 2)} нм` : "Не найдено"}</td>
               <td><code>{peak.match ? `${formatSignedDelta(peak.match.delta)} нм` : "—"}</code></td>
-              <td><code>{Number.isFinite(peak.snr) ? peak.snr.toFixed(2) : "∞"}</code></td>
+              <td><code>{Number.isFinite(peak.snr) ? formatDecimal(peak.snr, 2) : "∞"}</code></td>
             </tr>
           ))}
         </tbody>
@@ -1135,8 +1146,7 @@ function useRequiredAnalysis(): WorkingAnalysis | null {
 }
 
 function formatSignedDelta(delta: number): string {
-  if (delta === 0) return "0.000";
-  return `${delta > 0 ? "+" : ""}${delta.toFixed(3)}`;
+  return formatSignedDecimal(delta, 3);
 }
 
 function formatCandidateLabel(candidate: SpectralLineCandidate): string {
@@ -1155,8 +1165,8 @@ function formatGroupWavelength(line: AnalysisEvidenceLine): string {
   const minimum = Math.min(...line.memberWavelengths);
   const maximum = Math.max(...line.memberWavelengths);
   return maximum - minimum < 0.0005
-    ? `${line.referenceWavelength.toFixed(3)} нм`
-    : `${minimum.toFixed(3)}–${maximum.toFixed(3)} нм`;
+    ? `${formatDecimal(line.referenceWavelength, 3)} нм`
+    : `${formatDecimal(minimum, 3)}–${formatDecimal(maximum, 3)} нм`;
 }
 
 function toRoman(stage: number): string {
@@ -1165,8 +1175,8 @@ function toRoman(stage: number): string {
 }
 
 function formatReasonValue(code: string, value: number): string {
-  if (code === "wavelength-agreement") return `${value.toFixed(3)} нм`;
-  return Number.isInteger(value) ? String(value) : value.toFixed(2);
+  if (code === "wavelength-agreement") return `${formatDecimal(value, 3)} нм`;
+  return Number.isInteger(value) ? String(value) : formatDecimal(value, 2);
 }
 
 function formatWavelengthOrigin(origin: "observed" | "ritz"): string {
@@ -1178,5 +1188,5 @@ function formatWavelengthMedium(medium: "air" | "vacuum"): string {
 }
 
 function formatNumber(value: number): string {
-  return Number.isInteger(value) ? String(value) : value.toFixed(2);
+  return Number.isInteger(value) ? String(value) : formatDecimal(value, 2);
 }

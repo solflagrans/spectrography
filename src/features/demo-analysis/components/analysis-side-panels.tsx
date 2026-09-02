@@ -1,11 +1,13 @@
 "use client";
 
-import { CircleAlert, Info, LoaderCircle, RotateCcw, Search } from "lucide-react";
+import { CircleAlert, LoaderCircle, RotateCcw, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
 import { useAnalysisWorkspace } from "@/features/demo-analysis/model/analysis-workspace-context";
 import { DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS } from "@/domain/spectrum";
+import { InfoTooltip } from "@/features/workspace/components/info-tooltip";
+import { formatCount, formatDecimal, formatSignedDecimal } from "@/features/workspace/model/display-format";
 import {
   diagnosticReasonLabels,
   getIdentificationEntries,
@@ -36,10 +38,9 @@ export function ProcessingSettingsPanel() {
     || parameters.wavelengthCalibration.allowAutomaticCorrection !== DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.wavelengthCalibration.allowAutomaticCorrection;
 
   return (
-    <div className={styles.sidePanelContent}>
+    <div className={styles.sidePanelContent} data-parameter-panel="processing">
       <SidePanelHeader title="Настройки обработки" onReset={resetProcessingParameters} resetDisabled={!canReset} />
-      <section className={styles.sideParameterGroup}>
-        <h3>Базовая линия и шум</h3>
+      <ParameterSection title="Базовая линия и шум">
         <NumberParameter
           id="baseline-smoothness"
           label="Гладкость базовой линии"
@@ -62,52 +63,38 @@ export function ProcessingSettingsPanel() {
           step={0.1}
           onChange={(value) => updateProcessingParameters({ noiseWindowNm: value })}
         />
-      </section>
-      <section className={styles.sideParameterGroup}>
-        <h3>Сглаживание</h3>
-        <div className={styles.rangeHeading}>
-          <label htmlFor="smoothing-window" className={styles.infoLabel}>Окно сглаживания <Info size={14} aria-label="Метод Савицкого—Голея" /></label>
-          <output htmlFor="smoothing-window">{parameters.processing.smoothingWindow} пт</output>
-        </div>
-        <input
+      </ParameterSection>
+      <ParameterSection title="Сглаживание">
+        <RangeParameter
           id="smoothing-window"
-          className={styles.rangeInput}
-          type="range"
-          min="1"
-          max="51"
-          step="2"
+          label="Окно сглаживания"
+          help="Метод Савицкого—Голея"
           value={parameters.processing.smoothingWindow}
-          onChange={(event) => updateProcessingParameters({ smoothingWindow: Number(event.target.value) })}
+          min={1}
+          max={51}
+          step={2}
+          output={`${parameters.processing.smoothingWindow} пт`}
+          onChange={(value) => updateProcessingParameters({ smoothingWindow: value })}
         />
-      </section>
-      <section className={styles.sideParameterGroup}>
-        <h3>Нормализация</h3>
-        <label className={styles.selectField} htmlFor="normalization-method">
-          <span>Масштаб интенсивности</span>
-          <select
-            id="normalization-method"
-            value={parameters.processing.normalization}
-            onChange={(event) => updateProcessingParameters({
-              normalization: event.target.value === "none" ? "none" : "maximum",
-            })}
-          >
-            <option value="maximum">К максимуму (0–1)</option>
-            <option value="none">Не нормировать</option>
-          </select>
-        </label>
-      </section>
-      <section className={styles.sideParameterGroup}>
-        <h3>Шкала длин волн</h3>
-        <label className={styles.selectField} htmlFor="automatic-wavelength-calibration">
-          <span className={styles.infoLabel}>Автоматически уточнять шкалу <Info size={14} aria-label="Коррекция применяется только после проверки по независимым опорным признакам" /></span>
-          <input
-            id="automatic-wavelength-calibration"
-            type="checkbox"
-            checked={parameters.wavelengthCalibration.allowAutomaticCorrection}
-            onChange={(event) => updateWavelengthCalibrationParameters({ allowAutomaticCorrection: event.target.checked })}
-          />
-        </label>
-      </section>
+      </ParameterSection>
+      <ParameterSection title="Нормализация">
+        <SelectParameter
+          id="normalization-method"
+          label="Масштаб интенсивности"
+          value={parameters.processing.normalization}
+          onChange={(value) => updateProcessingParameters({ normalization: value === "none" ? "none" : "maximum" })}
+          options={[{ value: "maximum", label: "К максимуму (0–1)" }, { value: "none", label: "Не нормировать" }]}
+        />
+      </ParameterSection>
+      <ParameterSection title="Шкала длин волн">
+        <ToggleParameter
+          id="automatic-wavelength-calibration"
+          label="Автоматически уточнять шкалу"
+          help="Коррекция применяется только после проверки по независимым опорным признакам"
+          checked={parameters.wavelengthCalibration.allowAutomaticCorrection}
+          onChange={(checked) => updateWavelengthCalibrationParameters({ allowAutomaticCorrection: checked })}
+        />
+      </ParameterSection>
       <CalculationFeedback status={calculationStatus} error={parameterError} />
     </div>
   );
@@ -160,29 +147,26 @@ export function PeakSettingsPanel() {
       {peakPanelSection === "parameters" ? (
         <div role="tabpanel" id="peak-parameters-panel" aria-labelledby="peak-parameters-tab">
           <SidePanelHeader title="Параметры пиков" onReset={resetPeakSearchParameters} resetDisabled={!canReset} />
-          <section className={styles.sideParameterGroup}>
-            <h3>Поиск пиков</h3>
-            <div className={styles.rangeHeading}>
-              <label htmlFor="detection-threshold" className={styles.infoLabel}>Минимальный SNR <Info size={14} aria-label="Минимальное превышение локального уровня шума" /></label>
-              <output htmlFor="detection-threshold">{parameters.peakSearch.minimumSnr.toFixed(1)}</output>
-            </div>
-            <input
+          <ParameterSection title="Поиск пиков">
+            <RangeParameter
               id="detection-threshold"
-              className={styles.rangeInput}
-              type="range"
-              min="0"
-              max="30"
-              step="0.5"
+              label="Минимальный SNR"
+              help="Минимальное превышение локального уровня шума"
               value={parameters.peakSearch.minimumSnr}
-              onChange={(event) => updatePeakSearchParameters({ minimumSnr: Number(event.target.value) })}
+              min={0}
+              max={30}
+              step={0.5}
+              output={formatDecimal(parameters.peakSearch.minimumSnr, 1)}
+              onChange={(value) => updatePeakSearchParameters({ minimumSnr: value })}
             />
-            <div className={styles.widthRangeGroup}>
-              <span>Ширина пика</span>
-              <div className={styles.pairedFields}>
-                <NumberParameter id="minimum-width" label="От" unit="нм" value={parameters.peakSearch.minimumWidth} min={0} max={50} step={0.01} onChange={(value) => updatePeakSearchParameters({ minimumWidth: value })} />
-                <NumberParameter id="maximum-width" label="До" unit="нм" value={parameters.peakSearch.maximumWidth} min={0.01} max={100} step={0.1} onChange={(value) => updatePeakSearchParameters({ maximumWidth: value })} />
-              </div>
-            </div>
+            <ValueRangeParameter
+              label="Ширина пика"
+              minimum={{ id: "minimum-width", value: parameters.peakSearch.minimumWidth, min: 0, max: 50, step: 0.01 }}
+              maximum={{ id: "maximum-width", value: parameters.peakSearch.maximumWidth, min: 0.01, max: 100, step: 0.1 }}
+              unit="нм"
+              onMinimumChange={(value) => updatePeakSearchParameters({ minimumWidth: value })}
+              onMaximumChange={(value) => updatePeakSearchParameters({ maximumWidth: value })}
+            />
             <NumberParameter
               id="minimum-prominence"
               label="Минимальная выраженность"
@@ -204,7 +188,7 @@ export function PeakSettingsPanel() {
               step={0.1}
               onChange={(value) => updatePeakSearchParameters({ minimumDistance: value })}
             />
-          </section>
+          </ParameterSection>
           <CalculationFeedback status={calculationStatus} error={parameterError} />
         </div>
       ) : (
@@ -247,9 +231,9 @@ function SelectedPeakContent({
 
   return (
     <>
-      <h2 className={styles.sidePanelTitle}>Пик {selectedPeak.wavelength.toFixed(2)} нм</h2>
+      <h2 className={styles.sidePanelTitle}>Пик {formatDecimal(selectedPeak.wavelength, 2)} нм</h2>
       <dl className={styles.peakSummaryLine} aria-label="Краткие параметры пика">
-        <PeakDetail label="Длина" value={`${selectedPeak.wavelength.toFixed(3)} нм`} />
+        <PeakDetail label="Длина" value={`${formatDecimal(selectedPeak.wavelength, 3)} нм`} />
         <PeakDetail label="SNR" value={Number.isFinite(selectedPeak.snr) ? formatValue(selectedPeak.snr, 2) : "∞"} />
         <PeakDetail label="Ширина" value={`${formatValue(selectedPeak.widthNm, 3)} нм`} />
       </dl>
@@ -268,9 +252,9 @@ function SelectedPeakContent({
       <details className={styles.peakTechnicalDisclosure}>
         <summary>Параметры пика</summary>
         <dl className={styles.selectedPeakDetails}>
-          <PeakDetail label="Исходная точка сетки" value={`${selectedPeak.sampledWavelength.toFixed(3)} нм`} />
-          <PeakDetail label="Уточнение максимума" value={selectedPeak.positionRefined ? `${selectedPeak.refinementOffsetNm >= 0 ? "+" : ""}${selectedPeak.refinementOffsetNm.toFixed(4)} нм` : "Не применялось"} />
-          <PeakDetail label="Неопределённость положения" value={`≥ ${selectedPeak.positionUncertaintyNm.toFixed(4)} нм`} />
+          <PeakDetail label="Исходная точка сетки" value={`${formatDecimal(selectedPeak.sampledWavelength, 3)} нм`} />
+          <PeakDetail label="Уточнение максимума" value={selectedPeak.positionRefined ? `${formatSignedDecimal(selectedPeak.refinementOffsetNm, 4)} нм` : "Не применялось"} />
+          <PeakDetail label="Неопределённость положения" value={`≥ ${formatDecimal(selectedPeak.positionUncertaintyNm, 4)} нм`} />
           <PeakDetail label="Исходная интенсивность" value={formatValue(rawIntensity, 4)} />
           <PeakDetail label="Подготовленная интенсивность" value={formatValue(selectedPeak.intensity, 4)} />
           <PeakDetail label="Выраженность" value={formatValue(selectedPeak.prominence, 4)} />
@@ -390,8 +374,8 @@ function PeakCandidateBrowser({
               </select>
             </label>
           </div>
-          <output className={styles.candidateCount} aria-live="polite">
-            Найдено справочных записей: {shownRecordCount} · карточек: {filteredGroups.length}
+          <output className={styles.candidateCount} data-candidate-count aria-live="polite">
+            {formatCount(shownRecordCount, "запись", "записи", "записей")}
           </output>
           {filteredGroups.length ? (
             <ol className={styles.candidateList}>
@@ -435,7 +419,7 @@ function CandidateCard({
           </button>
         ) : <strong>{candidate.elementName} ({candidate.elementSymbol})</strong>}
         {group.candidates.length > 1 ? (
-          <span className={styles.candidateRecordCount}>{group.candidates.length} {formatCountWord(group.candidates.length, "запись", "записи", "записей")}</span>
+          <span className={styles.candidateRecordCount}>{formatCount(group.candidates.length, "запись", "записи", "записей")}</span>
         ) : null}
       </div>
       <div className={styles.candidateValues}>
@@ -445,17 +429,17 @@ function CandidateCard({
       <details className={styles.candidateTechnicalDetails}>
         <summary>Технические данные</summary>
         <dl>
-          <PeakDetail label="Адаптивный допуск" value={`±${candidate.adaptiveToleranceNm.toFixed(3)} нм`} />
+          <PeakDetail label="Адаптивный допуск" value={`±${formatDecimal(candidate.adaptiveToleranceNm, 3)} нм`} />
           <PeakDetail label="Происхождение длины" value={candidate.wavelengthType === "observed" ? "Observed" : "Ritz"} />
           <PeakDetail label="Среда" value={candidate.wavelengthMedium === "air" ? "Воздух" : "Вакуум"} />
-          <PeakDetail label="Нормированное отклонение" value={candidate.normalizedDelta.toFixed(4)} />
-          <PeakDetail label="Объединённая неопределённость" value={`${candidate.combinedUncertaintyNm.toFixed(4)} нм`} />
-          <PeakDetail label="Шаг сетки" value={`${candidate.uncertainty.gridSamplingNm.toFixed(4)} нм`} />
-          <PeakDetail label="Разрешение" value={`${candidate.uncertainty.spectralResolutionNm.toFixed(4)} нм`} />
-          <PeakDetail label="Ширина пика" value={`${candidate.uncertainty.peakWidthNm.toFixed(4)} нм`} />
-          <PeakDetail label="Положение пика" value={`${candidate.uncertainty.peakPositionNm.toFixed(4)} нм`} />
-          <PeakDetail label="Справочная линия" value={`${candidate.uncertainty.referenceLineNm.toFixed(4)} нм`} />
-          <PeakDetail label="Калибровка" value={`${candidate.uncertainty.calibrationNm.toFixed(4)} нм`} />
+          <PeakDetail label="Нормированное отклонение" value={formatDecimal(candidate.normalizedDelta, 4)} />
+          <PeakDetail label="Объединённая неопределённость" value={`${formatDecimal(candidate.combinedUncertaintyNm, 4)} нм`} />
+          <PeakDetail label="Шаг сетки" value={`${formatDecimal(candidate.uncertainty.gridSamplingNm, 4)} нм`} />
+          <PeakDetail label="Разрешение" value={`${formatDecimal(candidate.uncertainty.spectralResolutionNm, 4)} нм`} />
+          <PeakDetail label="Ширина пика" value={`${formatDecimal(candidate.uncertainty.peakWidthNm, 4)} нм`} />
+          <PeakDetail label="Положение пика" value={`${formatDecimal(candidate.uncertainty.peakPositionNm, 4)} нм`} />
+          <PeakDetail label="Справочная линия" value={`${formatDecimal(candidate.uncertainty.referenceLineNm, 4)} нм`} />
+          <PeakDetail label="Калибровка" value={`${formatDecimal(candidate.uncertainty.calibrationNm, 4)} нм`} />
           <PeakDetail label="Достигнут максимум допуска" value={candidate.toleranceCapped ? "Да" : "Нет"} />
         </dl>
         <div className={styles.candidateSourceRecords}>
@@ -525,7 +509,7 @@ export function IdentificationLinesPanel() {
                 <span>{hypothesis.displayName}</span>
               </span>
               <span className={styles.hypothesisMasterMetrics}>
-                <span>{hypothesis.supportedRegionIds.length} {formatCountWord(hypothesis.supportedRegionIds.length, "подтверждённый участок", "подтверждённых участка", "подтверждённых участков")}</span>
+                <span>{formatCount(hypothesis.supportedRegionIds.length, "подтверждённый участок", "подтверждённых участка", "подтверждённых участков")}</span>
               </span>
             </button>
           ))}
@@ -540,7 +524,7 @@ export function IdentificationLinesPanel() {
                 <span>{entry.hypothesis.name}</span>
               </span>
               <span className={styles.hypothesisMasterMetrics}>
-                <span>{entry.hypothesis.reliableCharacteristicGroupCount} {formatCountWord(entry.hypothesis.reliableCharacteristicGroupCount, "подтверждённая группа", "подтверждённые группы", "подтверждённых групп")}</span>
+                <span>{formatCount(entry.hypothesis.reliableCharacteristicGroupCount, "подтверждённая группа", "подтверждённые группы", "подтверждённых групп")}</span>
               </span>
             </button>
           ))}
@@ -631,8 +615,8 @@ function NumberParameter({
   onChange: (value: number) => void;
 }>) {
   return (
-    <label className={styles.numberField} htmlFor={id}>
-      <span className={styles.infoLabel}>{label}{help ? <Info size={14} aria-label={help} /> : null}</span>
+    <div className={styles.parameterControl} data-parameter-control>
+      <ParameterLabel htmlFor={id} label={label} help={help} />
       <span className={styles.numberInputWrap}>
         <input
           id={id}
@@ -643,9 +627,104 @@ function NumberParameter({
           value={value}
           onChange={(event) => onChange(Number(event.target.value))}
         />
-        <span>{unit}</span>
+        {unit ? <span>{unit}</span> : null}
       </span>
-    </label>
+    </div>
+  );
+}
+
+function ParameterSection({ title, children }: Readonly<{ title: string; children: ReactNode }>) {
+  return (
+    <section className={styles.sideParameterGroup} data-parameter-section>
+      <h3>{title}</h3>
+      <div className={styles.parameterStack}>{children}</div>
+    </section>
+  );
+}
+
+function ParameterLabel({ htmlFor, label, help }: Readonly<{ htmlFor: string; label: string; help?: string }>) {
+  return (
+    <div className={styles.parameterLabelRow}>
+      <label htmlFor={htmlFor}>{label}</label>
+      {help ? <InfoTooltip label={label} content={help} /> : null}
+    </div>
+  );
+}
+
+function RangeParameter({ id, label, help, value, min, max, step, output, onChange }: Readonly<{
+  id: string;
+  label: string;
+  help?: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  output: string;
+  onChange: (value: number) => void;
+}>) {
+  return (
+    <div className={styles.parameterControl} data-parameter-control>
+      <div className={styles.parameterHeading}>
+        <ParameterLabel htmlFor={id} label={label} help={help} />
+        <output htmlFor={id}>{output}</output>
+      </div>
+      <input id={id} className={styles.rangeInput} type="range" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} />
+    </div>
+  );
+}
+
+function SelectParameter({ id, label, value, options, onChange }: Readonly<{
+  id: string;
+  label: string;
+  value: string;
+  options: readonly { value: string; label: string }[];
+  onChange: (value: string) => void;
+}>) {
+  return (
+    <div className={styles.parameterControl} data-parameter-control>
+      <ParameterLabel htmlFor={id} label={label} />
+      <select id={id} className={styles.parameterSelect} value={value} onChange={(event) => onChange(event.target.value)}>
+        {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+      </select>
+    </div>
+  );
+}
+
+function ToggleParameter({ id, label, help, checked, onChange }: Readonly<{
+  id: string;
+  label: string;
+  help?: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}>) {
+  return (
+    <div className={styles.toggleParameter} data-parameter-control>
+      <ParameterLabel htmlFor={id} label={label} help={help} />
+      <input id={id} className={styles.switchInput} type="checkbox" role="switch" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+    </div>
+  );
+}
+
+function ValueRangeParameter({ label, minimum, maximum, unit, onMinimumChange, onMaximumChange }: Readonly<{
+  label: string;
+  minimum: { id: string; value: number; min: number; max: number; step: number };
+  maximum: { id: string; value: number; min: number; max: number; step: number };
+  unit: string;
+  onMinimumChange: (value: number) => void;
+  onMaximumChange: (value: number) => void;
+}>) {
+  return (
+    <fieldset className={styles.valueRangeParameter} data-parameter-control>
+      <legend>{label}</legend>
+      <div className={styles.valueRangeFields}>
+        <label htmlFor={minimum.id}>от</label>
+        <input id={minimum.id} aria-label={`${label}, от`} type="number" value={minimum.value} min={minimum.min} max={minimum.max} step={minimum.step} onChange={(event) => onMinimumChange(Number(event.target.value))} />
+        <span className={styles.valueRangeSeparator} aria-hidden="true">—</span>
+        <label htmlFor={maximum.id}>до</label>
+        <input id={maximum.id} aria-label={`${label}, до`} type="number" value={maximum.value} min={maximum.min} max={maximum.max} step={maximum.step} onChange={(event) => onMaximumChange(Number(event.target.value))} />
+        <span className={styles.valueRangeUnit}>{unit}</span>
+      </div>
+    </fieldset>
   );
 }
 
@@ -679,12 +758,11 @@ function CalculationFeedback({
 }
 
 function formatSigned(value: number): string {
-  if (value === 0) return "0.000";
-  return `${value > 0 ? "+" : ""}${value.toFixed(3)}`;
+  return formatSignedDecimal(value, 3);
 }
 
 function formatValue(value: number | undefined, precision: number): string {
-  return value === undefined ? "—" : value.toFixed(precision);
+  return value === undefined ? "—" : formatDecimal(value, precision);
 }
 
 function formatCandidateGroupLine(group: CandidateDisplayGroup): string {
@@ -696,16 +774,7 @@ function formatCandidateGroupLine(group: CandidateDisplayGroup): string {
   const minimum = Math.min(...wavelengths);
   const maximum = Math.max(...wavelengths);
   const wavelength = maximum - minimum < 0.0005
-    ? candidate.line.toFixed(3)
-    : `${minimum.toFixed(3)}–${maximum.toFixed(3)}`;
+    ? formatDecimal(candidate.line, 3)
+    : `${formatDecimal(minimum, 3)}–${formatDecimal(maximum, 3)}`;
   return `${label} · ${wavelength}`;
-}
-
-function formatCountWord(value: number, one: string, few: string, many: string): string {
-  const mod100 = value % 100;
-  const mod10 = value % 10;
-  if (mod100 >= 11 && mod100 <= 14) return many;
-  if (mod10 === 1) return one;
-  if (mod10 >= 2 && mod10 <= 4) return few;
-  return many;
 }
