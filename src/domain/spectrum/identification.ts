@@ -37,10 +37,11 @@ export function buildElementHypotheses(
   library: readonly SpectralLine[],
 ): IdentificationResult {
   const usableChannels = channels.filter((channel) => channel.usable);
+  if (!usableChannels.length) return { hypotheses: [], rejectedHypotheses: [] };
   const allPeaks = usableChannels.flatMap((channel) => channel.peaks);
   const elementSymbols = [...new Set(allPeaks.flatMap((peak) => peak.candidates.map((candidate) => candidate.elementSymbol)))].sort();
   const testedElementCount = elementSymbols.length;
-  const groupingResolutionNm = Math.max(...usableChannels.map((channel) => channel.spectralResolutionNm), Number.EPSILON);
+  const groupingResolutionNm = Math.max(Math.min(...usableChannels.map((channel) => channel.spectralResolutionNm)), Number.EPSILON);
   const spectralGroups = groupSpectralLines(library, groupingResolutionNm);
   const groupByLineId = new Map(spectralGroups.flatMap((group) => group.lines.map((line) => [line.id, group] as const)));
   const groupById = new Map(spectralGroups.map((group) => [group.id, group] as const));
@@ -88,7 +89,17 @@ export function buildElementHypotheses(
     const missingCharacteristicGroups = availableCharacteristicGroups.filter((group) => !foundGroupIds.has(group.id));
     const reliableCharacteristicEvidence = evidence.filter((item) => item.isCharacteristic && item.strength !== "weak");
     const strongCharacteristicEvidence = evidence.filter((item) => item.isCharacteristic && item.strength === "strong");
+    const controlComparableCharacteristicEvidence = evidence.filter((item) => (
+      item.isCharacteristic
+      && item.observations.some((observation) => (
+        observation.normalizedDelta <= IDENTIFICATION_QUALITY_PROFILE.atomicEvidence.maximumPatternNormalizedDelta
+      ))
+    ));
     const reliableKeyEvidence = reliableCharacteristicEvidence.filter((item) => item.isKeyCharacteristic);
+    const highSpecificityCharacteristicEvidence = reliableCharacteristicEvidence.filter((item) => (
+      item.specificity >= IDENTIFICATION_QUALITY_PROFILE.atomicEvidence.minimumHighSpecificity
+    ));
+    const wavelengthCoherence = assessWavelengthCoherence(reliableCharacteristicEvidence, channelById);
     const characteristicPriorityIndex = reliableCharacteristicEvidence.reduce((sum, item) => {
       const group = item.characteristicGroupId ? characteristicById.get(item.characteristicGroupId) : undefined;
       const ambiguity = Math.min(...item.observations.map((observation) => {
@@ -110,15 +121,39 @@ export function buildElementHypotheses(
       allPeaks,
       coveredWidthNm,
       availableCharacteristicGroups,
-      reliableCharacteristicEvidence.length,
+      controlComparableCharacteristicEvidence.length,
       testedElementCount,
       usableChannels,
       lineById,
     );
+    const preciseConstellation = reliableKeyEvidence.length >= 1
+      && wavelengthCoherence.coherent
+      && median(reliableCharacteristicEvidence.flatMap((item) => (
+        item.observations.map((observation) => observation.normalizedDelta)
+      ))) <= IDENTIFICATION_QUALITY_PROFILE.atomicEvidence.constellationMaximumMedianNormalizedDelta;
+    const coherentConstellationOverride = preciseConstellation && (
+      (
+        reliableCharacteristicEvidence.length
+          >= IDENTIFICATION_QUALITY_PROFILE.atomicEvidence.constellationMinimumGroups
+        && highSpecificityCharacteristicEvidence.length
+          >= IDENTIFICATION_QUALITY_PROFILE.atomicEvidence.constellationMinimumGroups
+        && randomAgreementEstimate.empiricalExceedanceFraction
+          <= IDENTIFICATION_QUALITY_PROFILE.atomicEvidence.constellationMaximumControlExceedanceFraction
+      )
+      || (
+        reliableCharacteristicEvidence.length
+          >= IDENTIFICATION_QUALITY_PROFILE.atomicEvidence.strongConstellationMinimumGroups
+        && strongCharacteristicEvidence.length
+          >= IDENTIFICATION_QUALITY_PROFILE.atomicEvidence.strongConstellationMinimumStrongGroups
+        && highSpecificityCharacteristicEvidence.length >= reliableCharacteristicEvidence.length
+        && randomAgreementEstimate.empiricalExceedanceFraction
+          <= IDENTIFICATION_QUALITY_PROFILE.atomicEvidence.strongConstellationMaximumControlExceedanceFraction
+      )
+    );
     const randomAgreement = {
       ...randomAgreementEstimate,
-      distinguishableFromRandom: randomAgreementEstimate.distinguishableFromRandom
-        || (strongCharacteristicEvidence.length >= 3 && reliableKeyEvidence.length >= 2),
+      coherentConstellationOverride,
+      distinguishableFromRandom: randomAgreementEstimate.distinguishableFromRandom || coherentConstellationOverride,
     };
     const ionizationStages = [...new Set([
       ...evidence.map((item) => item.ionizationStage),
@@ -142,6 +177,7 @@ export function buildElementHypotheses(
       availableCharacteristicGroupCount: availableCharacteristicGroups.length,
       characteristicGroupCompleteness: round(completeness, 6),
       reliableKeyCharacteristicGroupCount: reliableKeyEvidence.length,
+      highSpecificityCharacteristicGroupCount: highSpecificityCharacteristicEvidence.length,
       characteristicPriorityIndex: round(characteristicPriorityIndex, 6),
       missingKeyCharacteristicGroupCount: keyGroups.filter((group) => !foundReliableKeyIds.has(group.id)).length,
       weakEvidenceGroupCount,
@@ -187,20 +223,20 @@ export function buildElementHypotheses(
         { code: "wavelength-agreement" as const, value: round(meanAbsoluteDelta, 6), description: `Среднее абсолютное отклонение: ${round(meanAbsoluteDelta, 4)} нм.` },
       ],
       randomAgreement,
+      wavelengthCoherence,
     };
     const reasons: RejectedHypothesisReason[] = [];
     if (evidence.length < 2) reasons.push("single-match");
     if (availableCharacteristicGroups.length < 2) reasons.push("insufficient-characteristic-lines");
     if (!reliableKeyEvidence.length && availableCharacteristicGroups.length) reasons.push("missing-key-characteristic-lines");
     if (!randomAgreement.distinguishableFromRandom) reasons.push("random-like-agreement");
-    const weakFraction = evidence.length ? weakEvidenceGroupCount / evidence.length : 1;
-    const weakProfile = IDENTIFICATION_QUALITY_PROFILE.weakEvidence;
-    if (
-      weakEvidenceGroupCount >= Math.max(weakProfile.minimumCount, reliableCharacteristicEvidence.length * weakProfile.countPerReliableGroup)
-      && weakFraction >= weakProfile.minimumFraction
-    ) {
-      reasons.push("weak-evidence-dominated");
+    if (reliableCharacteristicEvidence.length < IDENTIFICATION_QUALITY_PROFILE.atomicEvidence.minimumReliableGroups) {
+      reasons.push("insufficient-reliable-groups");
     }
+    if (highSpecificityCharacteristicEvidence.length < IDENTIFICATION_QUALITY_PROFILE.atomicEvidence.minimumHighSpecificityGroups) {
+      reasons.push("ambiguous-evidence");
+    }
+    if (!wavelengthCoherence.coherent) reasons.push("incoherent-wavelength-shift");
     const reliable = reasons.length === 0;
     const hypothesis: ElementInterpretation = {
       ...hypothesisBase,
@@ -215,24 +251,6 @@ export function buildElementHypotheses(
 
   accepted.sort(compareHypotheses);
   rejected.sort((left, right) => compareHypotheses(left.hypothesis, right.hypothesis));
-  if (!accepted.length) {
-    const tentativeIndex = rejected.map((item, index) => ({ item, index }))
-      .filter(({ item }) => (
-        item.hypothesis.reliableCharacteristicGroupCount >= 2
-          && item.hypothesis.strongCharacteristicGroupCount >= 1
-          && item.hypothesis.reliableKeyCharacteristicGroupCount >= 1
-          && item.reasons.every((reason) => reason === "random-like-agreement")
-      ))
-      .sort((left, right) => compareTentative(left.item.hypothesis, right.item.hypothesis))[0]?.index ?? -1;
-    if (tentativeIndex !== -1) {
-      const [tentative] = rejected.splice(tentativeIndex, 1);
-      accepted.push({
-        ...tentative.hypothesis,
-        reliability: "tentative",
-        explanation: `${tentative.hypothesis.reliableCharacteristicGroupCount} качественных характерных группы, включая ключевую; после поправки на перебор элементов доказательств недостаточно для надёжного вывода.`,
-      });
-    }
-  }
   return { hypotheses: accepted, rejectedHypotheses: rejected };
 }
 
@@ -291,11 +309,11 @@ function assignCandidatesByIdentity(
       peakIndex,
       orderedPeaks.length + identityIndex.get(identity)!,
       1,
-      candidate.normalizedDelta,
+      candidate.normalizedDelta - IDENTIFICATION_QUALITY_PROFILE.atomicEvidence.maximumAssignmentNormalizedDelta,
       candidate,
       identity,
     )));
-  runMinimumCostMaximumFlow(graph, source, sink);
+  runMinimumCostFlowWhileBeneficial(graph, source, sink);
   const result: (AssignedCandidate & { identity: string })[] = [];
   for (let peakIndex = 0; peakIndex < orderedPeaks.length; peakIndex += 1) {
     for (const edge of graph[peakIndex]) {
@@ -314,7 +332,7 @@ function addEdge(graph: FlowEdge[][], from: number, to: number, capacity: number
   graph[to].push(reverse);
 }
 
-function runMinimumCostMaximumFlow(graph: FlowEdge[][], source: number, sink: number): void {
+function runMinimumCostFlowWhileBeneficial(graph: FlowEdge[][], source: number, sink: number): void {
   for (;;) {
     const distance = new Array<number>(graph.length).fill(Number.POSITIVE_INFINITY);
     const previousNode = new Array<number>(graph.length).fill(-1);
@@ -337,7 +355,7 @@ function runMinimumCostMaximumFlow(graph: FlowEdge[][], source: number, sink: nu
       }
       if (!changed) break;
     }
-    if (previousNode[sink] === -1) return;
+    if (previousNode[sink] === -1 || distance[sink] >= -1e-12) return;
     for (let node = sink; node !== source; node = previousNode[node]) {
       const edge = graph[previousNode[node]][previousEdge[node]];
       edge.capacity -= 1;
@@ -375,18 +393,25 @@ function aggregateGroupEvidence(
       adaptiveToleranceNm: itemCandidate.adaptiveToleranceNm,
       combinedUncertaintyNm: itemCandidate.combinedUncertaintyNm,
       normalizedDelta: itemCandidate.normalizedDelta,
+      competingElementCount: new Set(peak.candidates.map((item) => item.elementSymbol)).size,
+      specificity: round(scoreCandidateSpecificity(peak, itemCandidate), 6),
       uncertainty: itemCandidate.uncertainty,
     })).sort((left, right) => left.channelId.localeCompare(right.channelId) || left.peakId.localeCompare(right.peakId));
     const observationQualities = items.map(({ peak, candidate: itemCandidate }) => {
       const channel = channelById.get(peak.channelId)!;
-      return scoreObservation(peak, itemCandidate, channel);
+      return scoreObservation(peak, itemCandidate, channel, scoreCandidateSpecificity(peak, itemCandidate));
     });
     const channelSupportCount = new Set(observations.map((observation) => observation.channelId)).size;
     const quality = Math.min(1, Math.max(...observationQualities, 0) + Math.min(0.15, (channelSupportCount - 1) * 0.08));
+    const specificity = Math.max(...observations.map((observation) => observation.specificity), 0);
     const normalizedDelta = Math.min(...items.map((item) => item.candidate.normalizedDelta));
-    const strength: EvidenceStrength = quality >= 0.78 && normalizedDelta <= 0.67
+    const strength: EvidenceStrength = quality >= IDENTIFICATION_QUALITY_PROFILE.atomicEvidence.minimumStrongQuality
+        && normalizedDelta <= 0.67
+        && specificity >= IDENTIFICATION_QUALITY_PROFILE.atomicEvidence.minimumSpecificityForStrong
       ? "strong"
-      : quality >= 0.6 && normalizedDelta <= 0.85
+      : quality >= IDENTIFICATION_QUALITY_PROFILE.atomicEvidence.minimumModerateQuality
+          && normalizedDelta <= 0.85
+          && specificity >= IDENTIFICATION_QUALITY_PROFILE.atomicEvidence.minimumSpecificityForModerate
         ? "moderate"
         : "weak";
     const characteristicGroup = group.lines.map((item) => characteristicByLineId.get(item.id)).find(Boolean);
@@ -406,6 +431,7 @@ function aggregateGroupEvidence(
       wavelengthMedium: candidate.wavelengthMedium,
       strength,
       quality: round(quality, 6),
+      specificity: round(specificity, 6),
       channelSupportCount,
       ...(characteristicGroup ? { characteristicGroupId: characteristicGroup.id } : {}),
       isCharacteristic: Boolean(characteristicGroup),
@@ -419,14 +445,70 @@ function aggregateGroupEvidence(
   });
 }
 
-function scoreObservation(peak: AnalyzedPeak, candidate: SpectralLineCandidate, channel: ChannelPreparationResult): number {
+function scoreObservation(
+  peak: AnalyzedPeak,
+  candidate: SpectralLineCandidate,
+  channel: ChannelPreparationResult,
+  specificity: number,
+): number {
   const snrScale = Math.max(20, channel.parameters.peakSearch.minimumSnr * 4);
   const snrFactor = clamp(Math.log1p(peak.snr) / Math.log1p(snrScale));
   const prominenceFactor = clamp(peak.prominence / Math.max(0.1, channel.parameters.peakSearch.prominence * 3));
   const deltaFactor = Math.exp(-0.5 * Math.pow(candidate.normalizedDelta / 0.55, 2));
   const widthRatio = peak.widthNm / channel.spectralResolutionNm;
   const widthFactor = widthRatio > 0 ? Math.exp(-Math.abs(Math.log(widthRatio))) : 0;
-  return 0.35 * deltaFactor + 0.25 * snrFactor + 0.25 * prominenceFactor + 0.15 * widthFactor;
+  const physicalQuality = 0.35 * deltaFactor + 0.25 * snrFactor + 0.25 * prominenceFactor + 0.15 * widthFactor;
+  return physicalQuality * (0.6 + 0.4 * specificity);
+}
+
+function scoreCandidateSpecificity(peak: AnalyzedPeak, candidate: SpectralLineCandidate): number {
+  const bestByElement = new Map<string, number>();
+  for (const item of peak.candidates) {
+    const current = bestByElement.get(item.elementSymbol);
+    if (current === undefined || item.normalizedDelta < current) bestByElement.set(item.elementSymbol, item.normalizedDelta);
+  }
+  if (bestByElement.size <= 1) return 1;
+  const current = bestByElement.get(candidate.elementSymbol) ?? candidate.normalizedDelta;
+  const closestCompetitor = Math.min(...[...bestByElement.entries()]
+    .filter(([symbol]) => symbol !== candidate.elementSymbol)
+    .map(([, normalizedDelta]) => normalizedDelta));
+  const separation = clamp((closestCompetitor - current) / 0.4);
+  const uniqueness = 1 / Math.sqrt(bestByElement.size);
+  return clamp(uniqueness * (0.7 + 0.3 * separation));
+}
+
+function assessWavelengthCoherence(
+  evidence: readonly AnalysisEvidenceLine[],
+  channelById: ReadonlyMap<string, ChannelPreparationResult>,
+) {
+  const profile = IDENTIFICATION_QUALITY_PROFILE.atomicEvidence;
+  const channels = [...channelById.values()].flatMap((channel) => {
+    const observations = evidence.flatMap((item) => item.observations.filter((observation) => observation.channelId === channel.id))
+      .sort((left, right) => left.peakId.localeCompare(right.peakId));
+    if (!observations.length) return [];
+    const shift = median(observations.map((observation) => observation.delta));
+    const residuals = observations.map((observation) => observation.delta - shift);
+    const residualMad = 1.4826 * median(residuals.map((value) => Math.abs(value)));
+    const uncertaintyFloor = median(observations.map((observation) => observation.combinedUncertaintyNm))
+      * profile.coherenceUncertaintyFactor;
+    const inlierLimit = Math.max(channel.spectralResolutionNm * profile.coherenceResolutionFraction, uncertaintyFloor);
+    const inlierCount = residuals.filter((value) => Math.abs(value) <= inlierLimit).length;
+    const evaluated = observations.length >= profile.coherenceMinimumObservations;
+    const coherent = !evaluated || (
+      inlierCount / observations.length >= profile.coherenceMinimumInlierFraction
+      && residualMad <= inlierLimit
+    );
+    return [{
+      channelId: channel.id,
+      observationCount: observations.length,
+      fittedShiftNm: round(shift, 6),
+      residualMadNm: round(residualMad, 6),
+      inlierCount,
+      evaluated,
+      coherent,
+    }];
+  });
+  return { coherent: channels.every((channel) => channel.coherent), channels };
 }
 
 function estimateRandomAgreement(
@@ -453,17 +535,25 @@ function estimateRandomAgreement(
         spectralResolutionNm: channel.spectralResolutionNm,
         calibrationUncertaintyNm: channel.wavelengthCalibration.uncertaintyNm,
       });
-      return [{
-        minimum: group.minimumWavelength - adaptive.toleranceNm,
-        maximum: group.maximumWavelength + adaptive.toleranceNm,
-      }];
+      const minimum = Math.max(channel.wavelengthRange.minimum, group.minimumWavelength - adaptive.toleranceNm);
+      const maximum = Math.min(channel.wavelengthRange.maximum, group.maximumWavelength + adaptive.toleranceNm);
+      return maximum > minimum ? [{ minimum, maximum }] : [];
     }));
     const channelWidth = channel.wavelengthRange.maximum - channel.wavelengthRange.minimum;
     return sum + Math.min(1, channelWidth > 0 ? coveredByGroups / channelWidth : 0);
   }, 0);
   const searchFactor = 1 + Math.log2(Math.max(1, testedElementCount)) / 2;
   const adjustedExpected = expected * searchFactor;
-  const requiredAgreements = Math.max(2, Math.ceil(adjustedExpected + Math.sqrt(adjustedExpected + 0.25)));
+  const controlCounts = shiftedPatternControlCounts(characteristicGroups, channels, lineById);
+  const orderedControls = [...controlCounts].sort((left, right) => left - right);
+  const percentileIndex = Math.min(
+    orderedControls.length - 1,
+    Math.ceil(orderedControls.length * IDENTIFICATION_QUALITY_PROFILE.atomicEvidence.negativeControlPercentile) - 1,
+  );
+  const control95 = orderedControls[Math.max(0, percentileIndex)] ?? 0;
+  const maximumControlAgreements = Math.max(...controlCounts, 0);
+  const requiredAgreements = Math.max(2, maximumControlAgreements + 1);
+  const exceedanceCount = controlCounts.filter((count) => count >= observed).length;
   return {
     expectedAgreements: round(expected, 6),
     observedAgreements: observed,
@@ -473,8 +563,66 @@ function estimateRandomAgreement(
     testedElementCount,
     adjustedExpectedAgreements: round(adjustedExpected, 6),
     requiredAgreements,
+    testedOffsets: controlCounts.length,
+    maximumControlAgreements,
+    control95PercentileAgreements: control95,
+    empiricalExceedanceFraction: round((exceedanceCount + 1) / (controlCounts.length + 1), 6),
+    coherentConstellationOverride: false,
     distinguishableFromRandom: observed >= requiredAgreements,
   };
+}
+
+function shiftedPatternControlCounts(
+  characteristicGroups: readonly CharacteristicSpectralGroupSummary[],
+  channels: readonly ChannelPreparationResult[],
+  lineById: ReadonlyMap<string, SpectralLine>,
+): readonly number[] {
+  const profile = IDENTIFICATION_QUALITY_PROFILE.atomicEvidence;
+  const fractions: number[] = [];
+  for (let index = 1; fractions.length < profile.negativeControlCount; index += 1) {
+    const fraction = (index * 0.3819660112501051) % 1;
+    if (fraction >= 0.05 && fraction <= 0.95) fractions.push(fraction);
+  }
+  return fractions.map((fraction) => {
+    const matchedGroupIds = new Set<string>();
+    for (const channel of channels) {
+      const minimum = channel.wavelengthRange.minimum;
+      const maximum = channel.wavelengthRange.maximum;
+      const width = maximum - minimum;
+      if (!(width > 0)) continue;
+      const possible: { groupId: string; peakId: string; normalizedDelta: number }[] = [];
+      for (const group of characteristicGroups) {
+        if (group.representativeWavelength < minimum || group.representativeWavelength > maximum) continue;
+        const representative = representativeCharacteristicLine(group);
+        const line = lineById.get(representative.lineId);
+        if (!line) continue;
+        const shiftedWavelength = minimum + ((group.representativeWavelength - minimum + fraction * width) % width);
+        for (const peak of channel.peaks) {
+          const adaptive = calculateAdaptiveTolerance(peak, line, {
+            spectralResolutionNm: channel.spectralResolutionNm,
+            calibrationUncertaintyNm: channel.wavelengthCalibration.uncertaintyNm,
+          });
+          const normalizedDelta = Math.abs(peak.wavelength - shiftedWavelength) / adaptive.toleranceNm;
+          if (normalizedDelta <= profile.maximumPatternNormalizedDelta) {
+            possible.push({ groupId: group.id, peakId: peak.id, normalizedDelta });
+          }
+        }
+      }
+      const usedGroups = new Set<string>();
+      const usedPeaks = new Set<string>();
+      for (const candidate of possible.sort((left, right) => (
+        left.normalizedDelta - right.normalizedDelta
+          || left.groupId.localeCompare(right.groupId)
+          || left.peakId.localeCompare(right.peakId)
+      ))) {
+        if (usedGroups.has(candidate.groupId) || usedPeaks.has(candidate.peakId)) continue;
+        usedGroups.add(candidate.groupId);
+        usedPeaks.add(candidate.peakId);
+        matchedGroupIds.add(candidate.groupId);
+      }
+    }
+    return matchedGroupIds.size;
+  });
 }
 
 function compareHypotheses(left: ElementInterpretation, right: ElementInterpretation): number {
@@ -483,16 +631,6 @@ function compareHypotheses(left: ElementInterpretation, right: ElementInterpreta
     || right.reliableKeyCharacteristicGroupCount - left.reliableKeyCharacteristicGroupCount
     || left.weakEvidenceGroupCount - right.weakEvidenceGroupCount
     || right.characteristicGroupCompleteness - left.characteristicGroupCompleteness
-    || left.meanAbsoluteDelta - right.meanAbsoluteDelta
-    || left.id.localeCompare(right.id);
-}
-
-function compareTentative(left: ElementInterpretation, right: ElementInterpretation): number {
-  return right.reliableKeyCharacteristicGroupCount - left.reliableKeyCharacteristicGroupCount
-    || right.characteristicPriorityIndex - left.characteristicPriorityIndex
-    || right.reliableCharacteristicGroupCount - left.reliableCharacteristicGroupCount
-    || right.strongCharacteristicGroupCount - left.strongCharacteristicGroupCount
-    || left.weakEvidenceGroupCount - right.weakEvidenceGroupCount
     || left.meanAbsoluteDelta - right.meanAbsoluteDelta
     || left.id.localeCompare(right.id);
 }
@@ -523,6 +661,13 @@ function unionWidth(ranges: readonly { minimum: number; maximum: number }[]): nu
 
 function average(values: readonly number[]): number {
   return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+}
+
+function median(values: readonly number[]): number {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((left, right) => left - right);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
 }
 
 function clamp(value: number): number {

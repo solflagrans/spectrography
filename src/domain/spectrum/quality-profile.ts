@@ -4,12 +4,18 @@
  * none of them is fitted to a file name, element, or expected composition.
  */
 export const IDENTIFICATION_QUALITY_PROFILE = {
-  id: "emission-quality-v1",
+  id: "emission-quality-v2",
   peakRefinement: {
     minimumSnrFactor: 1.5,
     minimumProminenceFactor: 1.5,
     halfWindowPoints: 2,
     maximumOffsetInGridSteps: 0.75,
+  },
+  peakDetection: {
+    minimumDistanceGridSteps: 2.5,
+    minimumFeaturesBeforeSmoothingFallback: 2,
+    fallbackSmoothingWindow: 15,
+    fallbackMinimumDistanceNm: 1.2,
   },
   adaptiveTolerance: {
     coverageFactor: 2.5,
@@ -47,10 +53,28 @@ export const IDENTIFICATION_QUALITY_PROFILE = {
     minimumResolutionPeakCount: 3,
     maximumResolutionRelativeMad: 0.45,
   },
-  weakEvidence: {
-    minimumCount: 6,
-    countPerReliableGroup: 3,
-    minimumFraction: 0.7,
+  atomicEvidence: {
+    maximumAssignmentNormalizedDelta: 0.9,
+    maximumPatternNormalizedDelta: 0.85,
+    minimumModerateQuality: 0.5,
+    minimumStrongQuality: 0.62,
+    minimumSpecificityForModerate: 0.14,
+    minimumSpecificityForStrong: 0.25,
+    minimumHighSpecificity: 0.2,
+    minimumHighSpecificityGroups: 1,
+    minimumReliableGroups: 3,
+    constellationMinimumGroups: 4,
+    strongConstellationMinimumGroups: 3,
+    strongConstellationMinimumStrongGroups: 1,
+    constellationMaximumMedianNormalizedDelta: 0.15,
+    constellationMaximumControlExceedanceFraction: 0.15,
+    strongConstellationMaximumControlExceedanceFraction: 0.16,
+    coherenceMinimumObservations: 3,
+    coherenceMinimumInlierFraction: 0.75,
+    coherenceResolutionFraction: 0.35,
+    coherenceUncertaintyFactor: 1.5,
+    negativeControlCount: 31,
+    negativeControlPercentile: 0.95,
   },
   molecular: {
     minimumRelativeContrast: 0.025,

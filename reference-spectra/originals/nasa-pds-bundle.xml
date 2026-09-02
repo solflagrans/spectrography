@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-model href="https://pds.nasa.gov/pds4/pds/v1/PDS4_PDS_1H00.sch" 
+ schematypens="http://purl.oclc.org/dsdl/schematron"?>
+<Product_Bundle xmlns="http://pds.nasa.gov/pds4/pds/v1"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://pds.nasa.gov/pds4/pds/v1 https://pds.nasa.gov/pds4/pds/v1/PDS4_PDS_1H00.xsd">
+    <Identification_Area>
+        <logical_identifier>urn:nasa:pds:libs_reference_database</logical_identifier>
+        <version_id>1.1</version_id>
+        <title>Multi-Parameter LIBS Reference Database of Geological Materials Bundle</title>
+        <information_model_version>1.17.0.0</information_model_version>
+        <product_class>Product_Bundle</product_class>
+        <Citation_Information>
+            <author_list>Dyar, M. Darby; Lepore, Kate</author_list>
+            <editor_list>Ward, Jennifer</editor_list>
+            <publication_year>2026</publication_year>
+            <doi>10.17189/b2aj-cz96</doi>
+            <description>
+                Multi-Parameter LIBS Reference Database of Geological Materials bundle.             
+            </description>
+        </Citation_Information>
+        <Modification_History>
+            <Modification_Detail>
+                <modification_date>2026-06-02</modification_date>
+                <version_id>1.1</version_id>
+                <description>Added a reference to bundle_libs_reference_database.xml.</description>
+            </Modification_Detail>
+            <Modification_Detail>
+                <modification_date>2026-02-05</modification_date>
+                <version_id>1.0</version_id>
+                <description>Initial version.</description>
+            </Modification_Detail>
+        </Modification_History>
+    </Identification_Area>
+    <Context_Area>
+        <Time_Coordinates>
+            <start_date_time>2015-04-14Z</start_date_time>
+            <stop_date_time>2022-10-27Z</stop_date_time>
+        </Time_Coordinates>
+        <Primary_Result_Summary>
+            <purpose>Science</purpose>
+            <processing_level>Partially Processed</processing_level>
+        </Primary_Result_Summary>
+        <Investigation_Area>
+            <name>Acquisition of a Multi-Parameter LIBS Reference Database of Geological Materials</name>
+            <type>Individual Investigation</type>
+            <Internal_Reference>
+                <lid_reference>urn:nasa:pds:context:investigation:individual.libs_reference_database</lid_reference>
+                <reference_type>bundle_to_investigation</reference_type>
+            </Internal_Reference>
+        </Investigation_Area>
+        <Observing_System>
+            <Observing_System_Component>
+                <name>The Mineral Spectroscopy Laboratory at Mount Holyoke College</name>
+                <type>Host</type>
+                <Internal_Reference>
+                    <lid_reference>urn:nasa:pds:context:facility:laboratory.mhc</lid_reference>
+                    <reference_type>is_facility</reference_type>
+                </Internal_Reference>
+            </Observing_System_Component>
+            <Observing_System_Component>
+                <name>ChemLIBS</name>
+                <type>Instrument</type> 
+                <Internal_Reference>
+                    <lid_reference>urn:nasa:pds:context:instrument:mhc.chemlibs</lid_reference>
+                    <reference_type>is_instrument</reference_type>
+                </Internal_Reference>
+            </Observing_System_Component>
+            <Observing_System_Component>
+                <name>SuperLIBS</name>
+                <type>Instrument</type> 
+                <Internal_Reference>
+                    <lid_reference>urn:nasa:pds:context:instrument:mhc.superlibs</lid_reference>
+                    <reference_type>is_instrument</reference_type>
+                </Internal_Reference>
+            </Observing_System_Component>
+            <Observing_System_Component>
+                <name>pLIBS Z-300</name>
+                <type>Instrument</type> 
+                <Internal_Reference>
+                    <lid_reference>urn:nasa:pds:context:instrument:mhc.plibs_z300</lid_reference>
+                    <reference_type>is_instrument</reference_type>
+                </Internal_Reference>
+            </Observing_System_Component>
+            <Observing_System_Component>
+                <name>pLIBS Z-903</name>
+                <type>Instrument</type> 
+                <Internal_Reference>
+                    <lid_reference>urn:nasa:pds:context:instrument:mhc.plibs_z903</lid_reference>
+                    <reference_type>is_instrument</reference_type>
+                </Internal_Reference>
+            </Observing_System_Component>
+        </Observing_System>        
+    </Context_Area>
+    <Reference_List>
+        <Internal_Reference>
+            <lid_reference>urn:nasa:pds:libs_reference_database:document:libs_metadata</lid_reference>
+            <reference_type>bundle_to_document</reference_type>
+        </Internal_Reference>
+        <Internal_Reference>
+            <lid_reference>urn:nasa:pds:libs_reference_database:document:user_guide</lid_reference>
+            <reference_type>bundle_to_document</reference_type>
+        </Internal_Reference>
+        <External_Reference>
+            <doi>10.1016/j.sab.2015.02.003</doi>
+            <reference_text>
+                Boucher, T. F., Ozanne, M. V., Carmosino, M. L., Dyar, M. D., Mahadevan, S., Breves, E. A., Lepore, K. H., and 
+                Clegg, S. M. (2015). A study of machine learning regression methods for major elemental analysis of rocks 
+                using laser-induced breakdown spectroscopy. Spectrochim. Acta B, 107, 1-10.                
+            </reference_text>
+        </External_Reference>
+        <External_Reference>
+            <doi>10.1002/cem.2727</doi>
+            <reference_text>
+                Boucher, T., Carey, CJ, Dyar, M. D., Mahadevan, S., Clegg, S. M., and Wiens, R. (2015). Manifold 
+                preprocessing for laser-induced breakdown spectroscopy under Mars conditions. J. Chemometrics, 29(9), 
+                484-491.                
+            </reference_text>
+        </External_Reference>
+        <External_Reference>
+            <doi>10.1016/j.sab.2016.07.010</doi>
+            <reference_text>
+                Dyar, M. D., Fassett, C. I., Giguere, S., Lepore, K., Byrne, S., Boucher, T., Carey, CJ, and 
+                Mahadevan, S. (2016). Comparison of univariate and multivariate models for prediction of major and minor 
+                elements from laser-induced breakdown spectra with and without masking. Spectrochimica Acta Part B: Atomic 
+                Spectroscopy, 123, 93-104.
+            </reference_text>
+        </External_Reference>
+        <External_Reference>
+            <doi>10.1016/j.sab.2016.10.018</doi>
+            <reference_text>
+                Dyar, M. D., Giguere, S., Carey, CJ, and Boucher, T. S. (2016). Comparison of baseline removal methods for 
+                laser-induced breakdown spectroscopy of geological samples. Spectrochim. Acta B., 126, 53-64.
+            </reference_text>
+        </External_Reference>
+        <External_Reference>
+            <doi>10.1177/0003702816685095</doi>
+            <reference_text>
+                Lepore, K. H., Fassett, C. I., Breves, E. A., Byrne, S., Giguere, S., Boucher, T., Rhodes, J. M., 
+                Vollinger, M., Anderson, C. H., Murray, R. W., and Dyar, M. D. (2017). Matrix Effects in Quantitative 
+                Analysis of Laser-Induced Breakdown Spectroscopy (LIBS) of Rock Powders Doped with Cr, Mn, Ni, Zn, and Co. 
+                Applied Spectroscopy, 71(4), 600–626.           
+            </reference_text>
+        </External_Reference>
+        <External_Reference>
+            <doi>10.1016/j.sab.2017.11.010</doi>
+            <reference_text>
+                Ytsma, C. R., and Dyar, M. D. (2018). Effects of univariate and multivariate regression on the accuracy of
+                hydrogen quantification with laser-induced breakdown spectroscopy. Spectrochimica Acta Part B: Atomic 
+                Spectroscopy, 139, 27–37.                
+            </reference_text>
+        </External_Reference>
+        <External_Reference>
+            <doi>10.1016/j.sab.2019.105715</doi>
+            <reference_text>
+                Ytsma, C. R., and Dyar, M. D. (2019). Accuracies of lithium, boron, carbon, and sulfur quantification in 
+                geological samples with laser-induced breakdown spectroscopy in Mars, Earth, and vacuum conditions. 
+                Spectrochimica Acta Part B: Atomic Spectroscopy, 162, 105715.               
+            </reference_text>
+        </External_Reference>
+        <External_Reference>
+            <doi>10.1016/j.sab.2020.105946</doi>
+            <reference_text>
+                Ytsma, C. R., Knudson, C. A., Dyar, M. D., McAdam, A. C., Michaud, D. D., and Rollosson, L. M. (2020). 
+                Accuracies and detection limits of major, minor, and trace element quantification in rocks by portable 
+                laser-induced breakdown spectroscopy. Spectrochimica Acta Part B: Atomic Spectroscopy, 171, 105946.
+            </reference_text>
+        </External_Reference>
+        <External_Reference>
+            <doi>10.1016/j.sab.2021.106073</doi>
+            <reference_text>
+                Dyar, M. D., and Ytsma, C. R. (2021). Effect of data set size on geochemical quantification accuracy with 
+                laser-induced breakdown spectroscopy. Spectrochimica Acta Part B: Atomic Spectroscopy, 177, 106073.               
+            </reference_text>
+        </External_Reference>
+        <External_Reference>
+            <doi>10.1016/j.sab.2022.106408</doi>
+            <reference_text>
+                Lepore, K. H., Ytsma, C. R., and Dyar, M. D. (2022). Quantitative prediction accuracies derived from 
+                laser-induced breakdown spectra using optimized multivariate submodels. Spectrochimica Acta Part B: Atomic 
+                Spectroscopy, 191, 106408.               
+            </reference_text>
+        </External_Reference>
+        <External_Reference>
+            <doi>10.1016/j.sab.2022.106395</doi>
+            <reference_text>
+                Ytsma, C. R., and Dyar, M. D. (2022). Calculations of and effects on quantitative limits for multivariate 
+                analyses of geological materials with laser-induced breakdown spectroscopy. Spectrochimica Acta Part B: 
+                Atomic Spectroscopy, 191, 106395.               
+            </reference_text>
+        </External_Reference>
+        <External_Reference>
+            <doi>10.1029/2023GL102919</doi>
+            <reference_text>
+                Lepore, K. H., Dyar, M. D., and Ytsma, C. R. (2023). Effect of Plasma Temperature on Major Element Prediction 
+                Accuracy From Laser‐Induced Breakdown Spectroscopy. Geophysical Research Letters, 50(8).              
+            </reference_text>
+        </External_Reference>
+        <External_Reference>
+            <doi>10.1029/2024EA003635</doi>
+            <reference_text>
+                Dyar, M. D., Ytsma, C. R., and Lepore, K. (2024). Geochemistry by Laser‐Induced Breakdown Spectroscopy on 
+                the Moon: Accuracy, Detection Limits, and Realistic Constraints on Interpretations. Earth and Space 
+                Science, 11(10).               
+            </reference_text>
+        </External_Reference>
+        <External_Reference>
+            <doi>10.1016/j.sab.2024.106970</doi>
+            <reference_text>
+                Lepore, K. H., Belkhodja, I., Dyar, M. D., and Ytsma, C. R. (2024). Direct comparison of Earth, Mars, and 
+                lunar quantification accuracies derived from laser-induced breakdown spectra of rocks. Spectrochimica Acta 
+                Part B: Atomic Spectroscopy, 217, 106970.               
+            </reference_text>
+        </External_Reference>
+        <External_Reference>
+            <doi>10.1016/j.sab.2023.106839</doi>
+            <reference_text>
+                Lepore, K. H., Dyar, M. D., and Ytsma, C. R. (2024). Sharing calibration information among laser-induced 
+                breakdown spectroscopy instruments using spectral line binning and calibration transfer. Spectrochimica Acta 
+                Part B: Atomic Spectroscopy, 211, 106839.             
+            </reference_text>
+        </External_Reference>
+        <External_Reference>
+            <doi>10.1016/j.sab.2026.107571</doi>
+            <reference_text>
+                Ytsma, C. R., Dyar, M. D., and Lepore, K. H. (2026). Laser-induced breakdown spectroscopy calibration 
+                accuracies compared among four instruments, three atmospheres, and eight laser powers for 74 elements 
+                using 2157 geochemical standards. Spectrochimica Acta Part B: Atomic Spectroscopy, 107571.               
+            </reference_text>
+        </External_Reference>
+   </Reference_List>
+    <Bundle>
+        <bundle_type>Archive</bundle_type>
+    </Bundle>
+    <File_Area_Text>
+        <File>
+            <file_name>readme.txt</file_name>
+        </File>
+        <Stream_Text>
+            <offset unit="byte">0</offset>
+            <parsing_standard_id>7-Bit ASCII Text</parsing_standard_id>
+            <record_delimiter>Carriage-Return Line-Feed</record_delimiter>
+        </Stream_Text>
+    </File_Area_Text>
+    <Bundle_Member_Entry>
+        <lid_reference>urn:nasa:pds:libs_reference_database:data_chemlibs</lid_reference>
+        <member_status>Primary</member_status>
+        <reference_type>bundle_has_data_collection</reference_type>
+    </Bundle_Member_Entry>
+    <Bundle_Member_Entry>
+        <lid_reference>urn:nasa:pds:libs_reference_database:data_superlibs</lid_reference>
+        <member_status>Primary</member_status>
+        <reference_type>bundle_has_data_collection</reference_type>
+    </Bundle_Member_Entry>
+    <Bundle_Member_Entry>
+        <lid_reference>urn:nasa:pds:libs_reference_database:data_plibs_z300</lid_reference>
+        <member_status>Primary</member_status>
+        <reference_type>bundle_has_data_collection</reference_type>
+    </Bundle_Member_Entry>
+    <Bundle_Member_Entry>
+        <lid_reference>urn:nasa:pds:libs_reference_database:data_plibs_z903</lid_reference>
+        <member_status>Primary</member_status>
+        <reference_type>bundle_has_data_collection</reference_type>
+    </Bundle_Member_Entry>
+    <Bundle_Member_Entry>
+        <lid_reference>urn:nasa:pds:libs_reference_database:document</lid_reference>
+        <member_status>Primary</member_status>
+        <reference_type>bundle_has_document_collection</reference_type>
+    </Bundle_Member_Entry>
+</Product_Bundle>

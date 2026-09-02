@@ -418,8 +418,11 @@ export function IdentificationAnalysisPage() {
             <div><dt>После перебора элементов</dt><dd>{hypothesis.randomAgreement.adjustedExpectedAgreements.toFixed(2)}</dd></div>
             <div><dt>Проверено элементов</dt><dd>{hypothesis.randomAgreement.testedElementCount}</dd></div>
             <div><dt>Требуется групп</dt><dd>{hypothesis.randomAgreement.requiredAgreements}</dd></div>
+            <div><dt>Смещённых контролей</dt><dd>{hypothesis.randomAgreement.testedOffsets}</dd></div>
+            <div><dt>95-й процентиль контролей</dt><dd>{hypothesis.randomAgreement.control95PercentileAgreements}</dd></div>
+            <div><dt>Согласованное созвездие</dt><dd>{hypothesis.randomAgreement.coherentConstellationOverride ? "Да" : "Нет"}</dd></div>
           </dl>
-          <p className={styles.detailNote}>Это диагностическое сравнение с равномерным случайным согласованием, а не вероятность присутствия элемента.</p>
+          <p className={styles.detailNote}>Это диагностическое сравнение с теми же линиями, циклически смещёнными внутри реальных диапазонов измерения. Показатель не является вероятностью присутствия элемента.</p>
         </Card>
         </div>
         </section>

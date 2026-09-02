@@ -1,0 +1,136 @@
+{
+  "collection": "External reference spectra for manual Spectrography checks",
+  "retrievedAt": "2026-09-02",
+  "applicationLimit": "Each app-ready JSON contains no more than 10000 wavelength/intensity pairs.",
+  "sources": [
+    {
+      "id": "nasa-pds-h92649-iron-rich",
+      "title": "ChemLIBS reference spectrum H92649, Earth atmosphere, 3.2 mJ",
+      "provider": "NASA Planetary Data System Geosciences Node",
+      "bundleDoi": "10.17189/b2aj-cz96",
+      "sourceUrl": "https://pds-geosciences.wustl.edu/speclib/urn-nasa-pds-libs_reference_database/data_chemlibs/earth/3.2mj/mh6_20082804ccs_earth_t07l01_h92649_spect.csv",
+      "original": {
+        "file": "originals/nasa-pds-h92649-iron-rich.csv",
+        "bytes": 616494,
+        "sha256": "17bdfc408fe04d3072ad3dba7094dc970890aebd1b7078e830b07b6ed7045845"
+      },
+      "appReady": {
+        "file": "app-ready/nasa-pds-h92649-iron-rich.json",
+        "points": 6144,
+        "wavelengthRangeNm": [240.811, 905.574],
+        "sha256": "32fb86d77931ecc79b02ec7820238c82459c4b15aaa61aeb90906a46eda0d922"
+      },
+      "knownMajorCompositionWtPercent": {
+        "Fe2O3_total": 95.84,
+        "TiO2": 2.09,
+        "CaO": 0.06
+      },
+      "transformation": "The five unsaturated intensity columns i1-i5 were averaged point-by-point. Wavelengths were not resampled."
+    },
+    {
+      "id": "nasa-pds-dh4911-magnesium-rich",
+      "title": "ChemLIBS reference spectrum DH4911, Earth atmosphere, 3.2 mJ",
+      "provider": "NASA Planetary Data System Geosciences Node",
+      "bundleDoi": "10.17189/b2aj-cz96",
+      "sourceUrl": "https://pds-geosciences.wustl.edu/speclib/urn-nasa-pds-libs_reference_database/data_chemlibs/earth/3.2mj/mh6_19080905ccs_earth_t02l01_dh4911_spect.csv",
+      "original": {
+        "file": "originals/nasa-pds-dh4911-magnesium-rich.csv",
+        "bytes": 623827,
+        "sha256": "86575f4241a1cb42be2b4688f7fd6080bb19baf7c2f8d2c40efc04f5ddbd1132"
+      },
+      "appReady": {
+        "file": "app-ready/nasa-pds-dh4911-magnesium-rich.json",
+        "points": 6144,
+        "wavelengthRangeNm": [240.811, 905.574],
+        "sha256": "495a35c7319c5503ef507581d621c0710a30c84e436d47f2d85af3b07af4556a"
+      },
+      "knownMajorCompositionWtPercent": {
+        "MgO": 47.37,
+        "SiO2": 42.63,
+        "Fe2O3_total": 7.89,
+        "CaO": 0.49
+      },
+      "transformation": "The five unsaturated intensity columns i1-i5 were averaged point-by-point. Wavelengths were not resampled."
+    },
+    {
+      "id": "nasa-pds-muscoc17-aluminium-rich",
+      "title": "ChemLIBS reference spectrum MUSCOC17, Earth atmosphere, 5 mJ",
+      "provider": "NASA Planetary Data System Geosciences Node",
+      "bundleDoi": "10.17189/b2aj-cz96",
+      "sourceUrl": "https://pds-geosciences.wustl.edu/speclib/urn-nasa-pds-libs_reference_database/data_chemlibs/earth/5mj/mh6_18071714ccs_earth_t06l01_muscoc17_spect.csv",
+      "original": {
+        "file": "originals/nasa-pds-muscoc17-aluminium-rich.csv",
+        "bytes": 624433,
+        "sha256": "d3338f088ae7990c97a2a9ace117efa15537e745ab72b9ee50c8f158b1be98d2"
+      },
+      "appReady": {
+        "file": "app-ready/nasa-pds-muscoc17-aluminium-rich.json",
+        "points": 6144,
+        "wavelengthRangeNm": [240.811, 905.574],
+        "sha256": "362e82bfc7031ac74c695f9264a2133cc8a85ec5e8524343bc77449178c93593"
+      },
+      "knownMajorCompositionWtPercent": {
+        "SiO2": 45.53,
+        "Al2O3": 36.9,
+        "K2O": 9.34,
+        "Na2O": 1.09,
+        "Fe2O3_total": 1.07
+      },
+      "transformation": "The five unsaturated intensity columns i1-i5 were averaged point-by-point. Wavelengths were not resampled."
+    },
+    {
+      "id": "nasa-pds-gbw07216a-calcium-rich",
+      "title": "ChemLIBS reference spectrum GBW07216A, Earth atmosphere, 3.2 mJ",
+      "provider": "NASA Planetary Data System Geosciences Node",
+      "bundleDoi": "10.17189/b2aj-cz96",
+      "sourceUrl": "https://pds-geosciences.wustl.edu/speclib/urn-nasa-pds-libs_reference_database/data_chemlibs/earth/3.2mj/mh6_20083004ccs_earth_t15l01_gbw07216a_spect.csv",
+      "original": {
+        "file": "originals/nasa-pds-gbw07216a-calcium-rich.csv",
+        "bytes": 620998,
+        "sha256": "3a6def5b1f9115bc6981ccc4dc904b3ad44d8475fdcf78cfc972e15781777447"
+      },
+      "appReady": {
+        "file": "app-ready/nasa-pds-gbw07216a-calcium-rich.json",
+        "points": 6144,
+        "wavelengthRangeNm": [240.811, 905.574],
+        "sha256": "d7ef7d60d8ae37441d30a247dc82627a18b877b346cf31a63556fa4cfeba4b3e"
+      },
+      "knownMajorCompositionWtPercent": {
+        "CaO": 35.02,
+        "MgO": 17.88,
+        "Fe2O3_total": 0.5,
+        "Al2O3": 0.24
+      },
+      "transformation": "The five unsaturated intensity columns i1-i5 were averaged point-by-point. Wavelengths were not resampled."
+    },
+    {
+      "id": "zenodo-14843545-air-plasma",
+      "title": "Atmospheric-air laser filament plasma optical emission spectrum",
+      "provider": "Zenodo",
+      "recordDoi": "10.5281/zenodo.14843545",
+      "publicationDoi": "10.1364/OE.564268",
+      "license": "CC BY 4.0",
+      "sourceUrl": "https://zenodo.org/records/14843545/files/Fig_2_total.dat?download=1",
+      "original": {
+        "file": "originals/zenodo-14843545-air-plasma-Fig_2_total.dat",
+        "bytes": 390942,
+        "md5FromZenodo": "087cace9b4f153f3fbec00bc2f977f46",
+        "sha256": "3f828cbeccc2069778f4d43717fe4aa0add7f62d946438464a1a7242b1b1ecf3"
+      },
+      "appReady": {
+        "file": "app-ready/zenodo-14843545-air-plasma-300-400nm.json",
+        "points": 5664,
+        "wavelengthRangeNm": [300.006, 399.993],
+        "sha256": "a993ba16f6fa256c4fb6e86682d61ae283b6281beeaafeb5ed0a10e96b2cf265"
+      },
+      "expectedSignal": "Molecular nitrogen N2 second-positive-system bands in atmospheric air plasma.",
+      "transformation": "Rows from 300 through 400 nm were selected and every second source row was retained. Intensities were not changed and no interpolation was performed."
+    }
+  ],
+  "provenanceFiles": [
+    "originals/nasa-pds-bundle.xml",
+    "originals/nasa-pds-libs-metadata.xlsx",
+    "originals/nasa-pds-readme.txt",
+    "originals/*.xml"
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "unlistedElementMeaning": "unknown",
+  "spectra": {
+    "nasa-pds-h92649-iron-rich.json": {
+      "present": ["Fe", "Ti", "Ca"],
+      "primaryChecks": ["Fe"]
+    },
+    "nasa-pds-dh4911-magnesium-rich.json": {
+      "present": ["Mg", "Si", "Fe", "Ca"],
+      "primaryChecks": ["Mg", "Fe"]
+    },
+    "nasa-pds-muscoc17-aluminium-rich.json": {
+      "present": ["Si", "Al", "K", "Na", "Fe"],
+      "primaryChecks": ["Si", "Al"]
+    },
+    "nasa-pds-gbw07216a-calcium-rich.json": {
+      "present": ["Ca", "Mg", "Fe", "Al"],
+      "primaryChecks": ["Ca"]
+    },
+    "zenodo-14843545-air-plasma-300-400nm.json": {
+      "present": [],
+      "primaryChecks": [],
+      "molecularPresent": ["N₂"]
+    }
+  }
+}

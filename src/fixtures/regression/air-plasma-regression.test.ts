@@ -10,24 +10,20 @@ describe("independent air-plasma regression measurements", () => {
     expect(new Set(analyses.map((analysis) => analysis.id)).size).toBe(2);
     for (const analysis of analyses) {
       expect(analysis.channels).toHaveLength(1);
-      expect(analysis.hypotheses[0]?.symbol).toBe("N");
       expect(analysis.hypotheses.some((item) => item.symbol === "Al")).toBe(false);
       expect(analysis.rejectedHypotheses.some((item) => item.hypothesis.symbol === "Al")).toBe(true);
     }
 
     const [xlsx, raw8] = analyses;
-    expect(raw8.rejectedHypotheses.find((item) => item.hypothesis.symbol === "Al")?.reasons)
-      .toContain("weak-evidence-dominated");
+    expect(xlsx.hypotheses[0]?.symbol).toBe("N");
     const reliableOxygen = xlsx.hypotheses.find((item) => item.symbol === "O");
     expect(reliableOxygen?.strongCharacteristicGroupCount).toBeGreaterThanOrEqual(3);
     expect(reliableOxygen?.reliableKeyCharacteristicGroupCount).toBeGreaterThanOrEqual(2);
 
-    const diagnosticOxygen = raw8.rejectedHypotheses.find((item) => item.hypothesis.symbol === "O")?.hypothesis;
-    expect(diagnosticOxygen?.strongCharacteristicGroupCount).toBeGreaterThanOrEqual(1);
-    expect(diagnosticOxygen?.reliableKeyCharacteristicGroupCount).toBeGreaterThanOrEqual(1);
-    expect(raw8.hypotheses[0]?.reliability).toBe("tentative");
-    expect(raw8.conclusion).toContain("Надёжных гипотез недостаточно");
-    expect(raw8.conclusion).toContain("Кислород (O)");
+    expect(raw8.hypotheses).toHaveLength(0);
+    expect(raw8.rejectedHypotheses.find((item) => item.hypothesis.symbol === "N")?.reasons)
+      .toContain("random-like-agreement");
+    expect(raw8.conclusion).toContain("Многолинейная атомная гипотеза не сформирована");
     expect(raw8.molecularHypotheses.map((item) => item.formula)).toContain("N₂");
     expect(raw8.molecularHypotheses.find((item) => item.formula === "N₂")?.supportedRegionIds.length).toBeGreaterThanOrEqual(2);
     expect(raw8.rejectedMolecularHypotheses.map((item) => item.formula)).toContain("N₂⁺");

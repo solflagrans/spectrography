@@ -114,6 +114,8 @@ describe("deterministic element matching", () => {
     expect(candidate.randomAgreement.requiredAgreements).toBeGreaterThan(4);
     expect(candidate.randomAgreement.observedAgreements).toBe(4);
     expect(candidate.randomAgreement.distinguishableFromRandom).toBe(false);
+    expect(result.rejectedHypotheses.find((item) => item.hypothesis.symbol === "X1")?.reasons)
+      .toContain("ambiguous-evidence");
   });
 
   it("is deterministic regardless of input peak order", () => {

@@ -166,6 +166,10 @@ export interface EvidenceObservation {
   readonly adaptiveToleranceNm: number;
   readonly combinedUncertaintyNm: number;
   readonly normalizedDelta: number;
+  /** Number of distinct elements that can explain the same measured peak. */
+  readonly competingElementCount: number;
+  /** Element-specific separation from the closest competing explanation, 0…1. */
+  readonly specificity: number;
   readonly uncertainty: WavelengthUncertaintyComponents;
 }
 
@@ -270,6 +274,8 @@ export interface AnalysisEvidenceLine {
   readonly strength: EvidenceStrength;
   /** Ranking heuristic in the 0…1 range. It is not a probability. */
   readonly quality: number;
+  /** Best specificity among independent observations of this group, 0…1. */
+  readonly specificity: number;
   readonly channelSupportCount: number;
   readonly characteristicGroupId?: string;
   readonly isCharacteristic: boolean;
@@ -343,7 +349,27 @@ export interface RandomAgreementEstimate {
   readonly testedElementCount: number;
   readonly adjustedExpectedAgreements: number;
   readonly requiredAgreements: number;
+  readonly testedOffsets: number;
+  readonly maximumControlAgreements: number;
+  readonly control95PercentileAgreements: number;
+  readonly empiricalExceedanceFraction: number;
+  readonly coherentConstellationOverride: boolean;
   readonly distinguishableFromRandom: boolean;
+}
+
+export interface WavelengthCoherenceChannelAssessment {
+  readonly channelId: string;
+  readonly observationCount: number;
+  readonly fittedShiftNm: number;
+  readonly residualMadNm: number;
+  readonly inlierCount: number;
+  readonly evaluated: boolean;
+  readonly coherent: boolean;
+}
+
+export interface WavelengthCoherenceAssessment {
+  readonly coherent: boolean;
+  readonly channels: readonly WavelengthCoherenceChannelAssessment[];
 }
 
 export type HypothesisReliability = "reliable" | "tentative";
@@ -362,6 +388,7 @@ export interface ElementInterpretation {
   readonly availableCharacteristicGroupCount: number;
   readonly characteristicGroupCompleteness: number;
   readonly reliableKeyCharacteristicGroupCount: number;
+  readonly highSpecificityCharacteristicGroupCount: number;
   /** Rank- and ambiguity-weighted characteristic-group index used only for ordering, never as a probability. */
   readonly characteristicPriorityIndex: number;
   readonly missingKeyCharacteristicGroupCount: number;
@@ -379,10 +406,19 @@ export interface ElementInterpretation {
   readonly alternativeExplanations: readonly AlternativePeakExplanation[];
   readonly rankingReasons: readonly HypothesisRankingReason[];
   readonly randomAgreement: RandomAgreementEstimate;
+  readonly wavelengthCoherence: WavelengthCoherenceAssessment;
   readonly explanation: string;
 }
 
-export type RejectedHypothesisReason = "single-match" | "random-like-agreement" | "insufficient-characteristic-lines" | "missing-key-characteristic-lines" | "weak-evidence-dominated";
+export type RejectedHypothesisReason =
+  | "single-match"
+  | "random-like-agreement"
+  | "insufficient-characteristic-lines"
+  | "missing-key-characteristic-lines"
+  | "weak-evidence-dominated"
+  | "ambiguous-evidence"
+  | "incoherent-wavelength-shift"
+  | "insufficient-reliable-groups";
 
 export interface RejectedElementHypothesis {
   readonly hypothesis: ElementInterpretation;

@@ -7,7 +7,10 @@ export interface PeakDetectionInput {
   readonly preparedDataset: SpectrumDataset;
   readonly rawDataset: SpectrumDataset;
   readonly noiseDataset: SpectrumDataset;
+  /** Original channel point indices, aligned with the prepared dataset. */
   readonly sourceIndices: readonly number[];
+  /** Working-copy point indices used only to recover the raw intensity. */
+  readonly rawDatasetIndices?: readonly number[];
 }
 
 export interface PeakDetectionResult {
@@ -40,6 +43,7 @@ export function detectInteractivePeaks(
     const snr = noise > 0 ? current / noise : current > 0 ? Number.POSITIVE_INFINITY : 0;
     if (snr < parameters.minimumSnr) continue;
     const sourceIndex = input.sourceIndices[index];
+    const rawDatasetIndex = input.rawDatasetIndices?.[index] ?? sourceIndex;
     const localGridStepNm = localGridStep(wavelengths, index);
     const refinement = refinePeakPosition(
       wavelengths,
@@ -64,7 +68,7 @@ export function detectInteractivePeaks(
       positionUncertaintyNm: round(refinement.uncertaintyNm, 8),
       positionMethod: refinement.applied ? "quadratic-local-profile" : "sample-maximum",
       positionRefined: refinement.applied,
-      rawIntensity: input.rawDataset.intensities[sourceIndex],
+      rawIntensity: input.rawDataset.intensities[rawDatasetIndex],
       intensity: round(current, 8),
       prominence: round(prominence, 8),
       snr: Number.isFinite(snr) ? round(snr, 4) : snr,
@@ -75,7 +79,11 @@ export function detectInteractivePeaks(
   candidates.sort((left, right) => right.snr - left.snr || right.prominence - left.prominence || left.sourceIndex - right.sourceIndex);
   const selected: DetectedPeak[] = [];
   for (const candidate of candidates) {
-    if (selected.every((peak) => Math.abs(peak.wavelength - candidate.wavelength) >= parameters.minimumDistance)) selected.push(candidate);
+    const candidateDistance = effectiveMinimumDistance(candidate.localGridStepNm, parameters.minimumDistance);
+    if (selected.every((peak) => (
+      Math.abs(peak.wavelength - candidate.wavelength)
+        >= Math.max(candidateDistance, effectiveMinimumDistance(peak.localGridStepNm, parameters.minimumDistance))
+    ))) selected.push(candidate);
   }
   selected.sort((left, right) => left.wavelength - right.wavelength || left.sourceIndex - right.sourceIndex);
 
@@ -83,6 +91,13 @@ export function detectInteractivePeaks(
     peaks: selected,
     thresholdDataset: { wavelengths, intensities: thresholds.map((value) => round(value, 8)) },
   };
+}
+
+function effectiveMinimumDistance(gridStepNm: number, requestedDistanceNm: number): number {
+  return Math.max(
+    requestedDistanceNm,
+    gridStepNm * IDENTIFICATION_QUALITY_PROFILE.peakDetection.minimumDistanceGridSteps,
+  );
 }
 
 interface PeakPositionRefinement {

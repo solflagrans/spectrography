@@ -18,6 +18,9 @@ export const diagnosticReasonLabels: Record<RejectedHypothesisReason, string> = 
   "insufficient-characteristic-lines": "Недостаточно характерных линий в диапазоне",
   "missing-key-characteristic-lines": "Ключевые характерные линии не найдены",
   "weak-evidence-dominated": "Результат построен преимущественно на слабых совпадениях",
+  "ambiguous-evidence": "Совпавшие пики не отличают элемент от конкурирующих объяснений",
+  "incoherent-wavelength-shift": "Линии требуют несогласованных поправок шкалы",
+  "insufficient-reliable-groups": "Недостаточно независимых качественных групп",
 };
 
 export function getIdentificationEntries(

@@ -4,6 +4,7 @@ import { builtinSpectralLibraryIndex } from "@/domain/spectral-library/builtin-l
 import { demoSpectra } from "@/fixtures/demo-spectra";
 
 import { estimateLocalNoise } from "./local-noise";
+import { segmentSpectrumChannel } from "./channel-segmentation";
 import { detectInteractivePeaks } from "./peak-detection";
 import { estimateRobustBaseline } from "./robust-baseline";
 import {
@@ -14,6 +15,42 @@ import {
 } from "./interactive-analysis";
 
 describe("robust spectrum preparation", () => {
+  it("isolates continuous detector ranges and excludes long repeated minimum masks", () => {
+    const source = {
+      wavelengths: Array.from({ length: 24 }, (_, index) => 200 + index),
+      intensities: [0, 0, 0, 2, 3, 2, 1, 2, 3, 0, 0, 0, 4, 5, 4, 3, 4, 5, 0, 0, 0, 0, 0, 0],
+    };
+    const segments = segmentSpectrumChannel({ id: "source", name: "Источник", dataset: source });
+
+    expect(segments).toHaveLength(2);
+    expect(segments.map((item) => item.dataset.wavelengths)).toEqual([
+      [203, 204, 205, 206, 207, 208],
+      [212, 213, 214, 215, 216, 217],
+    ]);
+    expect(segments.map((item) => item.automaticSegment?.sourcePointIndices)).toEqual([
+      [3, 4, 5, 6, 7, 8],
+      [12, 13, 14, 15, 16, 17],
+    ]);
+    expect(source.intensities).toHaveLength(24);
+  });
+
+  it("keeps original point indices after automatic channel segmentation", () => {
+    const source = {
+      wavelengths: Array.from({ length: 21 }, (_, index) => 400 + index),
+      intensities: [0, 0, 0, 1, 1, 12, 1, 1, 1, 0, 0, 0, 1, 1, 10, 1, 1, 1, 0, 0, 0],
+    };
+    const parameters = {
+      processing: { ...DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.processing, smoothingWindow: 1, baselineSmoothness: 100, noiseWindowNm: 0.4, normalization: "none" as const },
+      peakSearch: { ...DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.peakSearch, minimumSnr: 0, prominence: 1, minimumWidth: 0, maximumWidth: 4, minimumDistance: 0.1 },
+      wavelengthCalibration: { allowAutomaticCorrection: false },
+    };
+    const result = runInteractiveSpectrumAnalysis(source, builtinSpectralLibraryIndex, parameters);
+
+    expect(result.channels).toHaveLength(2);
+    expect(result.peaks.map((peak) => peak.sourceIndex)).toEqual([5, 14]);
+    expect(result.peaks.map((peak) => peak.rawIntensity)).toEqual([12, 10]);
+  });
+
   it("keeps a constant signal unchanged after Savitzky–Golay smoothing", () => {
     for (const value of savitzkyGolaySmooth([4, 4, 4, 4, 4, 4, 4], 5)) expect(value).toBeCloseTo(4, 12);
   });

@@ -2,12 +2,14 @@ import type { SpectralLine } from "@/domain/spectral-library/types";
 import { createSpectralLibraryWavelengthIndex, type SpectralLibraryWavelengthIndex } from "@/domain/spectral-library/wavelength-index";
 import { builtinMolecularSystems, identifyMolecularSystems } from "@/domain/molecular-spectrum";
 
+import { segmentSpectrumChannel } from "./channel-segmentation";
 import { validateDataset } from "./dataset";
 import { buildElementHypotheses } from "./identification";
 import { matchPeaks } from "./matching";
 import { assessChannelSuitability, combineSuitability } from "./measurement-quality";
 import { detectInteractivePeaks, validatePeakSearchParameters } from "./peak-detection";
 import { prepareSpectrum, validateProcessingParameters } from "./preparation";
+import { IDENTIFICATION_QUALITY_PROFILE } from "./quality-profile";
 import { estimateChannelResolutionNm } from "./spectral-groups";
 import {
   applyWavelengthCalibrationToDataset,
@@ -27,7 +29,7 @@ import type {
 
 export const DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS: InteractiveAnalysisParameters = {
   processing: {
-    smoothingWindow: 15,
+    smoothingWindow: 5,
     baselineSmoothness: 100_000,
     baselineAsymmetry: 0.01,
     baselineIterations: 10,
@@ -40,7 +42,7 @@ export const DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS: InteractiveAnalysisParamet
     prominence: 0.03,
     minimumWidth: 0.02,
     maximumWidth: 8,
-    minimumDistance: 1.2,
+    minimumDistance: 0.3,
   },
   wavelengthCalibration: {
     allowAutomaticCorrection: true,
@@ -54,9 +56,12 @@ export function runInteractiveSpectrumAnalysis(
   spectrumType: SpectrumType = DEFAULT_SPECTRUM_TYPE,
 ): InteractiveSpectrumAnalysis {
   validateInteractiveAnalysisParameters(parameters);
-  const channelInputs = isMultiChannelInput(input)
+  const sourceChannelInputs = isMultiChannelInput(input)
     ? input.channels
     : [{ id: "channel-1", name: "Канал 1", dataset: input }];
+  validateChannels(sourceChannelInputs);
+  sourceChannelInputs.forEach((channel) => validateDataset(channel.dataset));
+  const channelInputs = sourceChannelInputs.flatMap(segmentSpectrumChannel);
   validateChannels(channelInputs);
   const libraryIndex = Array.isArray(library)
     ? createSpectralLibraryWavelengthIndex(library)
@@ -64,16 +69,47 @@ export function runInteractiveSpectrumAnalysis(
   const channels = channelInputs.map((channel) => {
     const channelParameters = channel.parameters ?? parameters;
     validateInteractiveAnalysisParameters(channelParameters);
-    validateDataset(channel.dataset);
     const rawDataset = copyDataset(channel.dataset);
-    const prepared = prepareSpectrum(rawDataset, channelParameters.processing);
-    const detection = detectInteractivePeaks({
+    let effectiveSmoothingWindow = channelParameters.processing.smoothingWindow;
+    let effectiveMinimumDistanceNm = channelParameters.peakSearch.minimumDistance;
+    let prepared = prepareSpectrum(rawDataset, channelParameters.processing);
+    const peakDetectionInput = (preparedResult: typeof prepared) => ({
       channelId: channel.id,
-      preparedDataset: prepared.dataset,
+      preparedDataset: preparedResult.dataset,
       rawDataset,
-      noiseDataset: prepared.noiseDataset,
-      sourceIndices: prepared.sourceIndices,
+      noiseDataset: preparedResult.noiseDataset,
+      sourceIndices: preparedResult.sourceIndices.map((index) => (
+        channel.automaticSegment?.sourcePointIndices[index] ?? index
+      )),
+      rawDatasetIndices: preparedResult.sourceIndices,
+    });
+    let detection = detectInteractivePeaks({
+      ...peakDetectionInput(prepared),
     }, channelParameters.peakSearch);
+    if (
+      channelParameters.processing.smoothingWindow === DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.processing.smoothingWindow
+      && detection.peaks.length < IDENTIFICATION_QUALITY_PROFILE.peakDetection.minimumFeaturesBeforeSmoothingFallback
+    ) {
+      const fallbackWindow = IDENTIFICATION_QUALITY_PROFILE.peakDetection.fallbackSmoothingWindow;
+      const fallbackPrepared = prepareSpectrum(rawDataset, {
+        ...channelParameters.processing,
+        smoothingWindow: fallbackWindow,
+      });
+      const fallbackPeakSearch = {
+        ...channelParameters.peakSearch,
+        minimumDistance: Math.max(
+          channelParameters.peakSearch.minimumDistance,
+          IDENTIFICATION_QUALITY_PROFILE.peakDetection.fallbackMinimumDistanceNm,
+        ),
+      };
+      const fallbackDetection = detectInteractivePeaks(peakDetectionInput(fallbackPrepared), fallbackPeakSearch);
+      if (fallbackDetection.peaks.length > detection.peaks.length) {
+        effectiveSmoothingWindow = fallbackWindow;
+        effectiveMinimumDistanceNm = fallbackPeakSearch.minimumDistance;
+        prepared = fallbackPrepared;
+        detection = fallbackDetection;
+      }
+    }
     const spectralResolutionNm = estimateChannelResolutionNm(
       prepared.dataset.wavelengths,
       detection.peaks,
@@ -144,7 +180,11 @@ export function runInteractiveSpectrumAnalysis(
       suitability,
       usable: suitability.status !== "impossible",
       transformations: [
-        `Сглаживание Савицкого—Голея, окно ${channelParameters.processing.smoothingWindow} точек`,
+        ...(channel.automaticSegment ? [
+          `Автоматически выделен непрерывный диапазон ${channel.automaticSegment.wavelengthRange.minimum}–${channel.automaticSegment.wavelengthRange.maximum} нм; длинные маски и разрывы не обрабатывались как сигнал`,
+        ] : []),
+        `Сглаживание Савицкого—Голея, окно ${effectiveSmoothingWindow} точек${effectiveSmoothingWindow === channelParameters.processing.smoothingWindow ? "" : " (автоматический устойчивый масштаб при недостатке признаков)"}`,
+        `Минимальное расстояние пиков: ${effectiveMinimumDistanceNm} нм${effectiveMinimumDistanceNm === channelParameters.peakSearch.minimumDistance ? "" : " (устойчивый масштаб широкополосного сигнала)"}`,
         `Базовая линия AsLS: λ=${channelParameters.processing.baselineSmoothness}, p=${channelParameters.processing.baselineAsymmetry}, итераций ${channelParameters.processing.baselineIterations}`,
         `Локальный MAD: окно ±${channelParameters.processing.noiseWindowNm} нм, исключение положительных выбросов выше ${channelParameters.processing.noiseClippingSnr} локальных σ`,
         channelParameters.processing.normalization === "maximum" ? "Нормализация по максимуму подготовленного сигнала" : "Без нормализации",
@@ -218,21 +258,20 @@ function buildConclusion(
     return appendMolecularConclusion(`Многолинейная атомная гипотеза не сформирована.${diagnostic}`, molecularHypotheses, spectrumType);
   }
   const leading = hypotheses[0];
-  if (leading.reliability === "tentative") {
-    const notableDiagnostic = [...rejectedHypotheses]
-      .filter((item) => (
-        item.hypothesis.strongCharacteristicGroupCount >= 1
-          && item.hypothesis.reliableCharacteristicGroupCount === 1
-          && item.hypothesis.reliableKeyCharacteristicGroupCount === 1
-      ))
-      .sort((left, right) => right.hypothesis.characteristicPriorityIndex - left.hypothesis.characteristicPriorityIndex)[0]?.hypothesis;
-    const notable = notableDiagnostic
-      ? ` В подробностях сохранён сильный, но пока недостаточный признак ${notableDiagnostic.name} (${notableDiagnostic.symbol}).`
-      : "";
-    return appendMolecularConclusion(`Надёжных гипотез недостаточно для атомной идентификации. Наиболее согласованная осторожная гипотеза — ${leading.name} (${leading.symbol}): ${leading.reliableCharacteristicGroupCount} качественных характерных групп.${notable} Остальные технические совпадения сохранены в подробностях.`, molecularHypotheses, spectrumType);
-  }
   const alternatives = hypotheses.slice(1, 4).map((item) => `${item.name} (${item.symbol})`).join(", ");
-  return appendMolecularConclusion(`Основная атомная гипотеза — ${leading.name} (${leading.symbol}): ${leading.strongCharacteristicGroupCount} сильных и ${leading.reliableCharacteristicGroupCount} качественных характерных спектральных групп.${alternatives ? ` Другие надёжные гипотезы: ${alternatives}.` : ""}${rejectedCount ? ` Слабые и неоднозначные совпадения сохранены в подробностях: ${rejectedCount}.` : ""}${unmatchedCount ? ` Пиков без кандидатов: ${unmatchedCount}.` : ""}`, molecularHypotheses, spectrumType);
+  return appendMolecularConclusion(`Лучше всего атомными линиями поддержан ${leading.name} (${leading.symbol}): ${formatGroupCount(leading.strongCharacteristicGroupCount, "сильная", "сильные", "сильных")} и ${formatGroupCount(leading.reliableCharacteristicGroupCount, "качественная характерная", "качественные характерные", "качественных характерных")}. Это ранжирование спектральных доказательств, а не оценка концентрации.${alternatives ? ` Другие надёжные гипотезы: ${alternatives}.` : ""}${rejectedCount ? ` Слабые и неоднозначные совпадения сохранены в подробностях: ${rejectedCount}.` : ""}${unmatchedCount ? ` Пиков без кандидатов: ${unmatchedCount}.` : ""}`, molecularHypotheses, spectrumType);
+}
+
+function formatGroupCount(count: number, one: string, few: string, many: string): string {
+  const lastTwo = count % 100;
+  const form = lastTwo >= 11 && lastTwo <= 14
+    ? many
+    : count % 10 === 1
+      ? one
+      : count % 10 >= 2 && count % 10 <= 4
+        ? few
+        : many;
+  return `${count} ${form} ${count % 10 === 1 && lastTwo !== 11 ? "группа" : count % 10 >= 2 && count % 10 <= 4 && !(lastTwo >= 12 && lastTwo <= 14) ? "группы" : "групп"}`;
 }
 
 function appendMolecularConclusion(

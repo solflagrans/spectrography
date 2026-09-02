@@ -1,0 +1,1199 @@
+[
+  {
+    "fileName": "nasa-pds-h92649-iron-rich.json",
+    "sha256": "32fb86d77931ecc79b02ec7820238c82459c4b15aaa61aeb90906a46eda0d922",
+    "imported": true,
+    "pointCount": 6144,
+    "wavelengthRangeNm": {
+      "minimum": 240.811,
+      "maximum": 905.574
+    },
+    "suitability": "limited",
+    "analysisChannels": [
+      {
+        "id": "channel-1-segment-1",
+        "wavelengthRangeNm": {
+          "minimum": 246.741,
+          "maximum": 338.37
+        },
+        "spectralResolutionNm": 0.19224,
+        "suitability": "limited"
+      },
+      {
+        "id": "channel-1-segment-2",
+        "wavelengthRangeNm": {
+          "minimum": 387.954,
+          "maximum": 469.053
+        },
+        "spectralResolutionNm": 0.129356,
+        "suitability": "limited"
+      },
+      {
+        "id": "channel-1-segment-3",
+        "wavelengthRangeNm": {
+          "minimum": 496.036,
+          "maximum": 848.896
+        },
+        "spectralResolutionNm": 2.238131,
+        "suitability": "limited"
+      }
+    ],
+    "peakCount": 82,
+    "expectedPresentAtomicElements": [
+      "Fe",
+      "Ti",
+      "Ca"
+    ],
+    "acceptedExpectedAtomicElements": [
+      "Fe"
+    ],
+    "missedPrimaryChecks": [],
+    "acceptedUnlabelledAtomicElements": [],
+    "acceptedAtomicHypotheses": [
+      {
+        "symbol": "Fe",
+        "reliability": "reliable",
+        "strongCharacteristicGroups": 1,
+        "reliableCharacteristicGroups": 4,
+        "randomControl": {
+          "expectedAgreements": 2.950882,
+          "observedAgreements": 4,
+          "coveredWidthNm": 525.588,
+          "peakCount": 82,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 21,
+          "adjustedExpectedAgreements": 9.431486,
+          "requiredAgreements": 6,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 5,
+          "control95PercentileAgreements": 4,
+          "empiricalExceedanceFraction": 0.15625,
+          "coherentConstellationOverride": true,
+          "distinguishableFromRandom": true
+        }
+      }
+    ],
+    "leadingRejectedAtomicHypotheses": [
+      {
+        "symbol": "O",
+        "reliability": "tentative",
+        "reasons": [
+          "random-like-agreement"
+        ],
+        "strongCharacteristicGroups": 1,
+        "reliableCharacteristicGroups": 3,
+        "highSpecificityCharacteristicGroups": 2,
+        "randomControl": {
+          "expectedAgreements": 2.413956,
+          "observedAgreements": 3,
+          "coveredWidthNm": 525.588,
+          "peakCount": 82,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 21,
+          "adjustedExpectedAgreements": 7.715387,
+          "requiredAgreements": 5,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 4,
+          "control95PercentileAgreements": 4,
+          "empiricalExceedanceFraction": 0.28125,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": false
+        }
+      },
+      {
+        "symbol": "Mg",
+        "reliability": "tentative",
+        "reasons": [
+          "incoherent-wavelength-shift"
+        ],
+        "strongCharacteristicGroups": 0,
+        "reliableCharacteristicGroups": 6,
+        "highSpecificityCharacteristicGroups": 4,
+        "randomControl": {
+          "expectedAgreements": 2.964349,
+          "observedAgreements": 9,
+          "coveredWidthNm": 525.588,
+          "peakCount": 82,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 21,
+          "adjustedExpectedAgreements": 9.474529,
+          "requiredAgreements": 5,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 4,
+          "control95PercentileAgreements": 4,
+          "empiricalExceedanceFraction": 0.03125,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": true
+        }
+      },
+      {
+        "symbol": "Si",
+        "reliability": "tentative",
+        "reasons": [
+          "missing-key-characteristic-lines",
+          "random-like-agreement"
+        ],
+        "strongCharacteristicGroups": 0,
+        "reliableCharacteristicGroups": 5,
+        "highSpecificityCharacteristicGroups": 4,
+        "randomControl": {
+          "expectedAgreements": 3.499794,
+          "observedAgreements": 5,
+          "coveredWidthNm": 525.588,
+          "peakCount": 82,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 21,
+          "adjustedExpectedAgreements": 11.185898,
+          "requiredAgreements": 12,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 11,
+          "control95PercentileAgreements": 8,
+          "empiricalExceedanceFraction": 0.1875,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": false
+        }
+      },
+      {
+        "symbol": "Hg",
+        "reliability": "tentative",
+        "reasons": [
+          "random-like-agreement"
+        ],
+        "strongCharacteristicGroups": 0,
+        "reliableCharacteristicGroups": 3,
+        "highSpecificityCharacteristicGroups": 2,
+        "randomControl": {
+          "expectedAgreements": 3.038231,
+          "observedAgreements": 3,
+          "coveredWidthNm": 525.588,
+          "peakCount": 82,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 21,
+          "adjustedExpectedAgreements": 9.710667,
+          "requiredAgreements": 7,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 6,
+          "control95PercentileAgreements": 6,
+          "empiricalExceedanceFraction": 0.40625,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": false
+        }
+      },
+      {
+        "symbol": "Ar",
+        "reliability": "tentative",
+        "reasons": [
+          "random-like-agreement"
+        ],
+        "strongCharacteristicGroups": 0,
+        "reliableCharacteristicGroups": 3,
+        "highSpecificityCharacteristicGroups": 2,
+        "randomControl": {
+          "expectedAgreements": 2.46343,
+          "observedAgreements": 3,
+          "coveredWidthNm": 525.588,
+          "peakCount": 82,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 21,
+          "adjustedExpectedAgreements": 7.873514,
+          "requiredAgreements": 5,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 4,
+          "control95PercentileAgreements": 4,
+          "empiricalExceedanceFraction": 0.4375,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": false
+        }
+      }
+    ],
+    "acceptedMolecularHypotheses": [],
+    "missedMolecularChecks": [],
+    "conclusion": "Результат ограничен качеством измерения. Лучше всего атомными линиями поддержан Железо (Fe): 1 сильная группа и 4 качественные характерные группы. Это ранжирование спектральных доказательств, а не оценка концентрации. Слабые и неоднозначные совпадения сохранены в подробностях: 20. Надёжного совпадения молекулярных полос N₂ или N₂⁺ не найдено."
+  },
+  {
+    "fileName": "nasa-pds-dh4911-magnesium-rich.json",
+    "sha256": "495a35c7319c5503ef507581d621c0710a30c84e436d47f2d85af3b07af4556a",
+    "imported": true,
+    "pointCount": 6144,
+    "wavelengthRangeNm": {
+      "minimum": 240.811,
+      "maximum": 905.574
+    },
+    "suitability": "limited",
+    "analysisChannels": [
+      {
+        "id": "channel-1-segment-1",
+        "wavelengthRangeNm": {
+          "minimum": 246.741,
+          "maximum": 338.37
+        },
+        "spectralResolutionNm": 0.354172,
+        "suitability": "limited"
+      },
+      {
+        "id": "channel-1-segment-2",
+        "wavelengthRangeNm": {
+          "minimum": 387.954,
+          "maximum": 469.053
+        },
+        "spectralResolutionNm": 0.174904,
+        "suitability": "limited"
+      },
+      {
+        "id": "channel-1-segment-3",
+        "wavelengthRangeNm": {
+          "minimum": 496.036,
+          "maximum": 848.896
+        },
+        "spectralResolutionNm": 1.099252,
+        "suitability": "limited"
+      }
+    ],
+    "peakCount": 53,
+    "expectedPresentAtomicElements": [
+      "Mg",
+      "Si",
+      "Fe",
+      "Ca"
+    ],
+    "acceptedExpectedAtomicElements": [
+      "Ca",
+      "Fe",
+      "Mg"
+    ],
+    "missedPrimaryChecks": [],
+    "acceptedUnlabelledAtomicElements": [],
+    "acceptedAtomicHypotheses": [
+      {
+        "symbol": "Ca",
+        "reliability": "reliable",
+        "strongCharacteristicGroups": 2,
+        "reliableCharacteristicGroups": 3,
+        "randomControl": {
+          "expectedAgreements": 1.335573,
+          "observedAgreements": 5,
+          "coveredWidthNm": 525.588,
+          "peakCount": 53,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 21,
+          "adjustedExpectedAgreements": 4.268703,
+          "requiredAgreements": 4,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 3,
+          "control95PercentileAgreements": 3,
+          "empiricalExceedanceFraction": 0.03125,
+          "coherentConstellationOverride": true,
+          "distinguishableFromRandom": true
+        }
+      },
+      {
+        "symbol": "Fe",
+        "reliability": "reliable",
+        "strongCharacteristicGroups": 1,
+        "reliableCharacteristicGroups": 6,
+        "randomControl": {
+          "expectedAgreements": 2.111037,
+          "observedAgreements": 6,
+          "coveredWidthNm": 525.588,
+          "peakCount": 53,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 21,
+          "adjustedExpectedAgreements": 6.747208,
+          "requiredAgreements": 7,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 6,
+          "control95PercentileAgreements": 4,
+          "empiricalExceedanceFraction": 0.0625,
+          "coherentConstellationOverride": true,
+          "distinguishableFromRandom": true
+        }
+      },
+      {
+        "symbol": "Mg",
+        "reliability": "reliable",
+        "strongCharacteristicGroups": 0,
+        "reliableCharacteristicGroups": 7,
+        "randomControl": {
+          "expectedAgreements": 1.58681,
+          "observedAgreements": 9,
+          "coveredWidthNm": 525.588,
+          "peakCount": 53,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 21,
+          "adjustedExpectedAgreements": 5.071698,
+          "requiredAgreements": 3,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 2,
+          "control95PercentileAgreements": 2,
+          "empiricalExceedanceFraction": 0.03125,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": true
+        }
+      }
+    ],
+    "leadingRejectedAtomicHypotheses": [
+      {
+        "symbol": "Hg",
+        "reliability": "tentative",
+        "reasons": [
+          "random-like-agreement",
+          "insufficient-reliable-groups"
+        ],
+        "strongCharacteristicGroups": 1,
+        "reliableCharacteristicGroups": 2,
+        "highSpecificityCharacteristicGroups": 2,
+        "randomControl": {
+          "expectedAgreements": 1.799653,
+          "observedAgreements": 2,
+          "coveredWidthNm": 525.588,
+          "peakCount": 53,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 21,
+          "adjustedExpectedAgreements": 5.751976,
+          "requiredAgreements": 5,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 4,
+          "control95PercentileAgreements": 3,
+          "empiricalExceedanceFraction": 0.34375,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": false
+        }
+      },
+      {
+        "symbol": "O",
+        "reliability": "tentative",
+        "reasons": [
+          "random-like-agreement",
+          "insufficient-reliable-groups"
+        ],
+        "strongCharacteristicGroups": 1,
+        "reliableCharacteristicGroups": 1,
+        "highSpecificityCharacteristicGroups": 1,
+        "randomControl": {
+          "expectedAgreements": 1.120326,
+          "observedAgreements": 3,
+          "coveredWidthNm": 525.588,
+          "peakCount": 53,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 21,
+          "adjustedExpectedAgreements": 3.58074,
+          "requiredAgreements": 4,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 3,
+          "control95PercentileAgreements": 3,
+          "empiricalExceedanceFraction": 0.09375,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": false
+        }
+      },
+      {
+        "symbol": "Cr",
+        "reliability": "tentative",
+        "reasons": [
+          "missing-key-characteristic-lines",
+          "random-like-agreement",
+          "insufficient-reliable-groups"
+        ],
+        "strongCharacteristicGroups": 1,
+        "reliableCharacteristicGroups": 1,
+        "highSpecificityCharacteristicGroups": 1,
+        "randomControl": {
+          "expectedAgreements": 2.078236,
+          "observedAgreements": 1,
+          "coveredWidthNm": 525.588,
+          "peakCount": 53,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 21,
+          "adjustedExpectedAgreements": 6.642371,
+          "requiredAgreements": 6,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 5,
+          "control95PercentileAgreements": 4,
+          "empiricalExceedanceFraction": 0.71875,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": false
+        }
+      },
+      {
+        "symbol": "Si",
+        "reliability": "tentative",
+        "reasons": [
+          "random-like-agreement",
+          "insufficient-reliable-groups"
+        ],
+        "strongCharacteristicGroups": 0,
+        "reliableCharacteristicGroups": 2,
+        "highSpecificityCharacteristicGroups": 1,
+        "randomControl": {
+          "expectedAgreements": 1.799013,
+          "observedAgreements": 3,
+          "coveredWidthNm": 525.588,
+          "peakCount": 53,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 21,
+          "adjustedExpectedAgreements": 5.749929,
+          "requiredAgreements": 5,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 4,
+          "control95PercentileAgreements": 4,
+          "empiricalExceedanceFraction": 0.15625,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": false
+        }
+      },
+      {
+        "symbol": "Al",
+        "reliability": "tentative",
+        "reasons": [
+          "random-like-agreement",
+          "insufficient-reliable-groups"
+        ],
+        "strongCharacteristicGroups": 0,
+        "reliableCharacteristicGroups": 2,
+        "highSpecificityCharacteristicGroups": 2,
+        "randomControl": {
+          "expectedAgreements": 2.289434,
+          "observedAgreements": 2,
+          "coveredWidthNm": 525.588,
+          "peakCount": 53,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 21,
+          "adjustedExpectedAgreements": 7.317393,
+          "requiredAgreements": 5,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 4,
+          "control95PercentileAgreements": 3,
+          "empiricalExceedanceFraction": 0.46875,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": false
+        }
+      }
+    ],
+    "acceptedMolecularHypotheses": [],
+    "missedMolecularChecks": [],
+    "conclusion": "Результат ограничен качеством измерения. Лучше всего атомными линиями поддержан Кальций (Ca): 2 сильные группы и 3 качественные характерные группы. Это ранжирование спектральных доказательств, а не оценка концентрации. Другие надёжные гипотезы: Железо (Fe), Магний (Mg). Слабые и неоднозначные совпадения сохранены в подробностях: 18. Надёжного совпадения молекулярных полос N₂ или N₂⁺ не найдено."
+  },
+  {
+    "fileName": "nasa-pds-muscoc17-aluminium-rich.json",
+    "sha256": "362e82bfc7031ac74c695f9264a2133cc8a85ec5e8524343bc77449178c93593",
+    "imported": true,
+    "pointCount": 6144,
+    "wavelengthRangeNm": {
+      "minimum": 240.811,
+      "maximum": 905.574
+    },
+    "suitability": "limited",
+    "analysisChannels": [
+      {
+        "id": "channel-1-segment-1",
+        "wavelengthRangeNm": {
+          "minimum": 246.741,
+          "maximum": 338.37
+        },
+        "spectralResolutionNm": 0.220956,
+        "suitability": "limited"
+      },
+      {
+        "id": "channel-1-segment-2",
+        "wavelengthRangeNm": {
+          "minimum": 387.954,
+          "maximum": 469.053
+        },
+        "spectralResolutionNm": 0.257747,
+        "suitability": "limited"
+      },
+      {
+        "id": "channel-1-segment-3",
+        "wavelengthRangeNm": {
+          "minimum": 496.036,
+          "maximum": 848.896
+        },
+        "spectralResolutionNm": 1.179568,
+        "suitability": "limited"
+      }
+    ],
+    "peakCount": 47,
+    "expectedPresentAtomicElements": [
+      "Si",
+      "Al",
+      "K",
+      "Na",
+      "Fe"
+    ],
+    "acceptedExpectedAtomicElements": [
+      "Al",
+      "Si",
+      "Fe"
+    ],
+    "missedPrimaryChecks": [],
+    "acceptedUnlabelledAtomicElements": [
+      "Mg",
+      "N"
+    ],
+    "acceptedAtomicHypotheses": [
+      {
+        "symbol": "Al",
+        "reliability": "reliable",
+        "strongCharacteristicGroups": 1,
+        "reliableCharacteristicGroups": 3,
+        "randomControl": {
+          "expectedAgreements": 1.51412,
+          "observedAgreements": 4,
+          "coveredWidthNm": 525.588,
+          "peakCount": 47,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 20,
+          "adjustedExpectedAgreements": 4.786079,
+          "requiredAgreements": 4,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 3,
+          "control95PercentileAgreements": 3,
+          "empiricalExceedanceFraction": 0.03125,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": true
+        }
+      },
+      {
+        "symbol": "Si",
+        "reliability": "reliable",
+        "strongCharacteristicGroups": 0,
+        "reliableCharacteristicGroups": 6,
+        "randomControl": {
+          "expectedAgreements": 1.379955,
+          "observedAgreements": 7,
+          "coveredWidthNm": 525.588,
+          "peakCount": 47,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 20,
+          "adjustedExpectedAgreements": 4.361987,
+          "requiredAgreements": 5,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 4,
+          "control95PercentileAgreements": 4,
+          "empiricalExceedanceFraction": 0.03125,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": true
+        }
+      },
+      {
+        "symbol": "Mg",
+        "reliability": "reliable",
+        "strongCharacteristicGroups": 0,
+        "reliableCharacteristicGroups": 4,
+        "randomControl": {
+          "expectedAgreements": 1.268571,
+          "observedAgreements": 5,
+          "coveredWidthNm": 525.588,
+          "peakCount": 47,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 20,
+          "adjustedExpectedAgreements": 4.009908,
+          "requiredAgreements": 4,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 3,
+          "control95PercentileAgreements": 2,
+          "empiricalExceedanceFraction": 0.03125,
+          "coherentConstellationOverride": true,
+          "distinguishableFromRandom": true
+        }
+      },
+      {
+        "symbol": "N",
+        "reliability": "reliable",
+        "strongCharacteristicGroups": 0,
+        "reliableCharacteristicGroups": 4,
+        "randomControl": {
+          "expectedAgreements": 0.859153,
+          "observedAgreements": 5,
+          "coveredWidthNm": 525.588,
+          "peakCount": 47,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 20,
+          "adjustedExpectedAgreements": 2.71575,
+          "requiredAgreements": 5,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 4,
+          "control95PercentileAgreements": 2,
+          "empiricalExceedanceFraction": 0.03125,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": true
+        }
+      },
+      {
+        "symbol": "Fe",
+        "reliability": "reliable",
+        "strongCharacteristicGroups": 0,
+        "reliableCharacteristicGroups": 4,
+        "randomControl": {
+          "expectedAgreements": 1.714985,
+          "observedAgreements": 6,
+          "coveredWidthNm": 525.588,
+          "peakCount": 47,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 20,
+          "adjustedExpectedAgreements": 5.421005,
+          "requiredAgreements": 5,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 4,
+          "control95PercentileAgreements": 3,
+          "empiricalExceedanceFraction": 0.03125,
+          "coherentConstellationOverride": true,
+          "distinguishableFromRandom": true
+        }
+      }
+    ],
+    "leadingRejectedAtomicHypotheses": [
+      {
+        "symbol": "O",
+        "reliability": "tentative",
+        "reasons": [
+          "random-like-agreement",
+          "insufficient-reliable-groups"
+        ],
+        "strongCharacteristicGroups": 1,
+        "reliableCharacteristicGroups": 2,
+        "highSpecificityCharacteristicGroups": 2,
+        "randomControl": {
+          "expectedAgreements": 0.93507,
+          "observedAgreements": 3,
+          "coveredWidthNm": 525.588,
+          "peakCount": 47,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 20,
+          "adjustedExpectedAgreements": 2.955724,
+          "requiredAgreements": 4,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 3,
+          "control95PercentileAgreements": 2,
+          "empiricalExceedanceFraction": 0.0625,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": false
+        }
+      },
+      {
+        "symbol": "Zn",
+        "reliability": "tentative",
+        "reasons": [
+          "random-like-agreement",
+          "insufficient-reliable-groups"
+        ],
+        "strongCharacteristicGroups": 0,
+        "reliableCharacteristicGroups": 2,
+        "highSpecificityCharacteristicGroups": 2,
+        "randomControl": {
+          "expectedAgreements": 1.658507,
+          "observedAgreements": 3,
+          "coveredWidthNm": 525.588,
+          "peakCount": 47,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 20,
+          "adjustedExpectedAgreements": 5.242481,
+          "requiredAgreements": 5,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 4,
+          "control95PercentileAgreements": 3,
+          "empiricalExceedanceFraction": 0.09375,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": false
+        }
+      },
+      {
+        "symbol": "S",
+        "reliability": "tentative",
+        "reasons": [
+          "random-like-agreement",
+          "insufficient-reliable-groups"
+        ],
+        "strongCharacteristicGroups": 0,
+        "reliableCharacteristicGroups": 2,
+        "highSpecificityCharacteristicGroups": 2,
+        "randomControl": {
+          "expectedAgreements": 0.903379,
+          "observedAgreements": 2,
+          "coveredWidthNm": 525.588,
+          "peakCount": 47,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 20,
+          "adjustedExpectedAgreements": 2.855549,
+          "requiredAgreements": 3,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 2,
+          "control95PercentileAgreements": 2,
+          "empiricalExceedanceFraction": 0.1875,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": false
+        }
+      },
+      {
+        "symbol": "Hg",
+        "reliability": "tentative",
+        "reasons": [
+          "random-like-agreement",
+          "insufficient-reliable-groups"
+        ],
+        "strongCharacteristicGroups": 0,
+        "reliableCharacteristicGroups": 2,
+        "highSpecificityCharacteristicGroups": 2,
+        "randomControl": {
+          "expectedAgreements": 1.321476,
+          "observedAgreements": 2,
+          "coveredWidthNm": 525.588,
+          "peakCount": 47,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 20,
+          "adjustedExpectedAgreements": 4.177139,
+          "requiredAgreements": 5,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 4,
+          "control95PercentileAgreements": 3,
+          "empiricalExceedanceFraction": 0.40625,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": false
+        }
+      },
+      {
+        "symbol": "Cu",
+        "reliability": "tentative",
+        "reasons": [
+          "missing-key-characteristic-lines",
+          "random-like-agreement",
+          "insufficient-reliable-groups"
+        ],
+        "strongCharacteristicGroups": 0,
+        "reliableCharacteristicGroups": 2,
+        "highSpecificityCharacteristicGroups": 2,
+        "randomControl": {
+          "expectedAgreements": 1.91414,
+          "observedAgreements": 2,
+          "coveredWidthNm": 525.588,
+          "peakCount": 47,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 20,
+          "adjustedExpectedAgreements": 6.050529,
+          "requiredAgreements": 5,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 4,
+          "control95PercentileAgreements": 4,
+          "empiricalExceedanceFraction": 0.4375,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": false
+        }
+      }
+    ],
+    "acceptedMolecularHypotheses": [],
+    "missedMolecularChecks": [],
+    "conclusion": "Результат ограничен качеством измерения. Лучше всего атомными линиями поддержан Алюминий (Al): 1 сильная группа и 3 качественные характерные группы. Это ранжирование спектральных доказательств, а не оценка концентрации. Другие надёжные гипотезы: Кремний (Si), Магний (Mg), Азот (N). Слабые и неоднозначные совпадения сохранены в подробностях: 15. Надёжного совпадения молекулярных полос N₂ или N₂⁺ не найдено."
+  },
+  {
+    "fileName": "nasa-pds-gbw07216a-calcium-rich.json",
+    "sha256": "d7ef7d60d8ae37441d30a247dc82627a18b877b346cf31a63556fa4cfeba4b3e",
+    "imported": true,
+    "pointCount": 6144,
+    "wavelengthRangeNm": {
+      "minimum": 240.811,
+      "maximum": 905.574
+    },
+    "suitability": "limited",
+    "analysisChannels": [
+      {
+        "id": "channel-1-segment-1",
+        "wavelengthRangeNm": {
+          "minimum": 246.741,
+          "maximum": 338.37
+        },
+        "spectralResolutionNm": 0.290082,
+        "suitability": "limited"
+      },
+      {
+        "id": "channel-1-segment-2",
+        "wavelengthRangeNm": {
+          "minimum": 387.954,
+          "maximum": 469.053
+        },
+        "spectralResolutionNm": 0.246128,
+        "suitability": "limited"
+      },
+      {
+        "id": "channel-1-segment-3",
+        "wavelengthRangeNm": {
+          "minimum": 496.036,
+          "maximum": 848.896
+        },
+        "spectralResolutionNm": 1.250186,
+        "suitability": "limited"
+      }
+    ],
+    "peakCount": 93,
+    "expectedPresentAtomicElements": [
+      "Ca",
+      "Mg",
+      "Fe",
+      "Al"
+    ],
+    "acceptedExpectedAtomicElements": [
+      "Ca",
+      "Fe"
+    ],
+    "missedPrimaryChecks": [],
+    "acceptedUnlabelledAtomicElements": [],
+    "acceptedAtomicHypotheses": [
+      {
+        "symbol": "Ca",
+        "reliability": "reliable",
+        "strongCharacteristicGroups": 0,
+        "reliableCharacteristicGroups": 9,
+        "randomControl": {
+          "expectedAgreements": 3.023244,
+          "observedAgreements": 11,
+          "coveredWidthNm": 525.588,
+          "peakCount": 93,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 21,
+          "adjustedExpectedAgreements": 9.662767,
+          "requiredAgreements": 6,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 5,
+          "control95PercentileAgreements": 4,
+          "empiricalExceedanceFraction": 0.03125,
+          "coherentConstellationOverride": true,
+          "distinguishableFromRandom": true
+        }
+      },
+      {
+        "symbol": "Fe",
+        "reliability": "reliable",
+        "strongCharacteristicGroups": 0,
+        "reliableCharacteristicGroups": 4,
+        "randomControl": {
+          "expectedAgreements": 3.534443,
+          "observedAgreements": 4,
+          "coveredWidthNm": 525.588,
+          "peakCount": 93,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 21,
+          "adjustedExpectedAgreements": 11.29664,
+          "requiredAgreements": 5,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 4,
+          "control95PercentileAgreements": 4,
+          "empiricalExceedanceFraction": 0.125,
+          "coherentConstellationOverride": true,
+          "distinguishableFromRandom": true
+        }
+      }
+    ],
+    "leadingRejectedAtomicHypotheses": [
+      {
+        "symbol": "O",
+        "reliability": "tentative",
+        "reasons": [
+          "random-like-agreement"
+        ],
+        "strongCharacteristicGroups": 1,
+        "reliableCharacteristicGroups": 3,
+        "highSpecificityCharacteristicGroups": 3,
+        "randomControl": {
+          "expectedAgreements": 3.431437,
+          "observedAgreements": 4,
+          "coveredWidthNm": 525.588,
+          "peakCount": 93,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 21,
+          "adjustedExpectedAgreements": 10.967418,
+          "requiredAgreements": 7,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 6,
+          "control95PercentileAgreements": 5,
+          "empiricalExceedanceFraction": 0.40625,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": false
+        }
+      },
+      {
+        "symbol": "Cr",
+        "reliability": "tentative",
+        "reasons": [
+          "missing-key-characteristic-lines"
+        ],
+        "strongCharacteristicGroups": 1,
+        "reliableCharacteristicGroups": 3,
+        "highSpecificityCharacteristicGroups": 3,
+        "randomControl": {
+          "expectedAgreements": 3.0913,
+          "observedAgreements": 4,
+          "coveredWidthNm": 525.588,
+          "peakCount": 93,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 21,
+          "adjustedExpectedAgreements": 9.880284,
+          "requiredAgreements": 4,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 3,
+          "control95PercentileAgreements": 3,
+          "empiricalExceedanceFraction": 0.03125,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": true
+        }
+      },
+      {
+        "symbol": "H",
+        "reliability": "tentative",
+        "reasons": [
+          "random-like-agreement",
+          "insufficient-reliable-groups"
+        ],
+        "strongCharacteristicGroups": 1,
+        "reliableCharacteristicGroups": 2,
+        "highSpecificityCharacteristicGroups": 2,
+        "randomControl": {
+          "expectedAgreements": 1.554547,
+          "observedAgreements": 2,
+          "coveredWidthNm": 525.588,
+          "peakCount": 93,
+          "characteristicLineDensityPerNm": 0.01902631,
+          "testedElementCount": 21,
+          "adjustedExpectedAgreements": 4.96858,
+          "requiredAgreements": 5,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 4,
+          "control95PercentileAgreements": 3,
+          "empiricalExceedanceFraction": 0.34375,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": false
+        }
+      },
+      {
+        "symbol": "Ar",
+        "reliability": "tentative",
+        "reasons": [
+          "missing-key-characteristic-lines",
+          "random-like-agreement",
+          "insufficient-reliable-groups"
+        ],
+        "strongCharacteristicGroups": 1,
+        "reliableCharacteristicGroups": 2,
+        "highSpecificityCharacteristicGroups": 2,
+        "randomControl": {
+          "expectedAgreements": 3.438812,
+          "observedAgreements": 4,
+          "coveredWidthNm": 525.588,
+          "peakCount": 93,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 21,
+          "adjustedExpectedAgreements": 10.990988,
+          "requiredAgreements": 8,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 7,
+          "control95PercentileAgreements": 5,
+          "empiricalExceedanceFraction": 0.375,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": false
+        }
+      },
+      {
+        "symbol": "Na",
+        "reliability": "tentative",
+        "reasons": [
+          "random-like-agreement"
+        ],
+        "strongCharacteristicGroups": 0,
+        "reliableCharacteristicGroups": 3,
+        "highSpecificityCharacteristicGroups": 2,
+        "randomControl": {
+          "expectedAgreements": 2.955688,
+          "observedAgreements": 3,
+          "coveredWidthNm": 525.588,
+          "peakCount": 93,
+          "characteristicLineDensityPerNm": 0.03805262,
+          "testedElementCount": 21,
+          "adjustedExpectedAgreements": 9.446847,
+          "requiredAgreements": 8,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 7,
+          "control95PercentileAgreements": 4,
+          "empiricalExceedanceFraction": 0.34375,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": false
+        }
+      }
+    ],
+    "acceptedMolecularHypotheses": [],
+    "missedMolecularChecks": [],
+    "conclusion": "Результат ограничен качеством измерения. Лучше всего атомными линиями поддержан Кальций (Ca): 0 сильных групп и 9 качественных характерных групп. Это ранжирование спектральных доказательств, а не оценка концентрации. Другие надёжные гипотезы: Железо (Fe). Слабые и неоднозначные совпадения сохранены в подробностях: 19. Надёжного совпадения молекулярных полос N₂ или N₂⁺ не найдено."
+  },
+  {
+    "fileName": "zenodo-14843545-air-plasma-300-400nm.json",
+    "sha256": "a993ba16f6fa256c4fb6e86682d61ae283b6281beeaafeb5ed0a10e96b2cf265",
+    "imported": true,
+    "pointCount": 5664,
+    "wavelengthRangeNm": {
+      "minimum": 300.006,
+      "maximum": 399.993
+    },
+    "suitability": "limited",
+    "analysisChannels": [
+      {
+        "id": "channel-1",
+        "wavelengthRangeNm": {
+          "minimum": 300.006,
+          "maximum": 399.993
+        },
+        "spectralResolutionNm": 0.096673,
+        "suitability": "limited"
+      }
+    ],
+    "peakCount": 17,
+    "expectedPresentAtomicElements": [],
+    "acceptedExpectedAtomicElements": [],
+    "missedPrimaryChecks": [],
+    "acceptedUnlabelledAtomicElements": [],
+    "acceptedAtomicHypotheses": [],
+    "leadingRejectedAtomicHypotheses": [
+      {
+        "symbol": "Cu",
+        "reliability": "tentative",
+        "reasons": [
+          "random-like-agreement",
+          "insufficient-reliable-groups"
+        ],
+        "strongCharacteristicGroups": 1,
+        "reliableCharacteristicGroups": 1,
+        "highSpecificityCharacteristicGroups": 1,
+        "randomControl": {
+          "expectedAgreements": 0.431894,
+          "observedAgreements": 1,
+          "coveredWidthNm": 99.987,
+          "peakCount": 17,
+          "characteristicLineDensityPerNm": 0.200026,
+          "testedElementCount": 15,
+          "adjustedExpectedAgreements": 1.275576,
+          "requiredAgreements": 2,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 1,
+          "control95PercentileAgreements": 1,
+          "empiricalExceedanceFraction": 0.28125,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": false
+        }
+      },
+      {
+        "symbol": "Mn",
+        "reliability": "tentative",
+        "reasons": [
+          "random-like-agreement",
+          "insufficient-reliable-groups"
+        ],
+        "strongCharacteristicGroups": 1,
+        "reliableCharacteristicGroups": 1,
+        "highSpecificityCharacteristicGroups": 1,
+        "randomControl": {
+          "expectedAgreements": 0.475976,
+          "observedAgreements": 1,
+          "coveredWidthNm": 99.987,
+          "peakCount": 17,
+          "characteristicLineDensityPerNm": 0.200026,
+          "testedElementCount": 15,
+          "adjustedExpectedAgreements": 1.405768,
+          "requiredAgreements": 3,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 2,
+          "control95PercentileAgreements": 2,
+          "empiricalExceedanceFraction": 0.28125,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": false
+        }
+      },
+      {
+        "symbol": "Na",
+        "reliability": "tentative",
+        "reasons": [
+          "random-like-agreement",
+          "insufficient-reliable-groups"
+        ],
+        "strongCharacteristicGroups": 0,
+        "reliableCharacteristicGroups": 1,
+        "highSpecificityCharacteristicGroups": 1,
+        "randomControl": {
+          "expectedAgreements": 0.477396,
+          "observedAgreements": 1,
+          "coveredWidthNm": 99.987,
+          "peakCount": 17,
+          "characteristicLineDensityPerNm": 0.200026,
+          "testedElementCount": 15,
+          "adjustedExpectedAgreements": 1.409962,
+          "requiredAgreements": 2,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 1,
+          "control95PercentileAgreements": 1,
+          "empiricalExceedanceFraction": 0.25,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": false
+        }
+      },
+      {
+        "symbol": "Ar",
+        "reliability": "tentative",
+        "reasons": [
+          "random-like-agreement",
+          "insufficient-reliable-groups"
+        ],
+        "strongCharacteristicGroups": 0,
+        "reliableCharacteristicGroups": 1,
+        "highSpecificityCharacteristicGroups": 1,
+        "randomControl": {
+          "expectedAgreements": 0.409032,
+          "observedAgreements": 1,
+          "coveredWidthNm": 99.987,
+          "peakCount": 17,
+          "characteristicLineDensityPerNm": 0.200026,
+          "testedElementCount": 15,
+          "adjustedExpectedAgreements": 1.208053,
+          "requiredAgreements": 3,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 2,
+          "control95PercentileAgreements": 1,
+          "empiricalExceedanceFraction": 0.34375,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": false
+        }
+      },
+      {
+        "symbol": "Ca",
+        "reliability": "tentative",
+        "reasons": [
+          "single-match",
+          "missing-key-characteristic-lines",
+          "random-like-agreement",
+          "insufficient-reliable-groups"
+        ],
+        "strongCharacteristicGroups": 0,
+        "reliableCharacteristicGroups": 1,
+        "highSpecificityCharacteristicGroups": 1,
+        "randomControl": {
+          "expectedAgreements": 0.395452,
+          "observedAgreements": 1,
+          "coveredWidthNm": 99.987,
+          "peakCount": 17,
+          "characteristicLineDensityPerNm": 0.200026,
+          "testedElementCount": 15,
+          "adjustedExpectedAgreements": 1.167946,
+          "requiredAgreements": 5,
+          "testedOffsets": 31,
+          "maximumControlAgreements": 4,
+          "control95PercentileAgreements": 2,
+          "empiricalExceedanceFraction": 0.34375,
+          "coherentConstellationOverride": false,
+          "distinguishableFromRandom": false
+        }
+      }
+    ],
+    "acceptedMolecularHypotheses": [
+      {
+        "formula": "N₂",
+        "supportedRegions": 4
+      }
+    ],
+    "missedMolecularChecks": [],
+    "conclusion": "Результат ограничен качеством измерения. Многолинейная атомная гипотеза не сформирована. Зафиксированы единичные совпадения или согласования, не отличающиеся от случайных: 15. Форма молекулярных полос независимо поддерживает: Молекулярный азот (N₂). Совпадающие участки не суммируются с атомными линиями."
+  }
+]
