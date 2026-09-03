@@ -522,6 +522,18 @@
   border-top: 1px dashed var(--color-status-warning);
 }
 
+.layerSwatch_baseline {
+  border-top: 2px dashed var(--color-status-warning);
+}
+
+.qualityLink {
+  color: var(--color-action-primary);
+  font-weight: 650;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+  text-underline-offset: 0.16em;
+}
+
 .layerSwatch_peaks {
   width: 0.5rem;
   border-radius: var(--radius-full);
@@ -560,15 +572,15 @@
 }
 
 .chart {
-  height: 18rem;
+  height: 21rem;
 }
 
 .chartCompact {
-  height: 14rem;
+  height: 18rem;
 }
 
 .chartFill {
-  height: clamp(16rem, 33vh, 22rem);
+  height: clamp(22rem, 46vh, 32rem);
 }
 
 .preparationNotice {
@@ -2038,7 +2050,7 @@
 
 .analysisUpdating > :not(.analysisUpdatingNotice) {
   pointer-events: none;
-  opacity: 0.18;
+  opacity: 0.58;
   user-select: none;
 }
 
@@ -2060,9 +2072,10 @@
   display: block;
   min-width: 0;
   padding: var(--spacing-md);
-  border: 1px solid var(--color-border-default);
+  border: 1px solid color-mix(in srgb, var(--color-action-primary) 28%, var(--color-border-default));
+  border-left: 0.25rem solid var(--color-action-primary);
   border-radius: var(--radius-lg);
-  background: var(--color-background-surface);
+  background: color-mix(in srgb, var(--color-action-primary) 3%, var(--color-background-surface));
   box-shadow: none;
 }
 
@@ -2302,10 +2315,11 @@
   min-width: 0;
   flex-direction: column;
   gap: var(--spacing-md);
-  padding: var(--spacing-md);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-lg);
-  background: var(--color-background-surface);
+  padding: var(--spacing-md) 0 0;
+  border: 0;
+  border-top: 1px solid var(--color-border-default);
+  border-radius: 0;
+  background: transparent;
   box-shadow: none;
 }
 

@@ -3,7 +3,7 @@ import type { EChartsCoreOption } from "echarts/core";
 import type { AnalyzedPeak, SpectrumDataset } from "@/domain/spectrum";
 import { formatDecimal, formatSignedDecimal } from "@/features/workspace/model/display-format";
 
-export type SpectrumChartLayer = "raw" | "prepared" | "threshold" | "peaks" | "referenceLines" | "missingReferenceLines" | "regions";
+export type SpectrumChartLayer = "raw" | "baseline" | "prepared" | "threshold" | "peaks" | "referenceLines" | "missingReferenceLines" | "regions";
 
 export interface SpectrumReferenceLine {
   readonly label: string;
@@ -18,6 +18,7 @@ export interface SpectrumHighlightedRegion {
 
 export interface SpectrumChartData {
   readonly rawDataset?: SpectrumDataset;
+  readonly baselineDataset?: SpectrumDataset;
   readonly preparedDataset?: SpectrumDataset;
   readonly peaks?: readonly AnalyzedPeak[];
   readonly selectedPeakId?: string | null;
@@ -29,6 +30,7 @@ export interface SpectrumChartData {
 
 export interface SpectrumChartPalette {
   readonly raw: string;
+  readonly baseline: string;
   readonly prepared: string;
   readonly peak: string;
   readonly threshold: string;
@@ -51,6 +53,7 @@ const sortedWavelengthCache = new WeakMap<readonly number[], boolean>();
 
 export const SPECTRUM_SERIES_NAMES = {
   raw: "Исходный спектр",
+  baseline: "Базовая линия",
   prepared: "Подготовленный спектр",
   threshold: "Порог обнаружения",
   peaks: "Найденные пики",
@@ -66,6 +69,7 @@ export function createSpectrumChartOption(
   zoom: SpectrumZoomRange,
 ): EChartsCoreOption {
   const rawVisible = visibleLayers.has("raw") && Boolean(data.rawDataset);
+  const baselineVisible = visibleLayers.has("baseline") && Boolean(data.baselineDataset);
   const preparedVisible = visibleLayers.has("prepared") && Boolean(data.preparedDataset);
   const thresholdVisible = visibleLayers.has("threshold") && Boolean(data.thresholdDataset);
   const peaksVisible = visibleLayers.has("peaks") && data.peaks !== undefined;
@@ -73,7 +77,8 @@ export function createSpectrumChartOption(
   const missingReferenceLinesVisible = visibleLayers.has("missingReferenceLines") && data.missingReferenceLines !== undefined;
   const regionsVisible = visibleLayers.has("regions") && data.highlightedRegions !== undefined;
   const preparedAxisRequired = preparedVisible || thresholdVisible || peaksVisible || referenceLinesVisible || missingReferenceLinesVisible || regionsVisible;
-  const dualAxis = rawVisible && preparedAxisRequired;
+  const rawAxisRequired = rawVisible || baselineVisible;
+  const dualAxis = rawAxisRequired && preparedAxisRequired;
   const preparedAxisIndex = dualAxis ? 1 : 0;
   const [minimumWavelength, maximumWavelength] = getWavelengthExtent(data);
   const series: Record<string, unknown>[] = [];
@@ -91,6 +96,22 @@ export function createSpectrumChartOption(
       itemStyle: { color: palette.raw },
       emphasis: { lineStyle: { opacity: 0.8 } },
       z: 1,
+    });
+  }
+
+  if (baselineVisible && data.baselineDataset) {
+    series.push({
+      id: "estimated-baseline",
+      name: SPECTRUM_SERIES_NAMES.baseline,
+      type: "line",
+      data: toSeriesData(data.baselineDataset),
+      yAxisIndex: 0,
+      showSymbol: false,
+      sampling: "lttb",
+      silent: true,
+      lineStyle: { color: palette.baseline, width: 1.35, type: "dashed", opacity: 0.92 },
+      itemStyle: { color: palette.baseline },
+      z: 2,
     });
   }
 
@@ -179,6 +200,7 @@ export function createSpectrumChartOption(
           },
         })),
       },
+      labelLayout: { hideOverlap: true },
       z: 2,
     });
   }
@@ -261,7 +283,7 @@ export function createSpectrumChartOption(
       axisLine: { lineStyle: { color: palette.border } },
       splitLine: { show: false },
     },
-    yAxis: createYAxis(rawVisible, preparedAxisRequired, dualAxis, palette),
+    yAxis: createYAxis(rawAxisRequired, preparedAxisRequired, dualAxis, palette),
     dataZoom: [
       {
         id: "spectrum-inside-zoom",
@@ -317,6 +339,11 @@ export function formatSpectrumTooltip(
   if (visibleLayers.has("raw") && data.rawDataset) {
     const index = findNearestSampleIndex(data.rawDataset.wavelengths, wavelength);
     rows.push(formatTooltipRow(palette.raw, "Исходные отсчёты", data.rawDataset.intensities[index], 3));
+  }
+
+  if (visibleLayers.has("baseline") && data.baselineDataset) {
+    const index = findNearestSampleIndex(data.baselineDataset.wavelengths, wavelength);
+    rows.push(formatTooltipRow(palette.baseline, "Базовая линия", data.baselineDataset.intensities[index], 3));
   }
 
   if (visibleLayers.has("prepared") && data.preparedDataset) {
@@ -427,7 +454,7 @@ function createYAxis(
 function getWavelengthExtent(data: SpectrumChartData): readonly [number, number] {
   let minimum = Number.POSITIVE_INFINITY;
   let maximum = Number.NEGATIVE_INFINITY;
-  for (const wavelengths of [data.rawDataset?.wavelengths, data.preparedDataset?.wavelengths]) {
+  for (const wavelengths of [data.rawDataset?.wavelengths, data.baselineDataset?.wavelengths, data.preparedDataset?.wavelengths]) {
     if (!wavelengths) continue;
     for (const value of wavelengths) {
       minimum = Math.min(minimum, value);

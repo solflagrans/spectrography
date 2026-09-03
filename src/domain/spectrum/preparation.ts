@@ -26,7 +26,11 @@ export function prepareSpectrum(
     if (sourceIndex === undefined) throw new Error("Не удалось связать рабочую точку с исходным спектром.");
     return sourceIndex;
   });
-  const smoothed = savitzkyGolaySmooth(sorted.intensities, parameters.smoothingWindow);
+  const smoothed = savitzkyGolaySmoothOnGrid(
+    sorted.wavelengths,
+    sorted.intensities,
+    parameters.smoothingWindow,
+  );
   const baseline = estimateRobustBaseline(sorted.wavelengths, smoothed, {
     smoothness: parameters.baselineSmoothness,
     asymmetry: parameters.baselineAsymmetry,
@@ -78,6 +82,37 @@ export function savitzkyGolaySmooth(values: readonly number[], windowSize: numbe
   ), 0));
 }
 
+/** Quadratic local smoothing that respects the physical spacing of a non-uniform wavelength grid. */
+export function savitzkyGolaySmoothOnGrid(
+  wavelengths: readonly number[],
+  values: readonly number[],
+  windowSize: number,
+): readonly number[] {
+  validateSmoothingWindow(windowSize);
+  if (wavelengths.length !== values.length) {
+    throw new Error("Шкала длин волн и массив интенсивностей должны иметь одинаковую длину.");
+  }
+  if (windowSize === 1 || values.length < 3) return [...values];
+  if (isEffectivelyUniformGrid(wavelengths)) return savitzkyGolaySmooth(values, windowSize);
+
+  const sampleCount = Math.min(windowSize, values.length);
+  const radius = Math.floor(sampleCount / 2);
+  return values.map((value, centerIndex) => {
+    const start = Math.max(0, Math.min(centerIndex - radius, values.length - sampleCount));
+    const end = start + sampleCount;
+    const scale = Math.max(
+      Math.abs(wavelengths[start] - wavelengths[centerIndex]),
+      Math.abs(wavelengths[end - 1] - wavelengths[centerIndex]),
+      Number.EPSILON,
+    );
+    const rows = wavelengths.slice(start, end).map((wavelength, offset) => ({
+      x: (wavelength - wavelengths[centerIndex]) / scale,
+      y: values[start + offset],
+    }));
+    return solveLocalQuadraticAtZero(rows) ?? value;
+  });
+}
+
 export function validateProcessingParameters(parameters: SpectrumProcessingParameters): void {
   validateSmoothingWindow(parameters.smoothingWindow);
   if (parameters.normalization !== "maximum" && parameters.normalization !== "none") {
@@ -103,4 +138,56 @@ function reflectIndex(index: number, length: number): number {
     if (reflected >= length) reflected = 2 * length - reflected - 2;
   }
   return reflected;
+}
+
+function isEffectivelyUniformGrid(wavelengths: readonly number[]): boolean {
+  if (wavelengths.length < 3) return true;
+  const steps = wavelengths.slice(1).map((value, index) => value - wavelengths[index]);
+  const averageStep = steps.reduce((sum, value) => sum + value, 0) / steps.length;
+  if (Math.abs(averageStep) <= Number.EPSILON) return false;
+  return steps.every((step) => Math.abs(step - averageStep) <= Math.abs(averageStep) * 1e-6);
+}
+
+function solveLocalQuadraticAtZero(
+  rows: readonly { readonly x: number; readonly y: number }[],
+): number | null {
+  if (rows.length < 3) return null;
+  let sx = 0;
+  let sx2 = 0;
+  let sx3 = 0;
+  let sx4 = 0;
+  let sy = 0;
+  let sxy = 0;
+  let sx2y = 0;
+  for (const { x, y } of rows) {
+    const x2 = x * x;
+    sx += x;
+    sx2 += x2;
+    sx3 += x2 * x;
+    sx4 += x2 * x2;
+    sy += y;
+    sxy += x * y;
+    sx2y += x2 * y;
+  }
+  const matrix = [
+    [rows.length, sx, sx2, sy],
+    [sx, sx2, sx3, sxy],
+    [sx2, sx3, sx4, sx2y],
+  ];
+  for (let column = 0; column < 3; column += 1) {
+    let pivot = column;
+    for (let row = column + 1; row < 3; row += 1) {
+      if (Math.abs(matrix[row][column]) > Math.abs(matrix[pivot][column])) pivot = row;
+    }
+    if (Math.abs(matrix[pivot][column]) <= 1e-12) return null;
+    [matrix[column], matrix[pivot]] = [matrix[pivot], matrix[column]];
+    const divisor = matrix[column][column];
+    for (let cell = column; cell < 4; cell += 1) matrix[column][cell] /= divisor;
+    for (let row = 0; row < 3; row += 1) {
+      if (row === column) continue;
+      const factor = matrix[row][column];
+      for (let cell = column; cell < 4; cell += 1) matrix[row][cell] -= factor * matrix[column][cell];
+    }
+  }
+  return Number.isFinite(matrix[0][3]) ? matrix[0][3] : null;
 }

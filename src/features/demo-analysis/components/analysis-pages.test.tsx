@@ -11,6 +11,7 @@ import { createRaw8Fixture } from "@/fixtures/raw8-test-fixture";
 import { createWorkingAnalysis } from "@/application/analysis/create-working-analysis";
 import type { AnalysisRunner } from "@/application/analysis/analysis-runner";
 import { DEMO_ANALYSIS_INPUT } from "@/application/analysis/working-analysis";
+import { demoSpectra } from "@/fixtures/demo-spectra";
 import { InfoTooltipProvider } from "@/features/workspace/components/info-tooltip";
 
 import { AnalysisSidePanel, IdentificationLinesPanel, PeakSettingsPanel, ProcessingSettingsPanel } from "./analysis-side-panels";
@@ -75,9 +76,16 @@ const testAnalysisRunner: AnalysisRunner = {
   dispose() {},
 };
 
+const TEST_DEMO_INPUT = {
+  ...DEMO_ANALYSIS_INPUT,
+  id: "fe-12-test",
+  source: { ...DEMO_ANALYSIS_INPUT.source, fileName: "fe-12-test.json" },
+  rawDataset: demoSpectra.lamp,
+};
+
 async function openDemoAnalysis() {
   await act(async () => {
-    fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
+    fireEvent.click(screen.getByRole("button", { name: "Открыть образец NASA PDS" }));
     await Promise.resolve();
   });
 }
@@ -110,7 +118,7 @@ function AnalysisProbe() {
 function PeakSelectionScenario() {
   return (
     <InfoTooltipProvider>
-      <AnalysisWorkspaceProvider analysisRunner={testAnalysisRunner}>
+      <AnalysisWorkspaceProvider analysisRunner={testAnalysisRunner} demoAnalysisInput={TEST_DEMO_INPUT}>
         <DataAnalysisPage />
         <PeaksAnalysisPage />
         <PeakSettingsPanel />
@@ -123,7 +131,7 @@ function PeakSelectionScenario() {
 function Scenario() {
   return (
     <InfoTooltipProvider>
-      <AnalysisWorkspaceProvider analysisRunner={testAnalysisRunner}>
+      <AnalysisWorkspaceProvider analysisRunner={testAnalysisRunner} demoAnalysisInput={TEST_DEMO_INPUT}>
         <DataAnalysisPage />
         <ProcessingAnalysisPage />
         <PeakSettingsPanel />
@@ -136,7 +144,7 @@ function Scenario() {
 function ProcessingSettingsScenario() {
   return (
     <InfoTooltipProvider>
-      <AnalysisWorkspaceProvider analysisRunner={testAnalysisRunner}>
+      <AnalysisWorkspaceProvider analysisRunner={testAnalysisRunner} demoAnalysisInput={TEST_DEMO_INPUT}>
         <ProcessingSettingsPanel />
       </AnalysisWorkspaceProvider>
     </InfoTooltipProvider>
@@ -146,7 +154,7 @@ function ProcessingSettingsScenario() {
 function IdentificationScenario() {
   return (
     <InfoTooltipProvider>
-      <AnalysisWorkspaceProvider analysisRunner={testAnalysisRunner}>
+      <AnalysisWorkspaceProvider analysisRunner={testAnalysisRunner} demoAnalysisInput={TEST_DEMO_INPUT}>
         <DataAnalysisPage />
         <IdentificationLinesPanel />
         <IdentificationAnalysisPage />
@@ -160,7 +168,7 @@ function IdentificationScenario() {
 function EndToEndScenario() {
   return (
     <InfoTooltipProvider>
-      <AnalysisWorkspaceProvider analysisRunner={testAnalysisRunner}>
+      <AnalysisWorkspaceProvider analysisRunner={testAnalysisRunner} demoAnalysisInput={TEST_DEMO_INPUT}>
         <DataAnalysisPage />
         <AnalysisSidePanel />
         <AnalysisAnalysisPage />
@@ -218,7 +226,9 @@ describe("interactive demo analysis", () => {
     const initialPeakCount = Number(screen.getByTestId("peak-count").textContent);
     const initialConclusion = screen.getByTestId("conclusion").textContent;
 
-    fireEvent.change(screen.getByLabelText("Минимальный SNR"), { target: { value: "30" } });
+    const prominence = screen.getByRole("spinbutton", { name: "Минимальная выраженность" });
+    fireEvent.change(prominence, { target: { value: "0.8" } });
+    fireEvent.blur(prominence);
 
     expect(screen.getByText(/Обновляем графики и результаты/)).toBeTruthy();
     expect(screen.getByTestId("calculation-status").textContent).toBe("calculating");
@@ -236,7 +246,9 @@ describe("interactive demo analysis", () => {
 
     await openDemoAnalysis();
     const validPeakCount = screen.getByTestId("peak-count").textContent;
-    fireEvent.change(screen.getByLabelText(/Расстояние между пиками/), { target: { value: "0" } });
+    const minimumDistance = screen.getByLabelText(/Расстояние между пиками/);
+    fireEvent.change(minimumDistance, { target: { value: "0" } });
+    fireEvent.blur(minimumDistance);
 
     await act(async () => vi.advanceTimersByTime(181));
 
@@ -426,7 +438,9 @@ describe("interactive demo analysis", () => {
     await act(async () => vi.advanceTimersByTime(181));
     expect(screen.getByTestId("selected-peak").textContent).toBe(selectedId);
 
-    fireEvent.change(screen.getByRole("spinbutton", { name: "Минимальная выраженность" }), { target: { value: "1.01" } });
+    const prominence = screen.getByRole("spinbutton", { name: "Минимальная выраженность" });
+    fireEvent.change(prominence, { target: { value: "1.01" } });
+    fireEvent.blur(prominence);
     await act(async () => vi.advanceTimersByTime(181));
     expect(screen.getByTestId("selected-peak").textContent).toBe("—");
     fireEvent.click(screen.getByRole("tab", { name: "Выбранный пик" }));
@@ -488,7 +502,9 @@ describe("interactive demo analysis", () => {
     await act(async () => vi.advanceTimersByTime(181));
     expect(screen.getByTestId("selected-hypothesis").textContent).toBe(selectedHypothesis);
 
-    fireEvent.change(screen.getByRole("spinbutton", { name: "Минимальная выраженность" }), { target: { value: "1.01" } });
+    const prominence = screen.getByRole("spinbutton", { name: "Минимальная выраженность" });
+    fireEvent.change(prominence, { target: { value: "1.01" } });
+    fireEvent.blur(prominence);
     await act(async () => vi.advanceTimersByTime(181));
     expect(screen.getByTestId("selected-hypothesis").textContent).toBe("—");
   });
@@ -549,8 +565,8 @@ describe("interactive demo analysis", () => {
   it("covers upload, spectrum type, automatic analysis, evidence and a linked peak", async () => {
     render(<EndToEndScenario />);
     const uploaded = JSON.stringify({
-      wavelengths: DEMO_ANALYSIS_INPUT.rawDataset.wavelengths,
-      intensities: DEMO_ANALYSIS_INPUT.rawDataset.intensities,
+      wavelengths: TEST_DEMO_INPUT.rawDataset.wavelengths,
+      intensities: TEST_DEMO_INPUT.rawDataset.intensities,
     });
 
     fireEvent.change(screen.getByLabelText("Файл спектра"), {

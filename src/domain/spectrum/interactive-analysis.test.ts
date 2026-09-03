@@ -12,6 +12,7 @@ import {
   prepareSpectrum,
   runInteractiveSpectrumAnalysis,
   savitzkyGolaySmooth,
+  savitzkyGolaySmoothOnGrid,
 } from "./interactive-analysis";
 
 describe("robust spectrum preparation", () => {
@@ -53,6 +54,15 @@ describe("robust spectrum preparation", () => {
 
   it("keeps a constant signal unchanged after Savitzky–Golay smoothing", () => {
     for (const value of savitzkyGolaySmooth([4, 4, 4, 4, 4, 4, 4], 5)) expect(value).toBeCloseTo(4, 12);
+  });
+
+  it("preserves a quadratic signal on a non-uniform wavelength grid", () => {
+    const wavelengths = [400, 400.12, 400.31, 400.58, 400.93, 401.37, 401.9];
+    const intensities = wavelengths.map((wavelength) => 3 + 2 * (wavelength - 401) + 0.4 * (wavelength - 401) ** 2);
+    const smoothed = savitzkyGolaySmoothOnGrid(wavelengths, intensities, 5);
+
+    expect(smoothed).toHaveLength(intensities.length);
+    smoothed.forEach((value, index) => expect(value).toBeCloseTo(intensities[index], 9));
   });
 
   it("estimates a baseline curve without following a strong narrow peak on an uneven grid", () => {
@@ -193,6 +203,13 @@ describe("interactive analysis compatibility", () => {
     const first = runInteractiveSpectrumAnalysis(demoSpectra.fe12, builtinSpectralLibraryIndex);
     const second = runInteractiveSpectrumAnalysis(demoSpectra.fe12, builtinSpectralLibraryIndex);
     expect(second).toEqual(first);
+  });
+
+  it("does not accept a hypothesis supported only by a small set of moderate groups", () => {
+    const result = runInteractiveSpectrumAnalysis(demoSpectra.fe12, builtinSpectralLibraryIndex);
+    expect(result.hypotheses.some((hypothesis) => hypothesis.symbol === "Hg")).toBe(false);
+    expect(result.rejectedHypotheses.find((item) => item.hypothesis.symbol === "Hg")?.reasons)
+      .toContain("weak-evidence-dominated");
   });
 
   it("rejects an even smoothing window with a user-facing message", () => {

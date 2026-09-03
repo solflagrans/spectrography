@@ -233,6 +233,13 @@ export function buildElementHypotheses(
     if (reliableCharacteristicEvidence.length < IDENTIFICATION_QUALITY_PROFILE.atomicEvidence.minimumReliableGroups) {
       reasons.push("insufficient-reliable-groups");
     }
+    if (
+      strongCharacteristicEvidence.length === 0
+      && reliableCharacteristicEvidence.length
+        < IDENTIFICATION_QUALITY_PROFILE.atomicEvidence.minimumReliableGroupsWithoutStrongEvidence
+    ) {
+      reasons.push("weak-evidence-dominated");
+    }
     if (highSpecificityCharacteristicEvidence.length < IDENTIFICATION_QUALITY_PROFILE.atomicEvidence.minimumHighSpecificityGroups) {
       reasons.push("ambiguous-evidence");
     }

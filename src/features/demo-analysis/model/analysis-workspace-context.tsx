@@ -83,7 +83,12 @@ const missingWorkspaceUiStore = createAnalysisWorkspaceUiStore();
 export function AnalysisWorkspaceProvider({
   children,
   analysisRunner,
-}: Readonly<{ children: ReactNode; analysisRunner?: AnalysisRunner }>) {
+  demoAnalysisInput = DEMO_ANALYSIS_INPUT,
+}: Readonly<{
+  children: ReactNode;
+  analysisRunner?: AnalysisRunner;
+  demoAnalysisInput?: CreateWorkingAnalysisInput;
+}>) {
   const [analysis, setAnalysis] = useState<WorkingAnalysis | null>(null);
   const [parameters, setParameters] = useState<InteractiveAnalysisParameters>(
     DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS,
@@ -207,12 +212,12 @@ export function AnalysisWorkspaceProvider({
     importRequest.current += 1;
     setImportError(null);
     setImportStatus("idle");
-    void activateSource(DEMO_ANALYSIS_INPUT).catch((error) => {
+    void activateSource(demoAnalysisInput).catch((error) => {
       if (error instanceof DOMException && error.name === "AbortError") return;
-      setParameterError(error instanceof Error ? error.message : "Не удалось открыть демонстрационный спектр.");
+      setParameterError(error instanceof Error ? error.message : "Не удалось открыть образец NASA PDS.");
       setCalculationStatus("error");
     });
-  }, [activateSource]);
+  }, [activateSource, demoAnalysisInput]);
 
   const importSpectrumFile = useCallback(async (file: SpectrumFileLike) => {
     const requestId = importRequest.current + 1;

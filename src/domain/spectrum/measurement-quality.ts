@@ -118,9 +118,9 @@ export function assessChannelSuitability(input: ChannelQualityInput): ChannelSui
 export function combineSuitability(
   channels: readonly { readonly id: string; readonly suitability: ChannelSuitabilityAssessment }[],
 ): MeasurementSuitabilityAssessment {
-  const status = channels.some((channel) => channel.suitability.status === "impossible")
+  const status = channels.length > 0 && channels.every((channel) => channel.suitability.status === "impossible")
     ? "impossible" as const
-    : channels.some((channel) => channel.suitability.status === "limited")
+    : channels.some((channel) => channel.suitability.status !== "sufficient")
       ? "limited" as const
       : "sufficient" as const;
   return {

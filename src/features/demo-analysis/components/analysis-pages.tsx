@@ -111,6 +111,7 @@ export function DataAnalysisPage() {
             </select>
           </label>
         </Card>
+        <div id="measurement-quality">
         <Card title="Качество измерения" accessory={<Tag tone={analysis.suitability.status === "sufficient" ? "success" : analysis.suitability.status === "limited" ? "warning" : "danger"}>{formatSuitabilityStatus(analysis.suitability.status)}</Tag>}>
           {analysis.channels.flatMap((channel) => channel.suitability.issues)[0] ? <p className={styles.qualityReason}>{analysis.channels.flatMap((channel) => channel.suitability.issues)[0].explanation}</p> : null}
           <details className={styles.technicalDisclosure}>
@@ -131,6 +132,7 @@ export function DataAnalysisPage() {
             ))}
           </details>
         </Card>
+        </div>
       </div>
     </AnalysisPage>
   );
@@ -221,7 +223,7 @@ function SpectrumImportControls({ compact = false }: Readonly<{ compact?: boolea
       {!analysis ? <div className={styles.demoImportAction}>
         <button type="button" onClick={openDemoAnalysis} disabled={isReading}>
           <Sparkles size={15} aria-hidden="true" />
-          Открыть демонстрационный спектр
+          Открыть образец NASA PDS
         </button>
       </div> : null}
       {importError ? (
@@ -260,11 +262,12 @@ export function ProcessingAnalysisPage() {
         <SpectrumChart
           fill
           rawDataset={channel.rawDataset}
+          baselineDataset={channel.baselineDataset}
           preparedDataset={channel.preparedDataset}
           peaks={channel.peaks}
           thresholdDataset={channel.thresholdDataset}
           sourceKey={`${analysis.id}:${channel.id}`}
-          defaultVisibleLayers={["raw", "prepared"]}
+          defaultVisibleLayers={["raw", "baseline", "prepared", "threshold"]}
           label={`Исходный и подготовленный спектры ${analysis.source.fileName}`}
         />
       </Card>
@@ -567,7 +570,13 @@ function AnalysisConclusion({ analysis }: Readonly<{ analysis: WorkingAnalysis }
       <div className={styles.analysisConclusionCopy}>
         <h2 id="analysis-conclusion-title">Основные гипотезы</h2>
         <p>{primary ? <><strong>{primary.name} ({primary.symbol})</strong> — основная гипотеза. {primary.support}{additional.length ? <> Дополнительные: {additional.map((item) => `${item.name.toLocaleLowerCase("ru-RU")} (${item.symbol})`).join(", ")}.</> : null}</> : "Надёжных гипотез о составе нет."}</p>
-        {analysis.suitability.status === "sufficient" ? null : <p>Качество измерения: {formatSuitabilityShort(analysis.suitability.status)}.</p>}
+        {analysis.suitability.status === "sufficient" ? null : (
+          <p>
+            <Link className={styles.qualityLink} href="/data#measurement-quality">
+              Качество измерения: {formatSuitabilityShort(analysis.suitability.status)}
+            </Link>.
+          </p>
+        )}
         {molecularLine ? <p>{molecularLine}</p> : null}
         {reliableItems.length ? (
           <label className={styles.mobileHypothesisSelect}>
@@ -915,7 +924,7 @@ function AnalysisUnavailable({ section }: Readonly<{ section: string }>) {
     <section className={styles.unavailable}>
       <Database size={28} aria-hidden="true" />
       <h1>{section}</h1>
-      <p>Сначала откройте свой файл или демонстрационный спектр в разделе «Данные».</p>
+      <p>Сначала откройте свой файл или образец NASA PDS в разделе «Данные».</p>
       <Link className={styles.secondaryButton} href="/data">
         Перейти к данным
       </Link>

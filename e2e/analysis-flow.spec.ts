@@ -1,16 +1,10 @@
 import { expect, test } from "@playwright/test";
 
-import { demoSpectra } from "../src/fixtures/demo-spectra";
-
 test("measurement to evidence and a linked peak", async ({ page }, testInfo) => {
   await page.goto("/data");
 
-  await page.getByLabel("Файл спектра").setInputFiles({
-    name: "measurement.json",
-    mimeType: "application/json",
-    buffer: Buffer.from(JSON.stringify(demoSpectra.fe12)),
-  });
-  await expect(page.locator("dd").filter({ hasText: "measurement.json" })).toBeVisible();
+  await page.getByRole("button", { name: "Открыть образец NASA PDS" }).click();
+  await expect(page.locator("dd").filter({ hasText: "nasa-pds-h92649-iron-rich.json" })).toBeVisible();
 
   const spectrumType = page.getByRole("combobox", { name: "Тип спектра" });
   await expect(spectrumType).toHaveValue("plasma-emission");
@@ -19,7 +13,7 @@ test("measurement to evidence and a linked peak", async ({ page }, testInfo) => 
 
   await page.getByRole("link", { name: "Анализ" }).click();
   await expect(page.getByRole("heading", { name: "Основные гипотезы" })).toBeVisible();
-  await expect(page.getByText(/— основная гипотеза|Надёжных гипотез нет/)).toBeVisible();
+  await expect(page.getByText(/— основная гипотеза|Надёжных гипотез нет/).first()).toBeVisible();
 
   await page.getByRole("tab", { name: "Все пики" }).click();
   await expect(page.getByText("Ближайшая линия", { exact: true }).first()).toBeVisible();
@@ -28,7 +22,6 @@ test("measurement to evidence and a linked peak", async ({ page }, testInfo) => 
     await selectedRow.click();
     const selectedPeakId = await selectedRow.getAttribute("data-peak-id");
     await expect(page.getByRole("heading", { name: "Назначения в гипотезах" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Ближайшая линия" })).toBeVisible();
 
     await page.getByRole("button", { name: /Все кандидаты \(\d+\)/ }).click();
     await page.getByLabel("Поиск кандидата по названию элемента или символу").fill("N");
@@ -66,8 +59,8 @@ test("desktop routes do not overflow horizontally", async ({ page }, testInfo) =
   for (const width of [1024, 1280, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/data");
-    await page.getByRole("button", { name: "Открыть демонстрационный спектр" }).click();
-    await expect(page.locator("dd").filter({ hasText: "fe-12-demo.csv" })).toBeVisible();
+    await page.getByRole("button", { name: "Открыть образец NASA PDS" }).click();
+    await expect(page.locator("dd").filter({ hasText: "nasa-pds-h92649-iron-rich.json" })).toBeVisible();
 
     for (const route of ["Данные", "Обработка", "Анализ", "Библиотека"]) {
       await page.getByRole("link", { name: route, exact: true }).click();
@@ -84,8 +77,8 @@ test("desktop tooltips, settings and evidence table keep their geometry at 1024 
 
   await page.setViewportSize({ width: 1024, height: 900 });
   await page.goto("/data");
-  await page.getByRole("button", { name: "Открыть демонстрационный спектр" }).click();
-  await expect(page.locator("dd").filter({ hasText: "fe-12-demo.csv" })).toBeVisible();
+  await page.getByRole("button", { name: "Открыть образец NASA PDS" }).click();
+  await expect(page.locator("dd").filter({ hasText: "nasa-pds-h92649-iron-rich.json" })).toBeVisible();
 
   await page.getByRole("link", { name: "Обработка", exact: true }).click();
   const tooltipTrigger = page.getByRole("button", { name: "Подсказка: Гладкость базовой линии" });

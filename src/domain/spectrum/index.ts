@@ -12,6 +12,7 @@ export {
   prepareSpectrum,
   runInteractiveSpectrumAnalysis,
   savitzkyGolaySmooth,
+  savitzkyGolaySmoothOnGrid,
   validateInteractiveAnalysisParameters,
 } from "./interactive-analysis";
 export { IDENTIFICATION_QUALITY_PROFILE } from "./quality-profile";

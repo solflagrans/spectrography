@@ -48,6 +48,7 @@ const zoomRangesBySource = new Map<string, SpectrumZoomRange>();
 
 export interface SpectrumChartProps {
   readonly rawDataset?: SpectrumDataset;
+  readonly baselineDataset?: SpectrumDataset;
   readonly preparedDataset?: SpectrumDataset;
   readonly label: string;
   readonly sourceKey: string;
@@ -66,6 +67,7 @@ export interface SpectrumChartProps {
 
 const layerLabels: Record<SpectrumChartLayer, string> = {
   raw: "Исходный",
+  baseline: "Базовая линия",
   prepared: "Подготовленный",
   threshold: "Порог",
   peaks: "Пики",
@@ -76,6 +78,7 @@ const layerLabels: Record<SpectrumChartLayer, string> = {
 
 export function SpectrumChart({
   rawDataset,
+  baselineDataset,
   preparedDataset,
   label,
   sourceKey,
@@ -103,6 +106,7 @@ export function SpectrumChart({
   const [isZoomed, setIsZoomed] = useState(() => !isFullZoom(zoomRangesBySource.get(sourceKey) ?? FULL_SPECTRUM_ZOOM));
   const chartData: SpectrumChartData = useMemo(() => ({
     rawDataset,
+    baselineDataset,
     preparedDataset,
     peaks,
     selectedPeakId,
@@ -110,7 +114,7 @@ export function SpectrumChart({
     referenceLines,
     missingReferenceLines,
     highlightedRegions,
-  }), [highlightedRegions, missingReferenceLines, peaks, preparedDataset, rawDataset, referenceLines, selectedPeakId, thresholdDataset]);
+  }), [baselineDataset, highlightedRegions, missingReferenceLines, peaks, preparedDataset, rawDataset, referenceLines, selectedPeakId, thresholdDataset]);
   const availableLayers = getAvailableLayers(chartData);
 
   useEffect(() => {
@@ -241,6 +245,7 @@ function getPeakIdFromChartEvent(event: unknown): string | null {
 function getAvailableLayers(data: SpectrumChartData): readonly SpectrumChartLayer[] {
   return [
     ...(data.rawDataset ? ["raw" as const] : []),
+    ...(data.baselineDataset ? ["baseline" as const] : []),
     ...(data.preparedDataset ? ["prepared" as const] : []),
     ...(data.thresholdDataset ? ["threshold" as const] : []),
     ...(data.peaks !== undefined ? ["peaks" as const] : []),
@@ -258,6 +263,7 @@ function getChartPalette(): SpectrumChartPalette {
 
   return {
     raw: token("--color-data-series-2", "#0ea5c2"),
+    baseline: token("--color-data-series-3", "#9b6b43"),
     prepared: token("--color-action-primary", "#4a6fa5"),
     peak: token("--color-status-success", "#2b8a3e"),
     threshold: token("--color-status-warning", "#b86800"),

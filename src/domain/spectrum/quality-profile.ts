@@ -4,7 +4,7 @@
  * none of them is fitted to a file name, element, or expected composition.
  */
 export const IDENTIFICATION_QUALITY_PROFILE = {
-  id: "emission-quality-v2",
+  id: "emission-quality-v3",
   peakRefinement: {
     minimumSnrFactor: 1.5,
     minimumProminenceFactor: 1.5,
@@ -63,6 +63,7 @@ export const IDENTIFICATION_QUALITY_PROFILE = {
     minimumHighSpecificity: 0.2,
     minimumHighSpecificityGroups: 1,
     minimumReliableGroups: 3,
+    minimumReliableGroupsWithoutStrongEvidence: 5,
     constellationMinimumGroups: 4,
     strongConstellationMinimumGroups: 3,
     strongConstellationMinimumStrongGroups: 1,
@@ -78,6 +79,10 @@ export const IDENTIFICATION_QUALITY_PROFILE = {
   },
   molecular: {
     minimumRelativeContrast: 0.025,
+    negativeControlMinimumOffsetNm: 6,
+    negativeControlMaximumOffsetNm: 30,
+    negativeControlStepNm: 3,
+    minimumControlSeparation: 0.06,
   },
 } as const;
 

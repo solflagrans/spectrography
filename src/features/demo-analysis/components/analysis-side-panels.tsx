@@ -44,15 +44,13 @@ export function ProcessingSettingsPanel() {
     <div className={styles.sidePanelContent} data-parameter-panel="processing">
       <SidePanelHeader title="Настройки обработки" onReset={resetProcessingParameters} resetDisabled={!canReset} />
       <ParameterSection title="Базовая линия и шум">
-        <NumberParameter
+        <LogRangeParameter
           id="baseline-smoothness"
           label="Гладкость базовой линии"
           help="Метод AsLS"
-          unit=""
           value={parameters.processing.baselineSmoothness}
           min={100}
           max={10_000_000}
-          step={1000}
           onChange={(value) => updateProcessingParameters({ baselineSmoothness: value })}
         />
         <NumberParameter
@@ -623,18 +621,66 @@ function NumberParameter({
     <div className={styles.parameterControl} data-parameter-control>
       <ParameterLabel htmlFor={id} label={label} help={help} />
       <span className={styles.numberInputWrap}>
-        <input
+        <DeferredNumberInput
           id={id}
-          type="number"
           min={min}
           max={max}
           step={step}
           value={value}
-          onChange={(event) => onChange(Number(event.target.value))}
+          onCommit={onChange}
         />
         {unit ? <span>{unit}</span> : null}
       </span>
     </div>
+  );
+}
+
+function DeferredNumberInput({
+  id,
+  label,
+  value,
+  min,
+  max,
+  step,
+  onCommit,
+}: Readonly<{
+  id: string;
+  label?: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onCommit: (value: number) => void;
+}>) {
+  const commit = (input: HTMLInputElement) => {
+    const parsed = Number(input.value);
+    if (!Number.isFinite(parsed)) {
+      input.value = String(value);
+      return;
+    }
+    input.value = String(parsed);
+    if (parsed !== value) onCommit(parsed);
+  };
+
+  return (
+    <input
+      key={`${id}:${value}`}
+      id={id}
+      aria-label={label}
+      type="number"
+      defaultValue={value}
+      min={min}
+      max={max}
+      step={step}
+      onBlur={(event) => commit(event.currentTarget)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") event.currentTarget.blur();
+        if (event.key === "Escape") {
+          event.currentTarget.value = String(value);
+          event.currentTarget.blur();
+        }
+      }}
+    />
   );
 }
 
@@ -674,6 +720,38 @@ function RangeParameter({ id, label, help, value, min, max, step, output, onChan
         <output htmlFor={id}>{output}</output>
       </div>
       <input id={id} className={styles.rangeInput} type="range" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} />
+    </div>
+  );
+}
+
+function LogRangeParameter({ id, label, help, value, min, max, onChange }: Readonly<{
+  id: string;
+  label: string;
+  help?: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (value: number) => void;
+}>) {
+  const minimumExponent = Math.log10(min);
+  const maximumExponent = Math.log10(max);
+  const exponent = Math.log10(Math.min(max, Math.max(min, value)));
+  return (
+    <div className={styles.parameterControl} data-parameter-control>
+      <div className={styles.parameterHeading}>
+        <ParameterLabel htmlFor={id} label={label} help={help} />
+        <output htmlFor={id}>{Math.round(value).toLocaleString("ru-RU")}</output>
+      </div>
+      <input
+        id={id}
+        className={styles.rangeInput}
+        type="range"
+        min={minimumExponent}
+        max={maximumExponent}
+        step={0.05}
+        value={exponent}
+        onChange={(event) => onChange(Math.round(10 ** Number(event.target.value)))}
+      />
     </div>
   );
 }
@@ -723,10 +801,10 @@ function ValueRangeParameter({ label, minimum, maximum, unit, onMinimumChange, o
       <legend>{label}</legend>
       <div className={styles.valueRangeFields}>
         <label htmlFor={minimum.id}>от</label>
-        <input id={minimum.id} aria-label={`${label}, от`} type="number" value={minimum.value} min={minimum.min} max={minimum.max} step={minimum.step} onChange={(event) => onMinimumChange(Number(event.target.value))} />
+        <DeferredNumberInput id={minimum.id} label={`${label}, от`} value={minimum.value} min={minimum.min} max={minimum.max} step={minimum.step} onCommit={onMinimumChange} />
         <span className={styles.valueRangeSeparator} aria-hidden="true">—</span>
         <label htmlFor={maximum.id}>до</label>
-        <input id={maximum.id} aria-label={`${label}, до`} type="number" value={maximum.value} min={maximum.min} max={maximum.max} step={maximum.step} onChange={(event) => onMaximumChange(Number(event.target.value))} />
+        <DeferredNumberInput id={maximum.id} label={`${label}, до`} value={maximum.value} min={maximum.min} max={maximum.max} step={maximum.step} onCommit={onMaximumChange} />
         <span className={styles.valueRangeUnit}>{unit}</span>
       </div>
     </fieldset>

@@ -95,6 +95,7 @@ const peak: AnalyzedPeak = {
 };
 const palette: SpectrumChartPalette = {
   raw: "#0ea5c2",
+  baseline: "#9b6b43",
   prepared: "#4a6fa5",
   peak: "#2b8a3e",
   threshold: "#b86800",

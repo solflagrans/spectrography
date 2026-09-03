@@ -256,4 +256,4 @@ function copyDataset(dataset: SpectrumDataset): SpectrumDataset {
 }
 
 export { detectInteractivePeaks } from "./peak-detection";
-export { prepareSpectrum, savitzkyGolaySmooth } from "./preparation";
+export { prepareSpectrum, savitzkyGolaySmooth, savitzkyGolaySmoothOnGrid } from "./preparation";

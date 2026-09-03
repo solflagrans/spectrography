@@ -10,7 +10,7 @@ describe("createWorkingAnalysis", () => {
     expect(analysis.rawDataset).not.toBe(analysis.preparedDataset);
     expect(analysis.spectrumType).toBe("plasma-emission");
     expect(analysis.molecularAnalysisSkippedReason).toBeUndefined();
-    expect(analysis.rawDataset.wavelengths).toHaveLength(1_024);
+    expect(analysis.rawDataset.wavelengths).toHaveLength(6_144);
     expect(analysis.peaks.length).toBeGreaterThan(0);
     expect([...analysis.hypotheses, ...analysis.rejectedHypotheses.map((item) => item.hypothesis)]
       .some((hypothesis) => hypothesis.symbol === "Fe")).toBe(true);

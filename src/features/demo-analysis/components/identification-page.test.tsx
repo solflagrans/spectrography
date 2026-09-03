@@ -8,6 +8,7 @@ import {
   DEMO_ANALYSIS_INPUT,
 } from "@/application/analysis/create-working-analysis";
 import { InfoTooltipProvider } from "@/features/workspace/components/info-tooltip";
+import { demoSpectra } from "@/fixtures/demo-spectra";
 
 import { IdentificationAnalysisPage, PeaksAnalysisPage, ProcessingAnalysisPage } from "./analysis-pages";
 
@@ -46,9 +47,10 @@ describe("multi-channel identification detail", () => {
     const analysis = createWorkingAnalysis({
       ...DEMO_ANALYSIS_INPUT,
       id: "multi-channel-demo",
+      rawDataset: demoSpectra.fe12,
       channels: [
-        { id: "channel-a", name: "Канал A", dataset: DEMO_ANALYSIS_INPUT.rawDataset },
-        { id: "channel-b", name: "Канал B", dataset: DEMO_ANALYSIS_INPUT.rawDataset },
+        { id: "channel-a", name: "Канал A", dataset: demoSpectra.fe12 },
+        { id: "channel-b", name: "Канал B", dataset: demoSpectra.fe12 },
       ],
     });
     const hypothesis = analysis.hypotheses[0] ?? analysis.rejectedHypotheses[0]?.hypothesis;
@@ -90,9 +92,10 @@ describe("multi-channel identification detail", () => {
     const analysis = createWorkingAnalysis({
       ...DEMO_ANALYSIS_INPUT,
       id: "multi-channel-pages",
+      rawDataset: demoSpectra.fe12,
       channels: [
-        { id: "channel-a", name: "Канал A", dataset: DEMO_ANALYSIS_INPUT.rawDataset },
-        { id: "channel-b", name: "Канал B", dataset: DEMO_ANALYSIS_INPUT.rawDataset },
+        { id: "channel-a", name: "Канал A", dataset: demoSpectra.fe12 },
+        { id: "channel-b", name: "Канал B", dataset: demoSpectra.fe12 },
       ],
     });
     mocks.workspace.mockReturnValue({

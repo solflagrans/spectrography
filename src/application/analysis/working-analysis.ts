@@ -11,12 +11,12 @@ import type {
   SpectrumStats,
   SpectrumType,
 } from "@/domain/spectrum";
-import { demoSpectra } from "@/fixtures/demo-spectra";
+import nasaIronRichSpectrum from "../../../reference-spectra/app-ready/nasa-pds-h92649-iron-rich.json";
 
 export type AnalysisFileFormat = "CSV" | "JSON" | "XLSX" | "RAW8";
 
 export interface AnalysisSource {
-  readonly kind: "Встроенный пример" | "Пользовательский файл";
+  readonly kind: "NASA PDS" | "Пользовательский файл";
   readonly fileName: string;
   readonly format: AnalysisFileFormat;
   readonly units: "нм / отн. ед." | "нм / отсчёты прибора";
@@ -64,13 +64,13 @@ export interface CreateWorkingAnalysisInput {
 }
 
 export const DEMO_ANALYSIS_INPUT: CreateWorkingAnalysisInput = {
-  id: "fe-12-demo",
-  title: "Спектр образца Fe-12",
+  id: "nasa-pds-h92649-iron-rich",
+  title: "NASA PDS · образец H92649",
   source: {
-    kind: "Встроенный пример",
-    fileName: "fe-12-demo.csv",
-    format: "CSV",
+    kind: "NASA PDS",
+    fileName: "nasa-pds-h92649-iron-rich.json",
+    format: "JSON",
     units: "нм / отн. ед.",
   },
-  rawDataset: demoSpectra.fe12,
+  rawDataset: nasaIronRichSpectrum,
 };

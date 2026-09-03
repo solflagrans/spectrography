@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { assessChannelSuitability } from "./measurement-quality";
-import type { DetectedPeak, SpectrumDataset } from "./types";
+import { assessChannelSuitability, combineSuitability } from "./measurement-quality";
+import type { ChannelSuitabilityAssessment, DetectedPeak, SpectrumDataset } from "./types";
 
 describe("measurement suitability assessment", () => {
   it("accepts a clean well-sampled spectrum without pseudo-probability", () => {
@@ -49,7 +49,30 @@ describe("measurement suitability assessment", () => {
     expect(result.status).toBe("impossible");
     expect(result.summary).toContain("Надёжная интерпретация невозможна");
   });
+
+  it("keeps usable channels available when another channel is impossible", () => {
+    const result = combineSuitability([
+      { id: "usable", suitability: assessment("sufficient") },
+      { id: "damaged", suitability: assessment("impossible") },
+    ]);
+
+    expect(result.status).toBe("limited");
+    expect(result.channelAssessments).toHaveLength(2);
+  });
+
+  it("refuses the measurement only when every channel is impossible", () => {
+    const result = combineSuitability([
+      { id: "first", suitability: assessment("impossible") },
+      { id: "second", suitability: assessment("impossible") },
+    ]);
+
+    expect(result.status).toBe("impossible");
+  });
 });
+
+function assessment(status: ChannelSuitabilityAssessment["status"]): ChannelSuitabilityAssessment {
+  return { ...assessChannelSuitability(input()), status };
+}
 
 function input() {
   const wavelengths = Array.from({ length: 501 }, (_, index) => 400 + index * 0.2);

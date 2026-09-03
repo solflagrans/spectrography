@@ -42,7 +42,8 @@ export function identifyMolecularSystems({ channels, systems }: MolecularAnalysi
       observedCompositeQuality: round(fit.composite, 6),
       strongestRandomCompositeQuality: round(strongestRandom, 6),
       testedOffsets: randomFits.length,
-      distinguishableFromRandom: fit.composite >= strongestRandom + 0.06,
+      distinguishableFromRandom: fit.composite
+        >= strongestRandom + IDENTIFICATION_QUALITY_PROFILE.molecular.minimumControlSeparation,
     };
     const reasons: MolecularHypothesisReason[] = [];
     if (coveredRegions.length < 2) reasons.push("insufficient-covered-regions");
@@ -186,7 +187,16 @@ function candidateShifts(channels: readonly ChannelPreparationResult[]): readonl
 }
 
 function randomOffsets(): readonly number[] {
-  return [-18, -12, -8, 8, 12, 18];
+  const profile = IDENTIFICATION_QUALITY_PROFILE.molecular;
+  const offsets: number[] = [];
+  for (
+    let magnitude = profile.negativeControlMinimumOffsetNm;
+    magnitude <= profile.negativeControlMaximumOffsetNm;
+    magnitude += profile.negativeControlStepNm
+  ) {
+    offsets.push(-magnitude, magnitude);
+  }
+  return offsets;
 }
 
 function covers(channel: ChannelPreparationResult, region: MolecularCharacteristicRegion): boolean {
