@@ -14,6 +14,7 @@ describe("Russian display formatting", () => {
   it("normalizes negative zero and uses a comma decimal separator", () => {
     expect(formatSignedDecimal(-0.0004, 3)).toBe("0,000");
     expect(formatDecimal(-0, 2)).toBe("0,00");
+    expect(formatDecimal(238_290_407_526.29, 2)).toBe("238 290 407 526,29");
     expect(formatSignedDecimal(0.125, 3)).toBe("+0,125");
     expect(formatSignedDecimal(-0.125, 3)).toBe("-0,125");
   });

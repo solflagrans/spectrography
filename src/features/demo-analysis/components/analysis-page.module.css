@@ -526,14 +526,6 @@
   border-top: 2px dashed var(--color-status-warning);
 }
 
-.qualityLink {
-  color: var(--color-action-primary);
-  font-weight: 650;
-  text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
-  text-underline-offset: 0.16em;
-}
-
 .layerSwatch_peaks {
   width: 0.5rem;
   border-radius: var(--radius-full);
@@ -1420,14 +1412,32 @@
   container-type: inline-size;
 }
 
-.qualityReason {
-  max-width: 42rem;
-  margin: 0;
+.dataSummaryGrid .technicalDisclosure {
+  margin-top: var(--spacing-sm);
+}
+
+.measurementDiagnostics {
+  margin-top: var(--spacing-sm);
   color: var(--color-text-secondary);
 }
 
-.dataSummaryGrid .technicalDisclosure {
-  margin-top: var(--spacing-sm);
+.measurementDiagnostics strong {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-label);
+}
+
+.measurementDiagnostics ul {
+  margin: var(--spacing-xs) 0 0;
+  padding-left: 1.15rem;
+}
+
+.measurementDiagnostics li + li {
+  margin-top: var(--spacing-2xs);
+}
+
+.measurementDiagnostics li[data-severity="critical"] {
+  color: var(--color-status-danger);
+  font-weight: 650;
 }
 
 .metric span,
@@ -2340,19 +2350,6 @@
   color: var(--color-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.rankBadge {
-  display: inline-flex;
-  min-height: 1.75rem;
-  align-items: center;
-  padding: var(--spacing-2xs) var(--spacing-xs);
-  border-radius: var(--radius-full);
-  background: color-mix(in srgb, var(--color-action-primary) 9%, white);
-  color: var(--color-action-primary);
-  font-size: var(--font-size-label);
-  font-weight: 700;
   white-space: nowrap;
 }
 

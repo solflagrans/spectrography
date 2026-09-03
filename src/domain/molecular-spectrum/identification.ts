@@ -73,8 +73,8 @@ export function identifyMolecularSystems({ channels, systems }: MolecularAnalysi
       explanation: reasons.length === 0
         ? `${supportedIds.length} характерных участка полосы согласуются с формой спектра.`
         : supportedIds.length
-          ? `${supportedIds.length} участок полосы согласуется, но независимых подтверждений недостаточно.`
-          : "Надёжного согласования формы молекулярных полос не найдено.",
+          ? `${supportedIds.length} участок полосы согласуется; критерии обнаружения не выполнены.`
+          : "Совпадение формы молекулярных полос не найдено.",
     };
     (hypothesis.accepted ? accepted : rejected).push(hypothesis);
   }

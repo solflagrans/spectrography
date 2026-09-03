@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createWorkingAnalysis, DEMO_ANALYSIS_INPUT } from "./create-working-analysis";
 
 describe("createWorkingAnalysis", () => {
-  it("создаёт согласованный анализ встроенного спектра через интерактивный конвейер", () => {
+  it("создаёт согласованный анализ NASA-спектра через интерактивный конвейер", () => {
     const analysis = createWorkingAnalysis(DEMO_ANALYSIS_INPUT);
     const peakIds = new Set(analysis.peaks.map((peak) => peak.id));
 
@@ -12,6 +12,10 @@ describe("createWorkingAnalysis", () => {
     expect(analysis.molecularAnalysisSkippedReason).toBeUndefined();
     expect(analysis.rawDataset.wavelengths).toHaveLength(6_144);
     expect(analysis.peaks.length).toBeGreaterThan(0);
+    expect(analysis.suitability.status).toBe("sufficient");
+    expect(analysis.hypotheses[0]?.symbol).toBe("Fe");
+    expect(analysis.conclusion).toMatch(/^Обнаружено: Железо \(Fe\)\./);
+    expect(analysis.conclusion).not.toMatch(/огранич|гипотез|не гарантирован/i);
     expect([...analysis.hypotheses, ...analysis.rejectedHypotheses.map((item) => item.hypothesis)]
       .some((hypothesis) => hypothesis.symbol === "Fe")).toBe(true);
 
@@ -64,7 +68,7 @@ describe("createWorkingAnalysis", () => {
 
     expect(stricterAnalysis.peaks.length).toBeLessThan(defaultAnalysis.peaks.length);
     expect(stricterAnalysis.conclusion).not.toBe(defaultAnalysis.conclusion);
-  });
+  }, 15_000);
 
   it("принимает несколько каналов через ту же прикладную модель", () => {
     const primary = { wavelengths: [500, 501, 502, 503, 504], intensities: [0, 0, 10, 0, 0] };

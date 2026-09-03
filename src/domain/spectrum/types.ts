@@ -214,7 +214,8 @@ export interface WavelengthCalibrationResult {
 }
 
 export type SuitabilityStatus = "sufficient" | "limited" | "impossible";
-export type SuitabilityIssueSeverity = "warning" | "critical";
+export type SuitabilityIssueSeverity = "diagnostic" | "warning" | "critical";
+export type SuitabilityDimension = "coverage" | "signal" | "resolution" | "calibration";
 export type SuitabilityIssueCode =
   | "insufficient-range"
   | "low-dynamic-range"
@@ -227,6 +228,7 @@ export type SuitabilityIssueCode =
 
 export interface SuitabilityIssue {
   readonly code: SuitabilityIssueCode;
+  readonly dimension: SuitabilityDimension;
   readonly severity: SuitabilityIssueSeverity;
   readonly explanation: string;
 }

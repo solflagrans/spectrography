@@ -5,7 +5,7 @@ import { loadOpenExperimentalAirPlasmaAnalysis } from "./load-open-experimental-
 describe("open CC BY experimental air-plasma spectrum", () => {
   it("finds the documented N₂ emission shape without promoting unrelated atomic alternatives", async () => {
     const analysis = await loadOpenExperimentalAirPlasmaAnalysis();
-    expect(analysis.suitability.status).toBe("limited");
+    expect(analysis.suitability.status).toBe("sufficient");
     expect(analysis.hypotheses).toHaveLength(0);
     expect(analysis.molecularHypotheses.map((item) => item.formula)).toContain("N₂");
     expect(analysis.molecularHypotheses.find((item) => item.formula === "N₂")?.supportedRegionIds.length).toBeGreaterThanOrEqual(3);

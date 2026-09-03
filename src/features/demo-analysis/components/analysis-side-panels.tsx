@@ -308,7 +308,7 @@ function PeakCandidateBrowser({
         <div className={styles.compactCandidateView}>
           {view.acceptedAssignments.length ? (
             <section className={styles.candidateGroupSection} aria-labelledby={`candidate-assignments-${selectedPeak.id}`}>
-              <h4 id={`candidate-assignments-${selectedPeak.id}`}>Назначения в гипотезах</h4>
+              <h4 id={`candidate-assignments-${selectedPeak.id}`}>Назначения в составе</h4>
               <ol className={styles.candidateList}>
                 {view.acceptedAssignments.map((group) => (
                   <CandidateCard key={group.id} group={group} onOpenHypothesis={openHypothesis} />
@@ -364,15 +364,15 @@ function PeakCandidateBrowser({
               </select>
             </label>
             <label className={styles.selectField} htmlFor={`candidate-relation-${selectedPeak.id}`}>
-              <span>Отношение к гипотезам</span>
+              <span>Отношение к составу</span>
               <select
                 id={`candidate-relation-${selectedPeak.id}`}
                 value={relation}
                 onChange={(event) => setRelation(event.target.value as CandidateRelationFilter)}
               >
                 <option value="all">Все отношения</option>
-                <option value="accepted">Участвует в принятой гипотезе</option>
-                <option value="diagnostic">Диагностическая гипотеза</option>
+                <option value="accepted">Участвует в составе</option>
+                <option value="diagnostic">Другое совпадение</option>
                 <option value="other">Остальные</option>
               </select>
             </label>
@@ -519,7 +519,7 @@ export function IdentificationLinesPanel() {
         </div>
       ) : null}
       {hypotheses.length ? (
-        <div className={styles.hypothesisMasterList} role="listbox" aria-label="Основные гипотезы">
+        <div className={styles.hypothesisMasterList} role="listbox" aria-label="Состав">
           {hypotheses.map((entry) => (
             <button key={entry.id} type="button" role="option" aria-selected={selectedHypothesisId === entry.id} className={styles.hypothesisMasterItem} onClick={() => selectHypothesis(entry.id, "hypotheses")}>
               <span className={styles.hypothesisMasterHeading}>
@@ -532,7 +532,7 @@ export function IdentificationLinesPanel() {
             </button>
           ))}
         </div>
-      ) : <PanelEmptyState>Надёжных гипотез нет. Слабые совпадения доступны в подробностях.</PanelEmptyState>}
+      ) : <PanelEmptyState>Элементы не определены. Другие совпадения доступны в подробностях.</PanelEmptyState>}
 
       <details
         className={styles.identificationDisclosure}
@@ -542,7 +542,7 @@ export function IdentificationLinesPanel() {
         <summary>Другие совпадения · {analysis.rejectedHypotheses.length}</summary>
         <label className={styles.hypothesisSearch} htmlFor="hypothesis-search">
           <Search size={14} aria-hidden="true" />
-          <input id="hypothesis-search" type="search" aria-label="Поиск слабого совпадения по элементу или символу" placeholder="Элемент или символ" value={query} onChange={(event) => setQuery(event.target.value)} />
+          <input id="hypothesis-search" type="search" aria-label="Поиск другого совпадения по элементу или символу" placeholder="Элемент или символ" value={query} onChange={(event) => setQuery(event.target.value)} />
         </label>
         <label className={styles.hypothesisSort} htmlFor="hypothesis-sort">
           <span>Сортировка</span>
@@ -564,14 +564,14 @@ export function IdentificationLinesPanel() {
                 </span>
                 <span className={styles.hypothesisMasterMetrics}>
                   <span>Качественные группы {entry.hypothesis.reliableCharacteristicGroupCount}</span>
-                  <span>Слабые {entry.hypothesis.weakEvidenceGroupCount}</span>
+                  <span>Другие группы {entry.hypothesis.weakEvidenceGroupCount}</span>
                 </span>
                 {entry.rejectionReasons.length ? <span className={styles.diagnosticReasonCompact}>{diagnosticReasonLabels[entry.rejectionReasons[0]]}</span> : null}
               </button>
             ))}
           </div>
         ) : (
-          <PanelEmptyState>{query ? "По вашему запросу элементы не найдены." : "Слабых совпадений нет."}</PanelEmptyState>
+          <PanelEmptyState>{query ? "По вашему запросу элементы не найдены." : "Других совпадений нет."}</PanelEmptyState>
         )}
       </details>
     </div>

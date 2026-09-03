@@ -82,6 +82,10 @@ export function DataAnalysisPage() {
       ["Усреднений", String(analysis.instrumentMetadata.averages)],
     );
   }
+  const channelSignalToNoise = analysis.channels.map((channel) => channel.suitability.metrics.usefulDynamicRangeSnr);
+  const channelResolution = analysis.channels.map((channel) => channel.spectralResolutionNm);
+  const channelScaleUncertainty = analysis.channels.map((channel) => channel.wavelengthCalibration.uncertaintyNm);
+  const blockingIssues = analysis.channels.flatMap((channel) => channel.suitability.issues).filter((issue) => issue.severity === "critical");
 
   return (
     <AnalysisPage title="Данные" action={<SpectrumImportControls compact />}>
@@ -112,10 +116,15 @@ export function DataAnalysisPage() {
           </label>
         </Card>
         <div id="measurement-quality">
-        <Card title="Качество измерения" accessory={<Tag tone={analysis.suitability.status === "sufficient" ? "success" : analysis.suitability.status === "limited" ? "warning" : "danger"}>{formatSuitabilityStatus(analysis.suitability.status)}</Tag>}>
-          {analysis.channels.flatMap((channel) => channel.suitability.issues)[0] ? <p className={styles.qualityReason}>{analysis.channels.flatMap((channel) => channel.suitability.issues)[0].explanation}</p> : null}
+        <Card title="Параметры измерения" accessory={blockingIssues.length ? <Tag tone="danger">Анализ недоступен</Tag> : undefined}>
+          <dl className={styles.randomAgreementGrid}>
+            <div><dt>Сигнал / шум</dt><dd>{formatMetricRange(channelSignalToNoise, 1)}</dd></div>
+            <div><dt>Разрешение</dt><dd>{formatMetricRange(channelResolution, 3)} нм</dd></div>
+            <div><dt>Найдено пиков</dt><dd>{analysis.peaks.length}</dd></div>
+            <div><dt>Неопределённость шкалы</dt><dd>{formatMetricRange(channelScaleUncertainty, 3)} нм</dd></div>
+          </dl>
           <details className={styles.technicalDisclosure}>
-            <summary>Показатели качества</summary>
+            <summary>По каналам</summary>
             {analysis.channels.map((channel) => (
               <div key={channel.id} className={styles.traceCard}>
                 {analysis.channels.length > 1 ? <h3>{channel.name}</h3> : null}
@@ -128,6 +137,14 @@ export function DataAnalysisPage() {
                   <div><dt>Неопределённость шкалы</dt><dd>{formatDecimal(channel.wavelengthCalibration.uncertaintyNm, 3)} нм</dd></div>
                 </dl>
                 <p className={styles.detailNote}>Коррекция шкалы: {channel.wavelengthCalibration.status === "applied" ? `${formatSignedDelta(channel.wavelengthCalibration.shiftNm)} нм` : "не применена"}; причина: {formatCalibrationReason(channel.wavelengthCalibration.reason)}.</p>
+                {channel.suitability.issues.length ? (
+                  <div className={styles.measurementDiagnostics}>
+                    <strong>Диагностика</strong>
+                    <ul>{channel.suitability.issues.map((issue) => (
+                      <li key={issue.code} data-severity={issue.severity}>{issue.explanation}</li>
+                    ))}</ul>
+                  </div>
+                ) : null}
               </div>
             ))}
           </details>
@@ -359,8 +376,8 @@ export function IdentificationAnalysisPage() {
             : analysis.peaks.every((peak) => peak.candidates.length === 0)
               ? "Для найденных пиков нет подходящих справочных линий."
               : analysis.rejectedHypotheses.length
-            ? "Надёжных гипотез нет. Слабые совпадения доступны в подробностях."
-            : "Надёжных гипотез нет."}
+            ? "Элементы не определены. Другие совпадения доступны в подробностях."
+            : "Элементы не определены."}
         </InlineEmptyState>
       </AnalysisPage>
     );
@@ -382,7 +399,7 @@ export function IdentificationAnalysisPage() {
     <AnalysisPage title="Анализ">
       <AnalysisConclusion analysis={analysis} />
       {hypothesisSelectionNotice ? (
-        <div className={styles.selectionNotice} role="status">Выбранная гипотеза больше недоступна после пересчёта. Открыта первая доступная.</div>
+        <div className={styles.selectionNotice} role="status">Выбранный результат больше недоступен после пересчёта. Открыт первый доступный.</div>
       ) : null}
 
       <section className={styles.hypothesisOverview} aria-labelledby="selected-hypothesis-title">
@@ -401,11 +418,11 @@ export function IdentificationAnalysisPage() {
                 <span>{line.elementSymbol} {line.ionizationLabel} · {line.isKeyCharacteristic ? "ключевая группа" : "подтверждённая группа"}</span>
               </li>
             ))}</ul>
-          ) : <span>Качественных характерных групп недостаточно.</span>}
+          ) : <span>Подтверждённых характерных групп нет.</span>}
         </div>
         {selectedEntry.rejectionReasons.length ? (
           <div className={styles.diagnosticReasons} aria-label="Причины диагностического результата">
-            <strong>Не вошла в основной список</strong>
+            <strong>Не входит в состав</strong>
             <ul>{selectedEntry.rejectionReasons.map((reason) => <li key={reason}>{diagnosticReasonLabels[reason]}</li>)}</ul>
           </div>
         ) : null}
@@ -431,7 +448,7 @@ export function IdentificationAnalysisPage() {
           referenceLines={channelEvidence.map((line) => ({ label: `${formatEvidenceLabel(line)} ${formatDecimal(line.referenceWavelength, 2)}`, wavelength: line.referenceWavelength }))}
           sourceKey={`${analysis.id}:${channel.id}`}
           defaultVisibleLayers={["prepared", "peaks", "referenceLines"]}
-          label={`Спектр канала ${channel.name} и линии гипотезы ${hypothesis.name}`}
+          label={`Спектр канала ${channel.name} и линии элемента ${hypothesis.name}`}
         />
       </Card>
 
@@ -521,7 +538,7 @@ export function IdentificationAnalysisPage() {
 
       <Card title="Ненайденные характерные линии">
         {hypothesis.availableCharacteristicGroupCount === 0 ? (
-          <InlineEmptyState>Для этой гипотезы в покрываемом диапазоне нет данных для оценки характерных групп.</InlineEmptyState>
+          <InlineEmptyState>Для этого элемента в покрываемом диапазоне нет характерных групп.</InlineEmptyState>
         ) : hypothesis.ionizationGroups.some((group) => group.missingCharacteristicGroups.length) ? (
           <div className={styles.missingLineList}>
             {hypothesis.ionizationGroups.flatMap((group) => group.missingCharacteristicGroups).map((item) => (
@@ -559,28 +576,14 @@ function AnalysisConclusion({ analysis }: Readonly<{ analysis: WorkingAnalysis }
   ];
   const primary = reliableItems[0];
   const additional = reliableItems.slice(1);
-  const molecularLine = analysis.molecularHypotheses.length
-    ? `${analysis.molecularHypotheses.map((item) => item.formula).join(" и ")} обнаружены.`
-    : analysis.rejectedMolecularHypotheses.length
-      ? `${analysis.rejectedMolecularHypotheses.map((item) => item.formula).join(" и ")} не обнаружены.`
-      : null;
-
   return (
     <section className={styles.analysisConclusion} aria-labelledby="analysis-conclusion-title">
       <div className={styles.analysisConclusionCopy}>
-        <h2 id="analysis-conclusion-title">Основные гипотезы</h2>
-        <p>{primary ? <><strong>{primary.name} ({primary.symbol})</strong> — основная гипотеза. {primary.support}{additional.length ? <> Дополнительные: {additional.map((item) => `${item.name.toLocaleLowerCase("ru-RU")} (${item.symbol})`).join(", ")}.</> : null}</> : "Надёжных гипотез о составе нет."}</p>
-        {analysis.suitability.status === "sufficient" ? null : (
-          <p>
-            <Link className={styles.qualityLink} href="/data#measurement-quality">
-              Качество измерения: {formatSuitabilityShort(analysis.suitability.status)}
-            </Link>.
-          </p>
-        )}
-        {molecularLine ? <p>{molecularLine}</p> : null}
+        <h2 id="analysis-conclusion-title">Состав</h2>
+        <p>{primary ? <><strong>Обнаружено: {primary.name} ({primary.symbol}).</strong> {primary.support}{additional.length ? <> Также: {additional.map((item) => `${item.name.toLocaleLowerCase("ru-RU")} (${item.symbol})`).join(", ")}.</> : null}</> : "Элементы не определены."}</p>
         {reliableItems.length ? (
           <label className={styles.mobileHypothesisSelect}>
-            <span>Выбрать гипотезу</span>
+            <span>Выбрать результат</span>
             <select
               value={reliableItems.some((item) => item.id === selectedHypothesisId) ? selectedHypothesisId ?? primary?.id : primary?.id}
               onChange={(event) => selectHypothesis(event.target.value, "hypotheses")}
@@ -609,7 +612,6 @@ function MolecularPrimaryDetail({
     <>
       <section className={styles.hypothesisOverview} aria-labelledby="selected-molecule-title">
         <div className={styles.hypothesisOverviewHeading}>
-          <span className={styles.rankBadge}>Осторожный вывод</span>
           <div>
             <h2 id="selected-molecule-title">{hypothesis.displayName} ({hypothesis.formula})</h2>
             <p>{hypothesis.explanation}</p>
@@ -649,7 +651,7 @@ function MolecularPrimaryDetail({
           }))}
           sourceKey={`${analysis.id}:${channel.id}`}
           defaultVisibleLayers={["prepared", "peaks", "regions"]}
-          label={`Спектр канала ${channel.name} и области гипотезы ${hypothesis.formula}`}
+          label={`Спектр канала ${channel.name} и области системы ${hypothesis.formula}`}
         />
       </Card>
       <details className={styles.technicalDisclosure}>
@@ -672,7 +674,7 @@ function EvidenceTable({
   onPeakOpen: (peakId: string) => void;
 }>) {
   if (!hypothesis.evidence.length) {
-    return <InlineEmptyState>У этой гипотезы нет согласованных линий.</InlineEmptyState>;
+    return <InlineEmptyState>У этого элемента нет согласованных линий.</InlineEmptyState>;
   }
 
   return (
@@ -792,7 +794,7 @@ export function LibraryAnalysisPage() {
 
 function MolecularHypothesisDetails({ hypothesis }: Readonly<{ hypothesis: MolecularHypothesis }>) {
   return (
-    <Card title={<span className={styles.titleWithTooltip}>{hypothesis.formula} · {hypothesis.systemName} <InfoTooltip label="Оценка формы молекулярной полосы" content="Показатели формы используются только для ранжирования и не являются вероятностью, температурой или концентрацией." /></span>} accessory={<Tag tone={hypothesis.accepted ? "success" : "warning"}>{hypothesis.accepted ? "Принята" : "Отклонена"}</Tag>}>
+    <Card title={<span className={styles.titleWithTooltip}>{hypothesis.formula} · {hypothesis.systemName} <InfoTooltip label="Оценка формы молекулярной полосы" content="Сопоставление формы характерных участков спектра." /></span>} accessory={<Tag tone={hypothesis.accepted ? "success" : "neutral"}>{hypothesis.accepted ? "Обнаружено" : "Не обнаружено"}</Tag>}>
       <p className={styles.detailNote}>{hypothesis.transition}</p>
       <dl className={styles.randomAgreementGrid}>
         <div><dt>Общее смещение</dt><dd>{formatSignedDelta(hypothesis.commonShiftNm)} нм</dd></div>
@@ -829,27 +831,15 @@ function formatMolecularReason(reason: MolecularHypothesisReason): string {
   return labels[reason];
 }
 
-function formatSuitabilityStatus(status: WorkingAnalysis["suitability"]["status"]): string {
-  return status === "sufficient"
-    ? "Достаточное качество"
-    : status === "limited"
-      ? "Ограниченное качество"
-      : "Недостаточное качество";
-}
-
-function formatSuitabilityShort(status: WorkingAnalysis["suitability"]["status"]): string {
-  return status === "sufficient" ? "достаточное" : status === "limited" ? "ограниченное" : "недостаточное";
-}
-
 function formatElementSupportSummary(hypothesis: ElementInterpretation): string {
   const groups = formatCount(
     hypothesis.reliableCharacteristicGroupCount,
-    "подтверждённая группа",
-    "подтверждённые группы",
-    "подтверждённых групп",
+    "характерная группа",
+    "характерные группы",
+    "характерных групп",
   );
-  if (!hypothesis.reliableKeyCharacteristicGroupCount) return `${groups}.`;
-  return `${groups}, включая ${formatCount(hypothesis.reliableKeyCharacteristicGroupCount, "ключевую", "ключевые", "ключевых")}.`;
+  if (!hypothesis.strongCharacteristicGroupCount) return `${groups}.`;
+  return `${groups}, включая ${formatCount(hypothesis.strongCharacteristicGroupCount, "сильную группу", "сильные группы", "сильных групп")}.`;
 }
 
 function formatMolecularSupportSummary(hypothesis: MolecularHypothesis): string {
@@ -871,6 +861,19 @@ function formatCalibrationReason(reason: WorkingAnalysis["channels"][number]["wa
     applied: "подтверждена независимыми опорами",
   } as const;
   return labels[reason];
+}
+
+function formatMetricRange(values: readonly number[], maximumFractionDigits: number): string {
+  const finiteValues = values.filter(Number.isFinite);
+  if (!finiteValues.length) return "∞";
+  const minimum = Math.min(...finiteValues);
+  const maximum = Math.max(...finiteValues);
+  if (values.some((value) => value === Number.POSITIVE_INFINITY)) {
+    return `${formatDecimal(minimum, maximumFractionDigits)}–∞`;
+  }
+  return minimum === maximum
+    ? formatDecimal(minimum, maximumFractionDigits)
+    : `${formatDecimal(minimum, maximumFractionDigits)}–${formatDecimal(maximum, maximumFractionDigits)}`;
 }
 
 function AnalysisPage({

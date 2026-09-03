@@ -8,7 +8,7 @@ export function formatDecimal(value: number, precision: number): string {
     formatter = new Intl.NumberFormat("ru-RU", {
       minimumFractionDigits: precision,
       maximumFractionDigits: precision,
-      useGrouping: false,
+      useGrouping: true,
     });
     russianDecimalFormatters.set(precision, formatter);
   }

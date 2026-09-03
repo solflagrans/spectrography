@@ -54,5 +54,6 @@ export type {
   MeasurementSuitabilityAssessment,
   SuitabilityIssue,
   SuitabilityIssueCode,
+  SuitabilityDimension,
   SuitabilityStatus,
 } from "./types";

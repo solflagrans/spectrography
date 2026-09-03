@@ -8,7 +8,7 @@ describe("measurement suitability assessment", () => {
     const result = assessChannelSuitability(input());
     expect(result.issues).toEqual([]);
     expect(result.status).toBe("sufficient");
-    expect(result.summary).toBe("Данных достаточно.");
+    expect(result.summary).toBe("Канал обработан.");
   });
 
   it("reports baseline drift, noise and isolated damage as concrete limitations", () => {
@@ -31,8 +31,8 @@ describe("measurement suitability assessment", () => {
     const raw = source.rawDataset.intensities.map((value, index) => index >= 100 && index < 108 ? 100 : value);
     const result = assessChannelSuitability({ ...source, rawDataset: { ...source.rawDataset, intensities: raw } });
     const issue = result.issues.find((item) => item.code === "possible-signal-limit");
-    expect(issue?.explanation).toContain("возможное ограничение");
-    expect(issue?.explanation.toLowerCase()).toContain("не установленное насыщение");
+    expect(issue?.explanation).toContain("не считается");
+    expect(issue?.explanation.toLowerCase()).toContain("установленным насыщением");
   });
 
   it("refuses interpretation when the range and feature count are insufficient", () => {
@@ -47,7 +47,7 @@ describe("measurement suitability assessment", () => {
       peaks: [],
     });
     expect(result.status).toBe("impossible");
-    expect(result.summary).toContain("Надёжная интерпретация невозможна");
+    expect(result.summary).toContain("Анализ канала невозможен");
   });
 
   it("keeps usable channels available when another channel is impossible", () => {
@@ -56,8 +56,29 @@ describe("measurement suitability assessment", () => {
       { id: "damaged", suitability: assessment("impossible") },
     ]);
 
-    expect(result.status).toBe("limited");
+    expect(result.status).toBe("sufficient");
     expect(result.channelAssessments).toHaveLength(2);
+  });
+
+  it("keeps corrected baseline, estimated resolution and inferred calibration as diagnostics", () => {
+    const source = input();
+    const result = assessChannelSuitability({
+      ...source,
+      baselineDataset: {
+        ...source.baselineDataset,
+        intensities: source.baselineDataset.intensities.map((_, index) => index / 100),
+      },
+      calibrationWasStated: false,
+      peaks: source.peaks.map((item, index) => ({ ...item, widthNm: 0.25 + index })),
+    });
+
+    expect(result.issues.map((issue) => issue.code)).toEqual(expect.arrayContaining([
+      "baseline-drift",
+      "uncertain-resolution",
+      "uncertain-calibration",
+    ]));
+    expect(result.issues.filter((issue) => issue.severity === "diagnostic")).toHaveLength(3);
+    expect(result.status).toBe("sufficient");
   });
 
   it("refuses the measurement only when every channel is impossible", () => {

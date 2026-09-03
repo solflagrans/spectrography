@@ -250,7 +250,7 @@ export function buildElementHypotheses(
       reliability: reliable ? "reliable" : "tentative",
       explanation: reliable
         ? `${strongCharacteristicEvidence.length} сильных и ${reliableCharacteristicEvidence.length} качественных характерных спектральных групп; ${reliableKeyEvidence.length} из них ключевые.`
-        : `${reliableCharacteristicEvidence.length} качественных характерных спектральных групп; вывод требует осторожности и вынесен в подробности.`,
+        : `${reliableCharacteristicEvidence.length} качественных характерных спектральных групп; критерии включения в состав не выполнены.`,
     };
     if (reliable) accepted.push(hypothesis);
     else rejected.push({ hypothesis, reasons });

@@ -8,7 +8,7 @@
       "minimum": 240.811,
       "maximum": 905.574
     },
-    "suitability": "limited",
+    "suitability": "sufficient",
     "analysisChannels": [
       {
         "id": "channel-1-segment-1",
@@ -17,7 +17,7 @@
           "maximum": 338.37
         },
         "spectralResolutionNm": 0.204083,
-        "suitability": "limited"
+        "suitability": "sufficient"
       },
       {
         "id": "channel-1-segment-2",
@@ -35,7 +35,7 @@
           "maximum": 848.896
         },
         "spectralResolutionNm": 2.23774,
-        "suitability": "limited"
+        "suitability": "sufficient"
       }
     ],
     "peakCount": 83,
@@ -210,7 +210,7 @@
     ],
     "acceptedMolecularHypotheses": [],
     "missedMolecularChecks": [],
-    "conclusion": "Результат ограничен качеством измерения. Лучше всего атомными линиями поддержан Железо (Fe): 1 сильная группа и 4 качественные характерные группы. Это ранжирование спектральных доказательств, а не оценка концентрации. Слабые и неоднозначные совпадения сохранены в подробностях: 20. Надёжного совпадения молекулярных полос N₂ или N₂⁺ не найдено."
+    "conclusion": "Обнаружено: Железо (Fe). Подтверждение: 4 характерные группы; из них 1 сильная группа."
   },
   {
     "fileName": "nasa-pds-dh4911-magnesium-rich.json",
@@ -221,7 +221,7 @@
       "minimum": 240.811,
       "maximum": 905.574
     },
-    "suitability": "limited",
+    "suitability": "sufficient",
     "analysisChannels": [
       {
         "id": "channel-1-segment-1",
@@ -230,7 +230,7 @@
           "maximum": 338.37
         },
         "spectralResolutionNm": 0.354222,
-        "suitability": "limited"
+        "suitability": "sufficient"
       },
       {
         "id": "channel-1-segment-2",
@@ -239,7 +239,7 @@
           "maximum": 469.053
         },
         "spectralResolutionNm": 0.175059,
-        "suitability": "limited"
+        "suitability": "sufficient"
       },
       {
         "id": "channel-1-segment-3",
@@ -248,7 +248,7 @@
           "maximum": 848.896
         },
         "spectralResolutionNm": 1.099424,
-        "suitability": "limited"
+        "suitability": "sufficient"
       }
     ],
     "peakCount": 52,
@@ -475,7 +475,7 @@
     ],
     "acceptedMolecularHypotheses": [],
     "missedMolecularChecks": [],
-    "conclusion": "Результат ограничен качеством измерения. Лучше всего атомными линиями поддержан Железо (Fe): 2 сильные группы и 6 качественных характерных групп. Это ранжирование спектральных доказательств, а не оценка концентрации. Другие надёжные гипотезы: Кальций (Ca), Магний (Mg). Слабые и неоднозначные совпадения сохранены в подробностях: 18. Надёжного совпадения молекулярных полос N₂ или N₂⁺ не найдено."
+    "conclusion": "Обнаружено: Железо (Fe). Подтверждение: 6 характерных групп; из них 2 сильные группы. Также обнаружены: Кальций (Ca), Магний (Mg)."
   },
   {
     "fileName": "nasa-pds-muscoc17-aluminium-rich.json",
@@ -486,7 +486,7 @@
       "minimum": 240.811,
       "maximum": 905.574
     },
-    "suitability": "limited",
+    "suitability": "sufficient",
     "analysisChannels": [
       {
         "id": "channel-1-segment-1",
@@ -495,7 +495,7 @@
           "maximum": 338.37
         },
         "spectralResolutionNm": 0.220736,
-        "suitability": "limited"
+        "suitability": "sufficient"
       },
       {
         "id": "channel-1-segment-2",
@@ -504,7 +504,7 @@
           "maximum": 469.053
         },
         "spectralResolutionNm": 0.257653,
-        "suitability": "limited"
+        "suitability": "sufficient"
       },
       {
         "id": "channel-1-segment-3",
@@ -513,7 +513,7 @@
           "maximum": 848.896
         },
         "spectralResolutionNm": 1.17946,
-        "suitability": "limited"
+        "suitability": "sufficient"
       }
     ],
     "peakCount": 47,
@@ -738,7 +738,7 @@
     ],
     "acceptedMolecularHypotheses": [],
     "missedMolecularChecks": [],
-    "conclusion": "Результат ограничен качеством измерения. Лучше всего атомными линиями поддержан Железо (Fe): 1 сильная группа и 5 качественных характерных групп. Это ранжирование спектральных доказательств, а не оценка концентрации. Другие надёжные гипотезы: Алюминий (Al), Кремний (Si). Слабые и неоднозначные совпадения сохранены в подробностях: 17. Надёжного совпадения молекулярных полос N₂ или N₂⁺ не найдено."
+    "conclusion": "Обнаружено: Железо (Fe). Подтверждение: 5 характерных групп; из них 1 сильная группа. Также обнаружены: Алюминий (Al), Кремний (Si)."
   },
   {
     "fileName": "nasa-pds-gbw07216a-calcium-rich.json",
@@ -749,7 +749,7 @@
       "minimum": 240.811,
       "maximum": 905.574
     },
-    "suitability": "limited",
+    "suitability": "sufficient",
     "analysisChannels": [
       {
         "id": "channel-1-segment-1",
@@ -758,7 +758,7 @@
           "maximum": 338.37
         },
         "spectralResolutionNm": 0.290126,
-        "suitability": "limited"
+        "suitability": "sufficient"
       },
       {
         "id": "channel-1-segment-2",
@@ -767,7 +767,7 @@
           "maximum": 469.053
         },
         "spectralResolutionNm": 0.245965,
-        "suitability": "limited"
+        "suitability": "sufficient"
       },
       {
         "id": "channel-1-segment-3",
@@ -776,7 +776,7 @@
           "maximum": 848.896
         },
         "spectralResolutionNm": 1.169516,
-        "suitability": "limited"
+        "suitability": "sufficient"
       }
     ],
     "peakCount": 92,
@@ -952,7 +952,7 @@
     ],
     "acceptedMolecularHypotheses": [],
     "missedMolecularChecks": [],
-    "conclusion": "Результат ограничен качеством измерения. Лучше всего атомными линиями поддержан Кальций (Ca): 0 сильных групп и 9 качественных характерных групп. Это ранжирование спектральных доказательств, а не оценка концентрации. Слабые и неоднозначные совпадения сохранены в подробностях: 20. Надёжного совпадения молекулярных полос N₂ или N₂⁺ не найдено."
+    "conclusion": "Обнаружено: Кальций (Ca). Подтверждение: 9 характерных групп."
   },
   {
     "fileName": "zenodo-14843545-air-plasma-300-400nm.json",
@@ -963,7 +963,7 @@
       "minimum": 300.006,
       "maximum": 399.993
     },
-    "suitability": "limited",
+    "suitability": "sufficient",
     "analysisChannels": [
       {
         "id": "channel-1",
@@ -1130,6 +1130,6 @@
       }
     ],
     "missedMolecularChecks": [],
-    "conclusion": "Результат ограничен качеством измерения. Многолинейная атомная гипотеза не сформирована. Зафиксированы единичные совпадения или согласования, не отличающиеся от случайных: 15. Форма молекулярных полос независимо поддерживает: Молекулярный азот (N₂). Совпадающие участки не суммируются с атомными линиями."
+    "conclusion": "Атомные элементы не определены. Молекулярные системы: Молекулярный азот (N₂)."
   }
 ]

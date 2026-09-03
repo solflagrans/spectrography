@@ -387,7 +387,7 @@ describe("interactive demo analysis", () => {
     expect(screen.queryByText(/не итоговая идентификация/)).toBeNull();
     expect(screen.queryByText("Предложено")).toBeNull();
 
-    const assignments = screen.getByRole("heading", { name: "Назначения в гипотезах" }).closest("section")!;
+    const assignments = screen.getByRole("heading", { name: "Назначения в составе" }).closest("section")!;
     const nearest = screen.getByRole("heading", { name: "Ближайшая линия" }).closest("section")!;
     const alternatives = screen.getByRole("heading", { name: "Альтернативы" }).closest("section")!;
     expect(assignments.querySelector("[data-candidate-group]")).toBeTruthy();
@@ -416,7 +416,7 @@ describe("interactive demo analysis", () => {
     fireEvent.change(search, { target: { value: "" } });
     fireEvent.change(screen.getByLabelText("Степень ионизации"), { target: { value: "2" } });
     expect(document.querySelector("[data-candidate-count]")!.textContent).not.toMatch(/^0 /);
-    fireEvent.change(screen.getByLabelText("Отношение к гипотезам"), { target: { value: "diagnostic" } });
+    fireEvent.change(screen.getByLabelText("Отношение к составу"), { target: { value: "diagnostic" } });
     expect(document.querySelector("[data-candidate-count]")!.textContent).not.toMatch(/^0 /);
 
     fireEvent.change(search, { target: { value: "несуществующий элемент" } });
@@ -476,12 +476,12 @@ describe("interactive demo analysis", () => {
     expect(screen.getByRole("heading", { level: 2, name: "Азот (N)" })).toBeTruthy();
     expect(screen.getAllByText("Не отличается от случайного согласования").length).toBeGreaterThan(0);
 
-    fireEvent.change(screen.getByLabelText("Поиск слабого совпадения по элементу или символу"), { target: { value: "Азот" } });
+    fireEvent.change(screen.getByLabelText("Поиск другого совпадения по элементу или символу"), { target: { value: "Азот" } });
     const filteredOptions = within(screen.getByRole("listbox", { name: "Диагностические совпадения" })).getAllByRole("option");
     expect(filteredOptions).toHaveLength(1);
     expect(filteredOptions[0].textContent).toContain("N");
 
-    fireEvent.change(screen.getByLabelText("Поиск слабого совпадения по элементу или символу"), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText("Поиск другого совпадения по элементу или символу"), { target: { value: "" } });
     fireEvent.change(screen.getByLabelText("Сортировка"), { target: { value: "name" } });
     const alphabeticOptions = within(screen.getByRole("listbox", { name: "Диагностические совпадения" })).getAllByRole("option");
     expect(alphabeticOptions[0].textContent).toContain("Азот");
@@ -517,7 +517,7 @@ describe("interactive demo analysis", () => {
     fireEvent(diagnosticDetails, new Event("toggle"));
     fireEvent.click(screen.getByRole("option", { name: /N.*Азот/ }));
 
-    const chart = screen.getByRole("img", { name: /Спектр канала .* гипотезы Азот/ });
+    const chart = screen.getByRole("img", { name: /Спектр канала .* элемента Азот/ });
     expect(Number(chart.getAttribute("data-reference-count"))).toBeGreaterThanOrEqual(0);
     expect(Number(chart.getAttribute("data-missing-reference-count"))).toBeGreaterThanOrEqual(0);
 
@@ -550,7 +550,7 @@ describe("interactive demo analysis", () => {
     fireEvent.change(screen.getByLabelText("Поиск кандидата по названию элемента или символу"), {
       target: { value: "N" },
     });
-    fireEvent.change(screen.getByLabelText("Отношение к гипотезам"), {
+    fireEvent.change(screen.getByLabelText("Отношение к составу"), {
       target: { value: "diagnostic" },
     });
     fireEvent.click(document.querySelector("[data-candidate-group] button")!);
@@ -579,7 +579,7 @@ describe("interactive demo analysis", () => {
     expect((spectrumTypeField as HTMLSelectElement).value).toBe("plasma-emission");
     expect(within(spectrumTypeField).getAllByRole("option")).toHaveLength(1);
 
-    const composition = screen.getByRole("listbox", { name: "Основные гипотезы" });
+    const composition = screen.getByRole("listbox", { name: "Состав" });
     const mainChoice = within(composition).getAllByRole("option")[0];
     fireEvent.click(mainChoice);
     expect(screen.getByTestId("selected-hypothesis").textContent).not.toBe("—");
@@ -599,9 +599,12 @@ describe("interactive demo analysis", () => {
     render(<EndToEndScenario />);
     await openDemoAnalysis();
 
-    const conclusion = screen.getByRole("heading", { name: "Основные гипотезы" }).closest("section")!;
-    expect(conclusion.textContent).toMatch(/подтвержд[её]нн(ая|ые|ых) групп/);
-    expect(conclusion.textContent).not.toMatch(/сильн(ая|ые|ых)|качественн(ая|ые|ых) совпад/);
+    expect(screen.getByRole("heading", { name: "Параметры измерения" })).toBeTruthy();
+    expect(screen.queryByText(/Ограниченное качество/i)).toBeNull();
+    const conclusion = document.getElementById("analysis-conclusion-title")!.closest("section")!;
+    expect(conclusion.textContent).toMatch(/Обнаружено:/);
+    expect(conclusion.textContent).toMatch(/характерн(ая|ые|ых) групп/);
+    expect(conclusion.textContent).not.toMatch(/огранич|гипотез|не гарантирован/i);
   });
 });
 

@@ -63,53 +63,53 @@ export function assessChannelSuitability(input: ChannelQualityInput): ChannelSui
   const issues: ChannelSuitabilityAssessment["issues"][number][] = [];
 
   if (pointCount < profile.minimumPointCount || resolutionElements < profile.minimumResolutionElements) {
-    issues.push({ code: "insufficient-range", severity: "critical", explanation: "Диапазон содержит слишком мало независимых элементов разрешения." });
+    issues.push({ code: "insufficient-range", dimension: "coverage", severity: "critical", explanation: "Диапазон содержит слишком мало независимых элементов разрешения." });
   } else if (resolutionElements < profile.limitedResolutionElements) {
-    issues.push({ code: "insufficient-range", severity: "warning", explanation: "Спектральный диапазон ограничивает число независимо проверяемых признаков." });
+    issues.push({ code: "insufficient-range", dimension: "coverage", severity: "warning", explanation: "Спектральный диапазон содержит мало независимо проверяемых признаков." });
   }
   if (usefulDynamicRangeSnr < profile.impossibleDynamicRangeSnr) {
-    issues.push({ code: "low-dynamic-range", severity: "critical", explanation: "Полезный динамический диапазон не отделяется от локального шума." });
+    issues.push({ code: "low-dynamic-range", dimension: "signal", severity: "critical", explanation: "Полезный динамический диапазон не отделяется от локального шума." });
   } else if (usefulDynamicRangeSnr < profile.limitedDynamicRangeSnr) {
-    issues.push({ code: "low-dynamic-range", severity: "warning", explanation: "Полезный динамический диапазон невелик относительно шума." });
+    issues.push({ code: "low-dynamic-range", dimension: "signal", severity: "warning", explanation: "Полезный динамический диапазон невелик относительно шума." });
   }
   if (baselineDriftRatio > profile.baselineDriftRatio) {
-    issues.push({ code: "baseline-drift", severity: "warning", explanation: "Дрейф базовой линии сопоставим с полезным диапазоном сигнала." });
+    issues.push({ code: "baseline-drift", dimension: "signal", severity: "diagnostic", explanation: "Базовая линия скорректирована на заметной части диапазона сигнала." });
   }
   if (metrics.isolatedOutlierFraction >= profile.impossibleOutlierFraction) {
-    issues.push({ code: "isolated-outliers", severity: "critical", explanation: "Слишком много одиночных повреждённых точек для устойчивой интерпретации." });
+    issues.push({ code: "isolated-outliers", dimension: "signal", severity: "critical", explanation: "Слишком много одиночных повреждённых точек для интерпретации." });
   } else if (metrics.isolatedOutlierFraction >= profile.limitedOutlierFraction) {
-    issues.push({ code: "isolated-outliers", severity: "warning", explanation: "Обнаружены одиночные выбросы, способные имитировать спектральные признаки." });
+    issues.push({ code: "isolated-outliers", dimension: "signal", severity: "warning", explanation: "Обнаружены одиночные выбросы, способные имитировать спектральные признаки." });
   }
   if (
     repeatedExtremes.count / Math.max(1, pointCount) >= profile.repeatedExtremeFraction
     || repeatedExtremes.longestRun >= profile.repeatedExtremeRun
   ) {
-    issues.push({ code: "possible-signal-limit", severity: "warning", explanation: "Повторяются предельные значения; при неизвестной разрядности это лишь возможное ограничение сигнала, а не установленное насыщение." });
+    issues.push({ code: "possible-signal-limit", dimension: "signal", severity: "warning", explanation: "Повторяются предельные значения; при неизвестной разрядности это не считается установленным насыщением." });
   }
   if (input.peaks.length < profile.minimumFeatureCount) {
-    issues.push({ code: "insufficient-features", severity: "critical", explanation: "Найдено недостаточно устойчивых признаков для многопризнаковой идентификации." });
+    issues.push({ code: "insufficient-features", dimension: "signal", severity: "critical", explanation: "Найдено недостаточно устойчивых признаков для многопризнаковой идентификации." });
   } else if (strongFeatureCount < profile.minimumStrongFeatureCount) {
-    issues.push({ code: "insufficient-features", severity: "warning", explanation: "Сильных признаков недостаточно для устойчивого заключения." });
+    issues.push({ code: "insufficient-features", dimension: "signal", severity: "warning", explanation: "В диапазоне найдено мало сильных признаков." });
   }
   if (widths.length < profile.minimumResolutionPeakCount || resolutionRelativeMad > profile.maximumResolutionRelativeMad) {
-    issues.push({ code: "uncertain-resolution", severity: "warning", explanation: "Оценка разрешения основана на малом или неоднородном наборе ширин пиков." });
+    issues.push({ code: "uncertain-resolution", dimension: "resolution", severity: "diagnostic", explanation: "Разрешение оценено по неоднородному набору ширин пиков." });
   }
   if (!input.calibrationWasStated && input.calibration.status !== "applied") {
-    issues.push({ code: "uncertain-calibration", severity: "warning", explanation: "Независимых опор для коррекции шкалы недостаточно; используется консервативная неопределённость." });
+    issues.push({ code: "uncertain-calibration", dimension: "calibration", severity: "diagnostic", explanation: "Паспортная неопределённость шкалы не указана; использована расчётная." });
   }
 
   const status = issues.some((issue) => issue.severity === "critical")
     ? "impossible" as const
-    : issues.length
+    : issues.some((issue) => issue.severity === "warning")
       ? "limited" as const
       : "sufficient" as const;
   return {
     status,
     summary: status === "sufficient"
-      ? "Данных достаточно."
+      ? "Канал обработан."
       : status === "limited"
-        ? `Результат ограничен качеством измерения: ${issues.map((issue) => issue.explanation).join(" ")}`
-        : `Надёжная интерпретация невозможна: ${issues.filter((issue) => issue.severity === "critical").map((issue) => issue.explanation).join(" ")}`,
+        ? `Канал обработан с замечаниями: ${issues.filter((issue) => issue.severity === "warning").map((issue) => issue.explanation).join(" ")}`
+        : `Анализ канала невозможен: ${issues.filter((issue) => issue.severity === "critical").map((issue) => issue.explanation).join(" ")}`,
     issues,
     metrics,
   };
@@ -118,18 +118,12 @@ export function assessChannelSuitability(input: ChannelQualityInput): ChannelSui
 export function combineSuitability(
   channels: readonly { readonly id: string; readonly suitability: ChannelSuitabilityAssessment }[],
 ): MeasurementSuitabilityAssessment {
-  const status = channels.length > 0 && channels.every((channel) => channel.suitability.status === "impossible")
+  const status = channels.length === 0 || channels.every((channel) => channel.suitability.status === "impossible")
     ? "impossible" as const
-    : channels.some((channel) => channel.suitability.status !== "sufficient")
-      ? "limited" as const
-      : "sufficient" as const;
+    : "sufficient" as const;
   return {
     status,
-    summary: status === "sufficient"
-      ? "Данных достаточно."
-      : status === "limited"
-        ? "Результат ограничен качеством измерения."
-        : "Надёжная интерпретация невозможна.",
+    summary: status === "sufficient" ? "Данные обработаны." : "Анализ измерения невозможен.",
     channelAssessments: channels.map((channel) => ({ channelId: channel.id, assessment: channel.suitability })),
   };
 }

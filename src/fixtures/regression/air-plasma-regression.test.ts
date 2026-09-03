@@ -23,11 +23,11 @@ describe("independent air-plasma regression measurements", () => {
     expect(raw8.hypotheses).toHaveLength(0);
     expect(raw8.rejectedHypotheses.find((item) => item.hypothesis.symbol === "N")?.reasons)
       .toContain("random-like-agreement");
-    expect(raw8.conclusion).toContain("Многолинейная атомная гипотеза не сформирована");
+    expect(raw8.conclusion).toContain("Атомные элементы не определены");
     expect(raw8.molecularHypotheses.map((item) => item.formula)).toContain("N₂");
     expect(raw8.molecularHypotheses.find((item) => item.formula === "N₂")?.supportedRegionIds.length).toBeGreaterThanOrEqual(2);
     expect(raw8.rejectedMolecularHypotheses.map((item) => item.formula)).toContain("N₂⁺");
     expect(xlsx.molecularHypotheses).toHaveLength(0);
-    expect(xlsx.conclusion).toContain("Надёжного совпадения молекулярных полос");
+    expect(xlsx.conclusion).not.toContain("Молекулярные системы");
   }, 30_000);
 });

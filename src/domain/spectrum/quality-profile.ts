@@ -4,7 +4,7 @@
  * none of them is fitted to a file name, element, or expected composition.
  */
 export const IDENTIFICATION_QUALITY_PROFILE = {
-  id: "emission-quality-v3",
+  id: "emission-quality-v4",
   peakRefinement: {
     minimumSnrFactor: 1.5,
     minimumProminenceFactor: 1.5,

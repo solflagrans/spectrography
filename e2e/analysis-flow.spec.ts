@@ -12,8 +12,8 @@ test("measurement to evidence and a linked peak", async ({ page }, testInfo) => 
   await expect(spectrumType.getByRole("option")).toHaveCount(1);
 
   await page.getByRole("link", { name: "Анализ" }).click();
-  await expect(page.getByRole("heading", { name: "Основные гипотезы" })).toBeVisible();
-  await expect(page.getByText(/— основная гипотеза|Надёжных гипотез нет/).first()).toBeVisible();
+  await expect(page.locator("#analysis-conclusion-title")).toHaveText("Состав");
+  await expect(page.getByText(/Обнаружено:|Элементы не определены/).first()).toBeVisible();
 
   await page.getByRole("tab", { name: "Все пики" }).click();
   await expect(page.getByText("Ближайшая линия", { exact: true }).first()).toBeVisible();
@@ -21,11 +21,11 @@ test("measurement to evidence and a linked peak", async ({ page }, testInfo) => 
     const selectedRow = page.locator("tr[data-peak-id]").first();
     await selectedRow.click();
     const selectedPeakId = await selectedRow.getAttribute("data-peak-id");
-    await expect(page.getByRole("heading", { name: "Назначения в гипотезах" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Назначения в составе" })).toBeVisible();
 
     await page.getByRole("button", { name: /Все кандидаты \(\d+\)/ }).click();
     await page.getByLabel("Поиск кандидата по названию элемента или символу").fill("N");
-    await page.getByLabel("Отношение к гипотезам").selectOption("diagnostic");
+    await page.getByLabel("Отношение к составу").selectOption("diagnostic");
     await expect(page.locator("[data-candidate-count]")).not.toHaveText(/^0 /);
     await page.locator("[data-candidate-group] button").first().click();
     await expect(page.getByRole("tab", { name: "Состав" })).toHaveAttribute("aria-selected", "true");
@@ -35,11 +35,11 @@ test("measurement to evidence and a linked peak", async ({ page }, testInfo) => 
 
   await page.getByRole("tab", { name: "Состав" }).click();
   if (testInfo.project.name === "mobile") {
-    const hypothesisSelect = page.getByRole("combobox", { name: "Выбрать гипотезу" });
+    const hypothesisSelect = page.getByRole("combobox", { name: "Выбрать результат" });
     await expect(hypothesisSelect).toBeVisible();
     await hypothesisSelect.selectOption({ index: 0 });
   } else {
-    const composition = page.getByRole("listbox", { name: "Основные гипотезы" });
+    const composition = page.getByRole("listbox", { name: "Состав" });
     const mainHypothesis = composition.getByRole("option").first();
     await expect(mainHypothesis).toBeVisible();
     await mainHypothesis.click();
@@ -100,7 +100,7 @@ test("desktop tooltips, settings and evidence table keep their geometry at 1024 
   expect(parameterGeometry).toEqual({ controlCount: 5, contained: true, aligned: true });
 
   await page.getByRole("link", { name: "Анализ", exact: true }).click();
-  const composition = page.getByRole("listbox", { name: "Основные гипотезы" });
+  const composition = page.getByRole("listbox", { name: "Состав" });
   await composition.getByRole("option").first().click();
   await page.getByText("Доказательства и показатели").click();
   const evidenceRow = page.locator("tr[data-evidence-row]").first();
