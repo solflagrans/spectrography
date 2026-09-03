@@ -110,6 +110,13 @@ export interface SpectralLineCandidate {
   readonly normalizedDelta: number;
   readonly toleranceCapped: boolean;
   readonly uncertainty: WavelengthUncertaintyComponents;
+  /** Minimal source metadata retained so peak inspection does not need the full reference library. */
+  readonly sourceRecord?: {
+    readonly sourceName: string;
+    readonly datasetVersion: string;
+    readonly rawWavelength?: string;
+    readonly notation?: string;
+  };
 }
 
 export interface WavelengthUncertaintyComponents {
@@ -441,5 +448,4 @@ export interface InteractiveSpectrumAnalysis {
   readonly rejectedMolecularHypotheses: readonly MolecularHypothesis[];
   readonly molecularAnalysisSkippedReason?: MolecularHypothesisReason;
   readonly unmatchedPeaks: readonly AnalyzedPeak[];
-  readonly conclusion: string;
 }

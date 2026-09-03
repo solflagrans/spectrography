@@ -27,6 +27,7 @@ describe("spectral line candidates", () => {
       ionizationLabel: "I",
       wavelengthType: "observed",
       wavelengthMedium: "air",
+      sourceRecord: { sourceName: "NIST ASD", datasetVersion: "5.12" },
     });
     expect(candidates[1].delta).toBeCloseTo(-0.1, 10);
     expect(candidates[1]).toMatchObject({ wavelengthType: "ritz", wavelengthMedium: "vacuum" });

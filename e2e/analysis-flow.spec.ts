@@ -67,6 +67,7 @@ test("desktop routes do not overflow horizontally", async ({ page }, testInfo) =
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/data");
     await page.getByRole("button", { name: "Открыть демонстрационный спектр" }).click();
+    await expect(page.locator("dd").filter({ hasText: "fe-12-demo.csv" })).toBeVisible();
 
     for (const route of ["Данные", "Обработка", "Анализ", "Библиотека"]) {
       await page.getByRole("link", { name: route, exact: true }).click();
@@ -84,6 +85,7 @@ test("desktop tooltips, settings and evidence table keep their geometry at 1024 
   await page.setViewportSize({ width: 1024, height: 900 });
   await page.goto("/data");
   await page.getByRole("button", { name: "Открыть демонстрационный спектр" }).click();
+  await expect(page.locator("dd").filter({ hasText: "fe-12-demo.csv" })).toBeVisible();
 
   await page.getByRole("link", { name: "Обработка", exact: true }).click();
   const tooltipTrigger = page.getByRole("button", { name: "Подсказка: Гладкость базовой линии" });

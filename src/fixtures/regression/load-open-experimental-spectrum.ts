@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 
 import { builtinSpectralLibraryIndex } from "@/domain/spectral-library/builtin-library";
+import { builtinMolecularSystems } from "@/domain/molecular-spectrum";
 import { runInteractiveSpectrumAnalysis } from "@/domain/spectrum";
 
 const fixtureUrl = new URL("../../../data/experimental-spectra/zenodo-14843545-fig2-total-300-400nm.tsv", import.meta.url);
@@ -15,5 +16,5 @@ export async function loadOpenExperimentalAirPlasmaAnalysis() {
   return runInteractiveSpectrumAnalysis({
     wavelengths: rows.map(([wavelength]) => wavelength),
     intensities: rows.map(([, intensity]) => intensity),
-  }, builtinSpectralLibraryIndex, undefined, "plasma-emission");
+  }, builtinSpectralLibraryIndex, undefined, "plasma-emission", builtinMolecularSystems);
 }

@@ -23,6 +23,8 @@ const LIBRARY_VERSION = `nist-asd-${NIST_ASD_VERSION}-${RETRIEVED_AT}`;
 const REPOSITORY_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const RAW_EXPORT = path.join(REPOSITORY_ROOT, "data/nist-asd/raw/nist-asd-5.12-2026-08-30.tsv");
 const GENERATED_LIBRARY = path.join(REPOSITORY_ROOT, "src/domain/spectral-library/generated/nist-asd-5.12-2026-08-30.json");
+const GENERATED_ANALYSIS_LIBRARY = path.join(REPOSITORY_ROOT, "src/domain/spectral-library/generated/nist-asd-5.12-2026-08-30-analysis.json");
+const GENERATED_SUMMARY = path.join(REPOSITORY_ROOT, "src/domain/spectral-library/generated/nist-asd-5.12-2026-08-30-summary.json");
 
 export function buildNistAsdLibraryArtifact(rawExport: string): SerializedSpectralLibraryArtifact {
   const rows = parseNistAsdExport(rawExport);
@@ -66,15 +68,36 @@ export function serializeLibraryArtifact(artifact: SerializedSpectralLibraryArti
 
 async function main(): Promise<void> {
   const rawExport = await readFile(RAW_EXPORT, "utf8");
-  const generated = serializeLibraryArtifact(buildNistAsdLibraryArtifact(rawExport));
+  const artifact = buildNistAsdLibraryArtifact(rawExport);
+  const generated = serializeLibraryArtifact(artifact);
+  const generatedAnalysisLibrary = serializeLibraryArtifact({
+    ...artifact,
+    records: artifact.records.map((record) => ({
+      id: record.id,
+      element: record.element,
+      ionization: record.ionization,
+      ...(record.observed ? { observed: record.observed } : {}),
+      ...(record.ritz ? { ritz: record.ritz } : {}),
+      preferred: record.preferred,
+      ...(record.intensity ? { intensity: record.intensity } : {}),
+    })),
+  });
+  const elements = [...NIST_ASD_SELECTED_ELEMENTS].sort((left, right) => left.atomicNumber - right.atomicNumber);
+  const generatedSummary = `${JSON.stringify({ manifest: artifact.manifest, elements })}\n`;
   if (process.argv.includes("--check")) {
     const current = await readFile(GENERATED_LIBRARY, "utf8").catch(() => "");
-    if (current !== generated) {
+    const currentAnalysisLibrary = await readFile(GENERATED_ANALYSIS_LIBRARY, "utf8").catch(() => "");
+    const currentSummary = await readFile(GENERATED_SUMMARY, "utf8").catch(() => "");
+    if (current !== generated || currentAnalysisLibrary !== generatedAnalysisLibrary || currentSummary !== generatedSummary) {
       throw new Error("Сгенерированная спектральная библиотека устарела. Запустите pnpm library:build.");
     }
     return;
   }
-  await writeFile(GENERATED_LIBRARY, generated, "utf8");
+  await Promise.all([
+    writeFile(GENERATED_LIBRARY, generated, "utf8"),
+    writeFile(GENERATED_ANALYSIS_LIBRARY, generatedAnalysisLibrary, "utf8"),
+    writeFile(GENERATED_SUMMARY, generatedSummary, "utf8"),
+  ]);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

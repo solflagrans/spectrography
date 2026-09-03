@@ -1,29 +1,32 @@
 "use client";
 
 import {
-  ArrowRight,
   CircleAlert,
   Database,
-  FlaskConical,
-  Link2,
   LoaderCircle,
-  Ruler,
   Sparkles,
   Upload,
 } from "lucide-react";
 import Link from "next/link";
+import {
+  createColumnHelper,
+  createSortedRowModel,
+  rowSortingFeature,
+  tableFeatures,
+  useTable,
+} from "@tanstack/react-table";
 import { useRef, useState } from "react";
 import { Fragment } from "react";
 import type { ChangeEvent, DragEvent, ReactNode } from "react";
 
-import type { WorkingAnalysis } from "@/application/analysis/create-working-analysis";
-import { builtinMolecularSystems } from "@/domain/molecular-spectrum";
+import type { WorkingAnalysis } from "@/application/analysis/working-analysis";
 import type { MolecularHypothesis, MolecularHypothesisReason } from "@/domain/molecular-spectrum";
+import { builtinMolecularSystemSummaries } from "@/domain/molecular-spectrum/builtin-library-summary";
 import {
   BUILTIN_LIBRARY_LABEL,
-  builtinSpectralLibrary,
+  builtinSpectralLibraryElements,
   builtinSpectralLibraryManifest,
-} from "@/domain/spectral-library/builtin-library";
+} from "@/domain/spectral-library/builtin-library-summary";
 import type {
   AnalysisEvidenceLine,
   AnalyzedPeak,
@@ -31,7 +34,11 @@ import type {
   NewAnalysisSpectrumType,
   SpectralLineCandidate,
 } from "@/domain/spectrum";
-import { useAnalysisWorkspace } from "@/features/demo-analysis/model/analysis-workspace-context";
+import {
+  useAnalysisWorkspace,
+  useAnalysisWorkspaceCore,
+  useAnalysisWorkspaceUi,
+} from "@/features/demo-analysis/model/analysis-workspace-context";
 import { InfoTooltip } from "@/features/workspace/components/info-tooltip";
 import { formatCount, formatDecimal, formatSignedDecimal } from "@/features/workspace/model/display-format";
 import {
@@ -40,14 +47,14 @@ import {
 } from "@/features/demo-analysis/model/identification-ui";
 
 import styles from "./analysis-page.module.css";
-import { SpectrumChart } from "./spectrum-chart";
+import { SpectrumChart } from "./lazy-spectrum-chart";
 
 const SPECTRUM_TYPE_OPTIONS = [
   { value: "plasma-emission", label: "Эмиссия плазмы/разряда" },
 ] as const satisfies readonly { value: NewAnalysisSpectrumType; label: string }[];
 
 export function DataAnalysisPage() {
-  const { analysis, selectedSpectrumType, updateSpectrumType } = useAnalysisWorkspace();
+  const { analysis, selectedSpectrumType, updateSpectrumType } = useAnalysisWorkspaceCore();
 
   if (!analysis) {
     return (
@@ -136,7 +143,7 @@ function SpectrumImportControls({ compact = false }: Readonly<{ compact?: boolea
     importSpectrumFile,
     importStatus,
     openDemoAnalysis,
-  } = useAnalysisWorkspace();
+  } = useAnalysisWorkspaceCore();
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const isReading = importStatus === "reading";
@@ -231,18 +238,32 @@ function SpectrumImportControls({ compact = false }: Readonly<{ compact?: boolea
 }
 
 export function ProcessingAnalysisPage() {
-  const analysis = useRequiredAnalysis();
+  const { analysis, selectedIdentificationChannelId, selectIdentificationChannel } = useAnalysisWorkspace();
   if (!analysis) return <AnalysisUnavailable section="Обработка" />;
+  const channel = analysis.channels.find((item) => item.id === selectedIdentificationChannelId)
+    ?? analysis.channels[0];
+  if (!channel) return <AnalysisUnavailable section="Обработка" />;
   return (
     <AnalysisPage title="Обработка">
-      <Card title="Подготовленный спектр">
+      <Card
+        title={analysis.channels.length === 1 ? "Подготовленный спектр" : `Подготовленный спектр: ${channel.name}`}
+        accessory={analysis.channels.length > 1 ? (
+          <ChannelPicker
+            id="processing-channel"
+            label="Канал обработки"
+            channels={analysis.channels}
+            value={channel.id}
+            onChange={selectIdentificationChannel}
+          />
+        ) : undefined}
+      >
         <SpectrumChart
           fill
-          rawDataset={analysis.rawDataset}
-          preparedDataset={analysis.preparedDataset}
-          peaks={analysis.peaks}
-          thresholdDataset={analysis.thresholdDataset}
-          sourceKey={analysis.id}
+          rawDataset={channel.rawDataset}
+          preparedDataset={channel.preparedDataset}
+          peaks={channel.peaks}
+          thresholdDataset={channel.thresholdDataset}
+          sourceKey={`${analysis.id}:${channel.id}`}
           defaultVisibleLayers={["raw", "prepared"]}
           label={`Исходный и подготовленный спектры ${analysis.source.fileName}`}
         />
@@ -252,8 +273,17 @@ export function ProcessingAnalysisPage() {
 }
 
 export function PeaksAnalysisPage() {
-  const { analysis, selectedPeakId, selectPeak } = useAnalysisWorkspace();
+  const {
+    analysis,
+    selectedIdentificationChannelId,
+    selectedPeakId,
+    selectIdentificationChannel,
+    selectPeak,
+  } = useAnalysisWorkspace();
   if (!analysis) return <AnalysisUnavailable section="Анализ" />;
+  const channel = analysis.channels.find((item) => item.id === selectedIdentificationChannelId)
+    ?? analysis.channels[0];
+  if (!channel) return <AnalysisUnavailable section="Анализ" />;
 
   return (
     <AnalysisPage
@@ -261,23 +291,31 @@ export function PeaksAnalysisPage() {
     >
       <Card
         title="Пики"
-        accessory={<Tag tone="neutral">{formatCount(analysis.peaks.length, "пик", "пика", "пиков")}</Tag>}
+        accessory={analysis.channels.length > 1 ? (
+          <ChannelPicker
+            id="peaks-channel"
+            label="Канал пиков"
+            channels={analysis.channels}
+            value={channel.id}
+            onChange={selectIdentificationChannel}
+          />
+        ) : <Tag tone="neutral">{formatCount(channel.peaks.length, "пик", "пика", "пиков")}</Tag>}
       >
         <SpectrumChart
-          rawDataset={analysis.rawDataset}
-          preparedDataset={analysis.preparedDataset}
-          peaks={analysis.peaks}
+          rawDataset={channel.rawDataset}
+          preparedDataset={channel.preparedDataset}
+          peaks={channel.peaks}
           selectedPeakId={selectedPeakId}
           onPeakSelect={selectPeak}
-          thresholdDataset={analysis.thresholdDataset}
-          sourceKey={analysis.id}
+          thresholdDataset={channel.thresholdDataset}
+          sourceKey={`${analysis.id}:${channel.id}`}
           defaultVisibleLayers={["prepared", "threshold", "peaks"]}
           label="Подготовленный спектр с отмеченными пиками"
         />
       </Card>
-      <Card title="Найденные пики" accessory={<Tag tone="success">{analysis.peaks.length}</Tag>}>
+      <Card title="Найденные пики" accessory={<Tag tone="success">{channel.peaks.length}</Tag>}>
         <PeakTable
-          peaks={analysis.peaks}
+          peaks={channel.peaks}
           selectedPeakId={selectedPeakId}
           onPeakSelect={selectPeak}
         />
@@ -496,7 +534,7 @@ export function IdentificationAnalysisPage() {
 }
 
 export function AnalysisAnalysisPage() {
-  const { analysisView } = useAnalysisWorkspace();
+  const analysisView = useAnalysisWorkspaceUi((state) => state.analysisView);
   return analysisView === "composition" ? <IdentificationAnalysisPage /> : <PeaksAnalysisPage />;
 }
 
@@ -702,148 +740,11 @@ function EvidenceTable({
   );
 }
 
-export function ResultAnalysisPage() {
-  const analysis = useRequiredAnalysis();
-  if (!analysis) return <AnalysisUnavailable section="Результат" />;
-
-  return (
-    <AnalysisPage title="Результат">
-      <section className={styles.conclusion}>
-        <div className={styles.conclusionIcon} aria-hidden="true">
-          <FlaskConical size={22} />
-        </div>
-        <div>
-          <span className={styles.eyebrow}>Сводное заключение</span>
-          <h2>{analysis.title}</h2>
-          <p>{analysis.conclusion}</p>
-        </div>
-      </section>
-
-      <div className={styles.twoColumns}>
-        <MetricCard label="Источник данных" value={`${analysis.source.kind} · ${formatCount(analysis.rawDataset.wavelengths.length, "точка", "точки", "точек")}`} />
-        <MetricCard label="Справочная библиотека" value={analysis.libraryLabel} />
-      </div>
-
-      <Card title="Наиболее надёжные спектральные признаки">
-        <div className={styles.evidenceList}>
-          {analysis.hypotheses.flatMap((hypothesis) => hypothesis.evidence
-            .filter((line) => line.isCharacteristic && line.strength !== "weak")
-            .map((line) => ({ hypothesis, line })))
-            .sort((left, right) => right.line.quality - left.line.quality)
-            .slice(0, 6)
-            .map(({ hypothesis, line }) => (
-              <div className={styles.evidenceRow} key={`${hypothesis.id}-${line.groupId}`}>
-                <Link2 size={14} aria-hidden="true" />
-                <strong>{hypothesis.symbol}</strong>
-                <span>{formatGroupWavelength(line)}</span>
-                <span className={styles.muted}>{line.isKeyCharacteristic ? "ключевая группа" : "подтверждённая группа"}</span>
-              </div>
-            ))}
-          {analysis.molecularHypotheses.map((hypothesis) => (
-            <div className={styles.evidenceRow} key={hypothesis.id}>
-              <Link2 size={14} aria-hidden="true" />
-              <strong>{hypothesis.formula}</strong>
-              <span>{formatCount(hypothesis.supportedRegionIds.length, "подтверждённый участок", "подтверждённых участка", "подтверждённых участков")}</span>
-              <span className={styles.muted}>{hypothesis.displayName}</span>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      <details className={styles.technicalDisclosure}>
-        <summary>Полная прослеживаемость, слабые совпадения и пики без кандидатов</summary>
-      <Card title="Прослеживаемость вывода">
-        <div className={styles.traceList}>
-          {analysis.hypotheses.map((hypothesis) => (
-            <article className={styles.traceCard} key={hypothesis.symbol}>
-              <header>
-                <div>
-                  <h3>{hypothesis.name} ({hypothesis.symbol})</h3>
-                  <p>{hypothesis.explanation}</p>
-                </div>
-                <Tag tone="info">Многолинейная гипотеза</Tag>
-              </header>
-              <div className={styles.evidenceList}>
-                {hypothesis.evidence.map((line) => (
-                  <div className={styles.evidenceRow} key={line.groupId}>
-                    <Link2 size={14} aria-hidden="true" />
-                    <span>Пик {formatDecimal(line.peakWavelength, 2)} нм</span>
-                    <ArrowRight size={13} aria-hidden="true" />
-                    <span>{formatEvidenceLabel(line)} {formatDecimal(line.referenceWavelength, 2)} нм</span>
-                    <span className={styles.deviationValue}>
-                      <Ruler size={13} aria-hidden="true" />
-                      {formatSignedDelta(line.delta)} нм
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </article>
-          ))}
-          {analysis.rejectedHypotheses.length ? (
-            <article className={styles.traceCard}>
-              <header>
-                <div>
-                  <h3>Слабые и неоднозначные альтернативы</h3>
-                </div>
-                <Tag tone="warning">{analysis.rejectedHypotheses.length}</Tag>
-              </header>
-              <div className={styles.evidenceList}>
-                {analysis.rejectedHypotheses.map((item) => (
-                  <div className={styles.evidenceRow} key={item.hypothesis.id}>
-                    <CircleAlert size={14} aria-hidden="true" />
-                    <strong>{item.hypothesis.name} ({item.hypothesis.symbol})</strong>
-                    <span className={styles.muted}>{item.reasons.map((reason) => diagnosticReasonLabels[reason]).join("; ")}</span>
-                  </div>
-                ))}
-              </div>
-            </article>
-          ) : null}
-          {analysis.unmatchedPeaks.length ? (
-            <article className={styles.traceCard}>
-              <header>
-                <div>
-                  <h3>Пики без совпадения</h3>
-                </div>
-                <Tag tone="danger">{analysis.unmatchedPeaks.length}</Tag>
-              </header>
-              <div className={styles.evidenceList}>
-                {analysis.unmatchedPeaks.map((peak) => (
-                  <div className={styles.evidenceRow} key={peak.id}>
-                    <CircleAlert size={14} aria-hidden="true" />
-                    <span>Пик {formatDecimal(peak.wavelength, 2)} нм</span>
-                    <span className={styles.muted}>Нет линии в пределах допуска</span>
-                  </div>
-                ))}
-              </div>
-            </article>
-          ) : null}
-          {analysis.rejectedMolecularHypotheses.length ? (
-            <article className={styles.traceCard}>
-              <header><div><h3>Отклонённые молекулярные варианты</h3></div></header>
-              <div className={styles.evidenceList}>
-                {analysis.rejectedMolecularHypotheses.map((hypothesis) => (
-                  <div className={styles.evidenceRow} key={hypothesis.id}>
-                    <CircleAlert size={14} aria-hidden="true" />
-                    <strong>{hypothesis.formula}</strong>
-                    <span>{hypothesis.reasons.map(formatMolecularReason).join("; ")}</span>
-                  </div>
-                ))}
-              </div>
-            </article>
-          ) : null}
-        </div>
-      </Card>
-      </details>
-    </AnalysisPage>
-  );
-}
-
 export function LibraryAnalysisPage() {
-  const elements = [...new Map(builtinSpectralLibrary.map((line) => [line.element.symbol, line.element])).values()]
-    .sort((left, right) => left.atomicNumber - right.atomicNumber);
+  const elements = builtinSpectralLibraryElements;
 
   return (
-    <AnalysisPage title="Библиотека" showAnalysisModes={false} summary={`${formatCount(builtinSpectralLibraryManifest.lineCount, "атомная линия", "атомные линии", "атомных линий")} · ${formatCount(elements.length, "элемент", "элемента", "элементов")} · ${formatCount(builtinMolecularSystems.length, "молекулярная система", "молекулярные системы", "молекулярных систем")}`}>
+    <AnalysisPage title="Библиотека" showAnalysisModes={false} summary={`${formatCount(builtinSpectralLibraryManifest.lineCount, "атомная линия", "атомные линии", "атомных линий")} · ${formatCount(elements.length, "элемент", "элемента", "элементов")} · ${formatCount(builtinMolecularSystemSummaries.length, "молекулярная система", "молекулярные системы", "молекулярных систем")}`}>
       <div className={styles.libraryGrid}>
         <Card title="Атомные линии" accessory={<Tag tone="neutral">{builtinSpectralLibraryManifest.lineCount.toLocaleString("ru-RU")}</Tag>}>
           <DefinitionList items={[
@@ -855,13 +756,13 @@ export function LibraryAnalysisPage() {
             {elements.map((element) => <span key={element.symbol}><strong>{element.symbol}</strong>{element.name}</span>)}
           </div>
         </Card>
-        <Card title="Молекулярные системы" accessory={<Tag tone="neutral">{builtinMolecularSystems.length}</Tag>}>
+        <Card title="Молекулярные системы" accessory={<Tag tone="neutral">{builtinMolecularSystemSummaries.length}</Tag>}>
           <div className={styles.librarySystemList}>
-            {builtinMolecularSystems.map((system) => (
+            {builtinMolecularSystemSummaries.map((system) => (
               <article key={system.id}>
                 <strong>{system.displayName} ({system.formula})</strong>
                 <span>{system.transition}</span>
-                <small>{formatDecimal(system.wavelengthRange.minimum, 1)}–{formatDecimal(system.wavelengthRange.maximum, 1)} нм · {formatCount(system.characteristicRegions.length, "характерный участок", "характерных участка", "характерных участков")}</small>
+                <small>{formatDecimal(system.wavelengthRange.minimum, 1)}–{formatDecimal(system.wavelengthRange.maximum, 1)} нм · {formatCount(system.characteristicRegionCount, "характерный участок", "характерных участка", "характерных участков")}</small>
               </article>
             ))}
           </div>
@@ -1051,15 +952,6 @@ function Metric({ label, value }: Readonly<{ label: string; value: string }>) {
   );
 }
 
-function MetricCard({ label, value }: Readonly<{ label: string; value: string }>) {
-  return (
-    <div className={styles.metricCard}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
 function DefinitionList({ items }: Readonly<{ items: readonly (readonly [string, string])[] }>) {
   return (
     <dl className={styles.definitionList}>
@@ -1082,6 +974,14 @@ function PeakTable({
   selectedPeakId: string | null;
   onPeakSelect: (peakId: string) => void;
 }>) {
+  const table = useTable({
+    data: peaks,
+    columns: peakTableColumns,
+    features: peakTableFeatures,
+    getRowId: (peak) => peak.id,
+    enableSortingRemoval: false,
+  });
+
   if (!peaks.length) {
     return <InlineEmptyState>При текущих параметрах пики не обнаружены.</InlineEmptyState>;
   }
@@ -1090,24 +990,38 @@ function PeakTable({
     <div className={styles.tableScroll}>
       <table className={styles.table}>
         <thead>
-          <tr>
-            <th>№</th>
-            <th>Длина волны</th>
-            <th>Интенсивность</th>
-            <th>
-              <span className={styles.tableHeaderWithInfo}>
-                Ближайшая линия
-                <InfoTooltip label="Ближайшая линия" content="Геометрически ближайшая справочная линия, а не итоговое назначение." />
-              </span>
-            </th>
-            <th>Отклонение</th>
-            <th>SNR</th>
-          </tr>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <tr key={headerGroup.id}>
+              {headerGroup.headers.map((header) => (
+                <th
+                  key={header.id}
+                  aria-sort={header.column.getIsSorted() === "asc"
+                    ? "ascending"
+                    : header.column.getIsSorted() === "desc"
+                      ? "descending"
+                      : undefined}
+                >
+                  {header.isPlaceholder ? null : header.column.getCanSort() ? (
+                    <button
+                      type="button"
+                      className={styles.sortableHeader}
+                      onClick={header.column.getToggleSortingHandler()}
+                    >
+                      <table.FlexRender header={header} />
+                      <span aria-hidden="true">{header.column.getIsSorted() === "asc" ? "↑" : header.column.getIsSorted() === "desc" ? "↓" : "↕"}</span>
+                    </button>
+                  ) : <table.FlexRender header={header} />}
+                </th>
+              ))}
+            </tr>
+          ))}
         </thead>
         <tbody>
-          {peaks.map((peak, index) => (
+          {table.getRowModel().rows.map((row) => {
+            const peak = row.original;
+            return (
             <tr
-              key={peak.id}
+              key={row.id}
               data-peak-id={peak.id}
               className={`${styles.selectableRow} ${peak.id === selectedPeakId ? styles.selectableRowSelected : ""}`}
               aria-selected={peak.id === selectedPeakId}
@@ -1120,19 +1034,42 @@ function PeakTable({
                 }
               }}
             >
-              <td>{index + 1}</td>
-              <td><code>{formatDecimal(peak.wavelength, 2)} нм</code></td>
-              <td><code>{formatDecimal(peak.intensity, 3)}</code></td>
-              <td>{peak.match ? `${formatCandidateLabel(peak.match)} · ${formatDecimal(peak.match.line, 2)} нм` : "Не найдено"}</td>
-              <td><code>{peak.match ? `${formatSignedDelta(peak.match.delta)} нм` : "—"}</code></td>
-              <td><code>{Number.isFinite(peak.snr) ? formatDecimal(peak.snr, 2) : "∞"}</code></td>
+              {row.getAllCells().map((cell) => (
+                <td key={cell.id}><table.FlexRender cell={cell} /></td>
+              ))}
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
   );
 }
+
+const peakTableFeatures = tableFeatures({
+  rowSortingFeature,
+  sortedRowModel: createSortedRowModel(),
+});
+const peakColumnHelper = createColumnHelper<typeof peakTableFeatures, AnalyzedPeak>();
+const peakTableColumns = peakColumnHelper.columns([
+  peakColumnHelper.display({ id: "number", header: "№", cell: ({ row }) => row.index + 1 }),
+  peakColumnHelper.accessor("wavelength", { header: "Длина волны", cell: ({ row }) => <code>{formatDecimal(row.original.wavelength, 2)} нм</code> }),
+  peakColumnHelper.accessor("intensity", { header: "Интенсивность", cell: ({ row }) => <code>{formatDecimal(row.original.intensity, 3)}</code> }),
+  peakColumnHelper.display({
+    id: "nearest-line",
+    header: () => (
+      <span className={styles.tableHeaderWithInfo}>
+        Ближайшая линия
+        <InfoTooltip label="Ближайшая линия" content="Геометрически ближайшая справочная линия, а не итоговое назначение." />
+      </span>
+    ),
+    cell: ({ row }) => row.original.match
+      ? `${formatCandidateLabel(row.original.match)} · ${formatDecimal(row.original.match.line, 2)} нм`
+      : "Не найдено",
+  }),
+  peakColumnHelper.display({ id: "delta", header: "Отклонение", cell: ({ row }) => <code>{row.original.match ? `${formatSignedDelta(row.original.match.delta)} нм` : "—"}</code> }),
+  peakColumnHelper.accessor("snr", { header: "SNR", cell: ({ row }) => <code>{Number.isFinite(row.original.snr) ? formatDecimal(row.original.snr, 2) : "∞"}</code> }),
+]);
 
 function Tag({
   tone,
@@ -1141,8 +1078,27 @@ function Tag({
   return <span className={`${styles.tag} ${styles[`tag_${tone}`]}`}>{children}</span>;
 }
 
-function useRequiredAnalysis(): WorkingAnalysis | null {
-  return useAnalysisWorkspace().analysis;
+function ChannelPicker({
+  id,
+  label,
+  channels,
+  value,
+  onChange,
+}: Readonly<{
+  id: string;
+  label: string;
+  channels: WorkingAnalysis["channels"];
+  value: string;
+  onChange: (channelId: string) => void;
+}>) {
+  return (
+    <label className={styles.channelPicker} htmlFor={id}>
+      <span>Канал</span>
+      <select id={id} aria-label={label} value={value} onChange={(event) => onChange(event.target.value)}>
+        {channels.map((channel) => <option key={channel.id} value={channel.id}>{channel.name}</option>)}
+      </select>
+    </label>
+  );
 }
 
 function formatSignedDelta(delta: number): string {

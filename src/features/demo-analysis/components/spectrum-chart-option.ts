@@ -46,6 +46,8 @@ export interface SpectrumZoomRange {
 }
 
 export const FULL_SPECTRUM_ZOOM: SpectrumZoomRange = { start: 0, end: 100 };
+const medianStepCache = new WeakMap<readonly number[], number>();
+const sortedWavelengthCache = new WeakMap<readonly number[], boolean>();
 
 export const SPECTRUM_SERIES_NAMES = {
   raw: "Исходный спектр",
@@ -423,12 +425,16 @@ function createYAxis(
 }
 
 function getWavelengthExtent(data: SpectrumChartData): readonly [number, number] {
-  const wavelengths = [
-    ...(data.rawDataset?.wavelengths ?? []),
-    ...(data.preparedDataset?.wavelengths ?? []),
-  ];
-  if (!wavelengths.length) return [0, 1];
-  return [Math.min(...wavelengths), Math.max(...wavelengths)];
+  let minimum = Number.POSITIVE_INFINITY;
+  let maximum = Number.NEGATIVE_INFINITY;
+  for (const wavelengths of [data.rawDataset?.wavelengths, data.preparedDataset?.wavelengths]) {
+    if (!wavelengths) continue;
+    for (const value of wavelengths) {
+      minimum = Math.min(minimum, value);
+      maximum = Math.max(maximum, value);
+    }
+  }
+  return Number.isFinite(minimum) ? [minimum, maximum] : [0, 1];
 }
 
 function toSeriesData(dataset: SpectrumDataset): readonly (readonly [number, number])[] {
@@ -444,6 +450,14 @@ function getTooltipWavelength(parameters: unknown): number | null {
 }
 
 function findNearestSampleIndex(wavelengths: readonly number[], target: number): number {
+  if (isSortedAscending(wavelengths)) {
+    const insertion = lowerBound(wavelengths, target);
+    if (insertion <= 0) return 0;
+    if (insertion >= wavelengths.length) return wavelengths.length - 1;
+    return target - wavelengths[insertion - 1] <= wavelengths[insertion] - target
+      ? insertion - 1
+      : insertion;
+  }
   let nearestIndex = 0;
   let nearestDistance = Number.POSITIVE_INFINITY;
   wavelengths.forEach((wavelength, index) => {
@@ -484,12 +498,35 @@ function findReferenceLineAtWavelength(
 
 function getMedianStep(wavelengths: readonly number[]): number {
   if (wavelengths.length < 2) return 0;
+  const cached = medianStepCache.get(wavelengths);
+  if (cached !== undefined) return cached;
   const steps = wavelengths
     .slice(1)
     .map((wavelength, index) => Math.abs(wavelength - wavelengths[index]))
     .filter((step) => step > 0)
     .sort((left, right) => left - right);
-  return steps[Math.floor(steps.length / 2)] ?? 0;
+  const result = steps[Math.floor(steps.length / 2)] ?? 0;
+  medianStepCache.set(wavelengths, result);
+  return result;
+}
+
+function isSortedAscending(values: readonly number[]): boolean {
+  const cached = sortedWavelengthCache.get(values);
+  if (cached !== undefined) return cached;
+  const sorted = values.every((value, index) => index === 0 || value >= values[index - 1]);
+  sortedWavelengthCache.set(values, sorted);
+  return sorted;
+}
+
+function lowerBound(values: readonly number[], target: number): number {
+  let low = 0;
+  let high = values.length;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    if (values[middle] < target) low = middle + 1;
+    else high = middle;
+  }
+  return low;
 }
 
 function formatTooltipRow(color: string, label: string, value: number, precision: number): string {

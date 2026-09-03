@@ -1,9 +1,9 @@
 import {
-  BUILTIN_LIBRARY_LABEL,
-  BUILTIN_LIBRARY_VERSION,
-  builtinSpectralLibraryIndex,
-} from "@/domain/spectral-library/builtin-library";
-import { BUILTIN_MOLECULAR_LIBRARY_VERSION } from "@/domain/molecular-spectrum";
+  BUILTIN_ANALYSIS_LIBRARY_LABEL,
+  BUILTIN_ANALYSIS_LIBRARY_VERSION,
+  builtinAnalysisSpectralLibraryIndex,
+} from "@/domain/spectral-library/builtin-analysis-library";
+import { BUILTIN_MOLECULAR_LIBRARY_VERSION, builtinMolecularSystems } from "@/domain/molecular-spectrum";
 import {
   DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS,
   isDatasetSortedByWavelength,
@@ -12,82 +12,22 @@ import {
   validateDataset,
 } from "@/domain/spectrum";
 import { getSpectrumStats, round } from "@/domain/spectrum/math";
+import type { Raw8AuxiliaryData } from "@/application/import-spectrum/parse-avasoft-raw8";
 import type {
   InteractiveAnalysisParameters,
-  InteractiveSpectrumAnalysis,
-  NewAnalysisSpectrumType,
-  SpectrumChannelInput,
   SpectrumDataset,
-  SpectrumStats,
-  SpectrumType,
 } from "@/domain/spectrum";
-import { demoSpectra } from "@/fixtures/demo-spectra";
+import type { CreateWorkingAnalysisInput, WorkingAnalysis } from "./working-analysis";
+import { createAnalysisConclusion } from "./create-analysis-conclusion";
 
-import type {
-  Raw8AuxiliaryData,
-  Raw8InstrumentMetadata,
-} from "@/application/import-spectrum/parse-avasoft-raw8";
-
-export type AnalysisFileFormat = "CSV" | "JSON" | "XLSX" | "RAW8";
-
-export interface AnalysisSource {
-  readonly kind: "Встроенный пример" | "Пользовательский файл";
-  readonly fileName: string;
-  readonly format: AnalysisFileFormat;
-  readonly units: "нм / отн. ед." | "нм / отсчёты прибора";
-}
-
-export interface AnalysisTransformation {
-  readonly id: string;
-  readonly label: string;
-  readonly value: string;
-  readonly description: string;
-}
-
-export interface WorkingAnalysis extends InteractiveSpectrumAnalysis {
-  readonly id: string;
-  readonly title: string;
-  readonly source: AnalysisSource;
-  readonly libraryVersion: string;
-  readonly libraryLabel: string;
-  readonly molecularLibraryVersion: string;
-  readonly rawDataset: SpectrumDataset;
-  readonly spectrumType: NewAnalysisSpectrumType;
-  readonly rawStats: SpectrumStats;
-  readonly wavelengthRange: {
-    readonly minimum: number;
-    readonly maximum: number;
-  };
-  readonly wavelengthStep: number;
-  readonly parameters: InteractiveAnalysisParameters;
-  readonly transformations: readonly AnalysisTransformation[];
-  readonly auxiliaryData?: Raw8AuxiliaryData;
-  readonly instrumentMetadata?: Raw8InstrumentMetadata;
-}
-
-export interface CreateWorkingAnalysisInput {
-  readonly id: string;
-  readonly title: string;
-  readonly source: AnalysisSource;
-  readonly rawDataset: SpectrumDataset;
-  readonly spectrumType?: SpectrumType;
-  /** Optional unified multi-channel input; rawDataset remains the primary-channel compatibility alias. */
-  readonly channels?: readonly SpectrumChannelInput[];
-  readonly auxiliaryData?: Raw8AuxiliaryData;
-  readonly instrumentMetadata?: Raw8InstrumentMetadata;
-}
-
-export const DEMO_ANALYSIS_INPUT: CreateWorkingAnalysisInput = {
-  id: "fe-12-demo",
-  title: "Спектр образца Fe-12",
-  source: {
-    kind: "Встроенный пример",
-    fileName: "fe-12-demo.csv",
-    format: "CSV",
-    units: "нм / отн. ед.",
-  },
-  rawDataset: demoSpectra.fe12,
-};
+export { DEMO_ANALYSIS_INPUT } from "./working-analysis";
+export type {
+  AnalysisFileFormat,
+  AnalysisSource,
+  AnalysisTransformation,
+  CreateWorkingAnalysisInput,
+  WorkingAnalysis,
+} from "./working-analysis";
 
 export function createWorkingAnalysis(
   input: CreateWorkingAnalysisInput,
@@ -99,18 +39,25 @@ export function createWorkingAnalysis(
     ? { channels: input.channels.map((channel) => ({ ...channel, dataset: copyDataset(channel.dataset) })) }
     : { channels: [{ id: "channel-1", name: "Канал 1", dataset: rawDataset }] };
   const spectrumType = normalizeSpectrumType(input.spectrumType);
-  const result = runInteractiveSpectrumAnalysis(channelInput, builtinSpectralLibraryIndex, parameters, spectrumType);
+  const result = runInteractiveSpectrumAnalysis(
+    channelInput,
+    builtinAnalysisSpectralLibraryIndex,
+    parameters,
+    spectrumType,
+    builtinMolecularSystems,
+  );
   const minimumWavelength = Math.min(...rawDataset.wavelengths);
   const maximumWavelength = Math.max(...rawDataset.wavelengths);
   const wasSorted = isDatasetSortedByWavelength(rawDataset);
 
   return {
     ...result,
+    conclusion: createAnalysisConclusion(result),
     id: input.id,
     title: input.title,
     source: input.source,
-    libraryVersion: BUILTIN_LIBRARY_VERSION,
-    libraryLabel: BUILTIN_LIBRARY_LABEL,
+    libraryVersion: BUILTIN_ANALYSIS_LIBRARY_VERSION,
+    libraryLabel: BUILTIN_ANALYSIS_LIBRARY_LABEL,
     molecularLibraryVersion: BUILTIN_MOLECULAR_LIBRARY_VERSION,
     rawDataset,
     spectrumType,

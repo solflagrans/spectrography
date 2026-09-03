@@ -1820,6 +1820,25 @@
   letter-spacing: var(--letter-spacing-label);
 }
 
+.sortableHeader {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2xs);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.sortableHeader:focus-visible {
+  border-radius: var(--radius-xs);
+  outline: 2px solid var(--color-action-primary);
+  outline-offset: 2px;
+}
+
 .table tbody tr:last-child td {
   border-bottom: 0;
 }

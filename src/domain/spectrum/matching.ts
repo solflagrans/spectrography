@@ -72,6 +72,7 @@ export function findLineCandidates(
         normalizedDelta: round(Math.abs(delta) / adaptive.toleranceNm, 8),
         toleranceCapped: adaptive.capped,
         uncertainty: adaptive.components,
+        sourceRecord: toCandidateSourceRecord(spectralLine),
       }];
     })
     .sort((left, right) => (
@@ -82,6 +83,20 @@ export function findLineCandidates(
         || left.ionizationStage - right.ionizationStage
         || left.lineId.localeCompare(right.lineId)
     ));
+}
+
+function toCandidateSourceRecord(
+  spectralLine: SpectralLine,
+): NonNullable<SpectralLineCandidate["sourceRecord"]> {
+  const wavelength = spectralLine.preferredWavelength.origin === "observed"
+    ? spectralLine.observedWavelength
+    : spectralLine.ritzWavelength;
+  return {
+    sourceName: spectralLine.source.name,
+    datasetVersion: spectralLine.source.datasetVersion,
+    ...(wavelength ? { rawWavelength: wavelength.rawValue } : {}),
+    ...(wavelength?.notation ? { notation: wavelength.notation } : {}),
+  };
 }
 
 export function calculateAdaptiveTolerance(

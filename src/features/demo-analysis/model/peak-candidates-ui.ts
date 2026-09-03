@@ -1,4 +1,3 @@
-import { builtinSpectralLibrary } from "@/domain/spectral-library/builtin-library";
 import type { SpectralLine } from "@/domain/spectral-library/types";
 import type { AnalyzedPeak, SpectralLineCandidate } from "@/domain/spectrum";
 
@@ -68,7 +67,7 @@ export interface CandidateGroupFilters {
 export function createPeakCandidateView(
   analysis: CandidateAnalysisLike,
   peak: Pick<AnalyzedPeak, "id" | "candidates" | "match">,
-  spectralLines: readonly SpectralLine[] = builtinSpectralLibrary,
+  spectralLines: readonly SpectralLine[] = [],
 ): PeakCandidateView {
   const lineById = new Map(spectralLines.map((line) => [line.id, line] as const));
   const hypothesisLinks = createHypothesisLinks(analysis, peak.id);
@@ -102,7 +101,7 @@ export function createPeakCandidateView(
       representative: representativeEntry.candidate,
       candidates,
       lineIds,
-      sourceRecords: lineIds.map((lineId) => toSourceRecord(lineId, lineById.get(lineId))),
+      sourceRecords: candidates.map((candidate) => toSourceRecord(candidate, lineById.get(candidate.lineId))),
       firstCandidateIndex: Math.min(...entries.map((entry) => entry.index)),
       isNearest: Boolean(peak.match && lineIds.includes(peak.match.lineId)),
       hypothesis: linkedHypothesis,
@@ -164,7 +163,7 @@ function createAcceptedAssignmentGroups(
         representative: representativeEntry.candidate,
         candidates,
         lineIds,
-        sourceRecords: lineIds.map((lineId) => toSourceRecord(lineId, lineById.get(lineId))),
+        sourceRecords: candidates.map((candidate) => toSourceRecord(candidate, lineById.get(candidate.lineId))),
         firstCandidateIndex: Math.min(...entries.map((entry) => entry.index)),
         isNearest: Boolean(peak.match && lineIds.includes(peak.match.lineId)),
         hypothesis: assignment,
@@ -262,13 +261,21 @@ function getHypothesisPriority(group: CandidateDisplayGroup): number {
   return 2;
 }
 
-function toSourceRecord(lineId: string, line: SpectralLine | undefined): CandidateSourceRecord {
-  if (!line) return { id: lineId };
+function toSourceRecord(candidate: SpectralLineCandidate, line: SpectralLine | undefined): CandidateSourceRecord {
+  if (!line) {
+    return {
+      id: candidate.lineId,
+      sourceName: candidate.sourceRecord?.sourceName,
+      datasetVersion: candidate.sourceRecord?.datasetVersion,
+      rawWavelength: candidate.sourceRecord?.rawWavelength,
+      notation: candidate.sourceRecord?.notation,
+    };
+  }
   const wavelength = line.preferredWavelength.origin === "observed"
     ? line.observedWavelength
     : line.ritzWavelength;
   return {
-    id: lineId,
+    id: candidate.lineId,
     sourceName: line.source.name,
     datasetVersion: line.source.datasetVersion,
     rawWavelength: wavelength?.rawValue,

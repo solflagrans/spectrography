@@ -14,7 +14,7 @@ export default defineConfig({
     { name: "mobile", use: { ...devices["Pixel 7"] } },
   ],
   webServer: {
-    command: "WATCHPACK_POLLING=true pnpm dev --hostname 127.0.0.1 --port 3100",
+    command: "pnpm start --hostname 127.0.0.1 --port 3100",
     url: "http://127.0.0.1:3100/data",
     reuseExistingServer: true,
     timeout: 120_000,

@@ -7,10 +7,9 @@ import type { ReactNode } from "react";
 
 import {
   AnalysisSidePanel,
-  IdentificationLinesPanel,
   ProcessingSettingsPanel,
 } from "@/features/demo-analysis/components/analysis-side-panels";
-import { useAnalysisWorkspace } from "@/features/demo-analysis/model/analysis-workspace-context";
+import { useAnalysisWorkspaceCore } from "@/features/demo-analysis/model/analysis-workspace-context";
 import { formatDecimal } from "@/features/workspace/model/display-format";
 
 import { InfoTooltipProvider } from "./info-tooltip";
@@ -18,16 +17,14 @@ import { WorkspaceNavigation } from "./workspace-navigation";
 import styles from "./workspace-shell.module.css";
 
 export function WorkspaceShell({ children }: Readonly<{ children: ReactNode }>) {
-  const { analysis } = useAnalysisWorkspace();
+  const { analysis } = useAnalysisWorkspaceCore();
   const pathname = usePathname();
   const sidePanel = analysis
     ? pathname.startsWith("/processing")
       ? <ProcessingSettingsPanel />
       : pathname.startsWith("/analysis")
         ? <AnalysisSidePanel />
-        : pathname.startsWith("/identification")
-          ? <IdentificationLinesPanel />
-          : null
+        : null
     : null;
 
   return (

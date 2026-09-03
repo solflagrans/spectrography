@@ -8,7 +8,9 @@ import {
   useAnalysisWorkspace,
 } from "@/features/demo-analysis/model/analysis-workspace-context";
 import { createRaw8Fixture } from "@/fixtures/raw8-test-fixture";
-import { DEMO_ANALYSIS_INPUT } from "@/application/analysis/create-working-analysis";
+import { createWorkingAnalysis } from "@/application/analysis/create-working-analysis";
+import type { AnalysisRunner } from "@/application/analysis/analysis-runner";
+import { DEMO_ANALYSIS_INPUT } from "@/application/analysis/working-analysis";
 import { InfoTooltipProvider } from "@/features/workspace/components/info-tooltip";
 
 import { AnalysisSidePanel, IdentificationLinesPanel, PeakSettingsPanel, ProcessingSettingsPanel } from "./analysis-side-panels";
@@ -24,7 +26,7 @@ const navigationMock = vi.hoisted(() => ({ push: vi.fn() }));
 
 vi.mock("next/navigation", () => ({ useRouter: () => navigationMock }));
 
-vi.mock("./spectrum-chart", () => ({
+vi.mock("./lazy-spectrum-chart", () => ({
   SpectrumChart: (props: {
     showLayerControls?: boolean;
     preparedDataset?: unknown;
@@ -65,6 +67,21 @@ afterEach(() => {
   navigationMock.push.mockClear();
 });
 
+const testAnalysisRunner: AnalysisRunner = {
+  async run(source, parameters) {
+    return createWorkingAnalysis(source, parameters);
+  },
+  cancel() {},
+  dispose() {},
+};
+
+async function openDemoAnalysis() {
+  await act(async () => {
+    fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
+    await Promise.resolve();
+  });
+}
+
 function AnalysisProbe() {
   const {
     analysis,
@@ -93,7 +110,7 @@ function AnalysisProbe() {
 function PeakSelectionScenario() {
   return (
     <InfoTooltipProvider>
-      <AnalysisWorkspaceProvider>
+      <AnalysisWorkspaceProvider analysisRunner={testAnalysisRunner}>
         <DataAnalysisPage />
         <PeaksAnalysisPage />
         <PeakSettingsPanel />
@@ -106,7 +123,7 @@ function PeakSelectionScenario() {
 function Scenario() {
   return (
     <InfoTooltipProvider>
-      <AnalysisWorkspaceProvider>
+      <AnalysisWorkspaceProvider analysisRunner={testAnalysisRunner}>
         <DataAnalysisPage />
         <ProcessingAnalysisPage />
         <PeakSettingsPanel />
@@ -119,7 +136,7 @@ function Scenario() {
 function ProcessingSettingsScenario() {
   return (
     <InfoTooltipProvider>
-      <AnalysisWorkspaceProvider>
+      <AnalysisWorkspaceProvider analysisRunner={testAnalysisRunner}>
         <ProcessingSettingsPanel />
       </AnalysisWorkspaceProvider>
     </InfoTooltipProvider>
@@ -129,7 +146,7 @@ function ProcessingSettingsScenario() {
 function IdentificationScenario() {
   return (
     <InfoTooltipProvider>
-      <AnalysisWorkspaceProvider>
+      <AnalysisWorkspaceProvider analysisRunner={testAnalysisRunner}>
         <DataAnalysisPage />
         <IdentificationLinesPanel />
         <IdentificationAnalysisPage />
@@ -143,7 +160,7 @@ function IdentificationScenario() {
 function EndToEndScenario() {
   return (
     <InfoTooltipProvider>
-      <AnalysisWorkspaceProvider>
+      <AnalysisWorkspaceProvider analysisRunner={testAnalysisRunner}>
         <DataAnalysisPage />
         <AnalysisSidePanel />
         <AnalysisAnalysisPage />
@@ -185,9 +202,7 @@ describe("interactive demo analysis", () => {
     fireEvent.change(screen.getByLabelText("Файл спектра"), {
       target: { files: [createFile("compact.json", compactSpectrum)] },
     });
-    await act(async () => Promise.resolve());
-
-    const field = screen.getByRole("combobox", { name: "Тип спектра" });
+    const field = await screen.findByRole("combobox", { name: "Тип спектра" }, { timeout: 5_000 });
     expect((field as HTMLSelectElement).value).toBe("plasma-emission");
     expect(within(field).getAllByRole("option")).toHaveLength(1);
     expect(within(field).getByRole("option").textContent).toBe("Эмиссия плазмы/разряда");
@@ -199,7 +214,7 @@ describe("interactive demo analysis", () => {
     vi.useFakeTimers();
     render(<Scenario />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
+    await openDemoAnalysis();
     const initialPeakCount = Number(screen.getByTestId("peak-count").textContent);
     const initialConclusion = screen.getByTestId("conclusion").textContent;
 
@@ -219,7 +234,7 @@ describe("interactive demo analysis", () => {
     vi.useFakeTimers();
     render(<Scenario />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
+    await openDemoAnalysis();
     const validPeakCount = screen.getByTestId("peak-count").textContent;
     fireEvent.change(screen.getByLabelText(/Расстояние между пиками/), { target: { value: "0" } });
 
@@ -289,7 +304,10 @@ describe("interactive demo analysis", () => {
     await act(async () => {
       finishReading?.(new TextEncoder().encode('[[500,501,502],[0,1,0]]').buffer);
     });
-    await waitFor(() => expect(screen.getByTestId("file-name").textContent).toBe("slow.json"));
+    await waitFor(
+      () => expect(screen.getByTestId("file-name").textContent).toBe("slow.json"),
+      { timeout: 5_000 },
+    );
   });
 
   it("imports RAW8 through the existing drag-and-drop scenario", async () => {
@@ -311,9 +329,9 @@ describe("interactive demo analysis", () => {
     expect(dataChart.getAttribute("data-has-prepared")).toBe("false");
   });
 
-  it("synchronizes peak selection between chart, table and side panel", () => {
+  it("synchronizes peak selection between chart, table and side panel", async () => {
     render(<PeakSelectionScenario />);
-    fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
+    await openDemoAnalysis();
 
     fireEvent.click(screen.getByRole("tab", { name: "Выбранный пик" }));
     expect(screen.getByText(/Выберите пик на графике или в таблице/)).toBeTruthy();
@@ -342,11 +360,15 @@ describe("interactive demo analysis", () => {
     expect(chart.getAttribute("data-selected-peak")).toBe(nextId);
     expect(selectableRows[1].getAttribute("aria-selected")).toBe("true");
     expect(screen.getByRole("heading", { name: "Линии и назначения" })).toBeTruthy();
+
+    const snrSort = screen.getByRole("button", { name: /SNR/ });
+    fireEvent.click(snrSort);
+    expect(snrSort.closest("th")?.getAttribute("aria-sort")).toMatch(/ascending|descending/);
   });
 
-  it("distinguishes assignments from the nearest candidate and keeps the compact list bounded", () => {
+  it("distinguishes assignments from the nearest candidate and keeps the compact list bounded", async () => {
     render(<PeakSelectionScenario />);
-    fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
+    await openDemoAnalysis();
     fireEvent.click(screen.getAllByRole("button", { name: /График: выбрать пик/ })[0]);
 
     expect(screen.getByRole("heading", { name: "Ближайшая линия" })).toBeTruthy();
@@ -361,9 +383,9 @@ describe("interactive demo analysis", () => {
     expect(alternatives.querySelectorAll("[data-candidate-group]").length).toBeLessThanOrEqual(5);
   });
 
-  it("opens, filters and collapses the full local candidate list", () => {
+  it("opens, filters and collapses the full local candidate list", async () => {
     render(<PeakSelectionScenario />);
-    fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
+    await openDemoAnalysis();
     fireEvent.click(screen.getAllByRole("button", { name: /График: выбрать пик/ })[0]);
 
     const showAll = screen.getByRole("button", { name: /Все кандидаты \(\d+\)/ });
@@ -395,7 +417,7 @@ describe("interactive demo analysis", () => {
   it("preserves a selected source point when it remains a peak and resets it otherwise", async () => {
     vi.useFakeTimers();
     render(<PeakSelectionScenario />);
-    fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
+    await openDemoAnalysis();
     fireEvent.click(screen.getAllByRole("button", { name: /График: выбрать пик/ })[0]);
     const selectedId = screen.getByTestId("selected-peak").textContent;
 
@@ -413,7 +435,7 @@ describe("interactive demo analysis", () => {
 
   it("always resets the selected peak after opening another source", async () => {
     render(<PeakSelectionScenario />);
-    fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
+    await openDemoAnalysis();
     fireEvent.click(screen.getAllByRole("button", { name: /График: выбрать пик/ })[0]);
     expect(screen.getByTestId("selected-peak").textContent).not.toBe("—");
 
@@ -426,9 +448,9 @@ describe("interactive demo analysis", () => {
     expect(screen.getByTestId("selected-peak").textContent).toBe("—");
   });
 
-  it("selects, filters and opens diagnostic hypotheses in the master-detail view", () => {
+  it("selects, filters and opens diagnostic hypotheses in the master-detail view", async () => {
     render(<IdentificationScenario />);
-    fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
+    await openDemoAnalysis();
 
     const diagnosticDetails = screen.getByText(/^Другие совпадения ·/).closest("details")!;
     diagnosticDetails.open = true;
@@ -454,7 +476,7 @@ describe("interactive demo analysis", () => {
   it("preserves a hypothesis across recalculation and falls back when hypotheses disappear", async () => {
     vi.useFakeTimers();
     render(<IdentificationScenario />);
-    fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
+    await openDemoAnalysis();
     const diagnosticDetails = screen.getByText(/^Другие совпадения ·/).closest("details")!;
     diagnosticDetails.open = true;
     fireEvent(diagnosticDetails, new Event("toggle"));
@@ -471,9 +493,9 @@ describe("interactive demo analysis", () => {
     expect(screen.getByTestId("selected-hypothesis").textContent).toBe("—");
   });
 
-  it("opens a supporting observation and carries the selected peak to the peak mode", () => {
+  it("opens a supporting observation and carries the selected peak to the peak mode", async () => {
     render(<IdentificationScenario />);
-    fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
+    await openDemoAnalysis();
     const diagnosticDetails = screen.getByText(/^Другие совпадения ·/).closest("details")!;
     diagnosticDetails.open = true;
     fireEvent(diagnosticDetails, new Event("toggle"));
@@ -491,9 +513,9 @@ describe("interactive demo analysis", () => {
     expect(screen.getByTestId("analysis-view").textContent).toBe("peaks");
   });
 
-  it("opens an available hypothesis from a selected peak candidate", () => {
+  it("opens an available hypothesis from a selected peak candidate", async () => {
     render(<PeakSelectionScenario />);
-    fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
+    await openDemoAnalysis();
     fireEvent.click(screen.getAllByRole("button", { name: /График: выбрать пик/ })[0]);
     fireEvent.click(document.querySelector("[data-candidate-group] button")!);
 
@@ -501,9 +523,9 @@ describe("interactive demo analysis", () => {
     expect(screen.getByTestId("analysis-view").textContent).toBe("composition");
   });
 
-  it("preserves the selected peak through the full list, filtering, hypothesis and return flow", () => {
+  it("preserves the selected peak through the full list, filtering, hypothesis and return flow", async () => {
     render(<EndToEndScenario />);
-    fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
+    await openDemoAnalysis();
     fireEvent.click(screen.getByRole("tab", { name: "Все пики" }));
     fireEvent.click(document.querySelector("tr[data-peak-id]")!);
     const selectedPeak = screen.getByTestId("selected-peak").textContent;
@@ -557,9 +579,9 @@ describe("interactive demo analysis", () => {
     }
   });
 
-  it("uses a concise evidence summary without internal strength classes", () => {
+  it("uses a concise evidence summary without internal strength classes", async () => {
     render(<EndToEndScenario />);
-    fireEvent.click(screen.getByRole("button", { name: "Открыть демонстрационный спектр" }));
+    await openDemoAnalysis();
 
     const conclusion = screen.getByRole("heading", { name: "Основные гипотезы" }).closest("section")!;
     expect(conclusion.textContent).toMatch(/подтвержд[её]нн(ая|ые|ых) групп/);

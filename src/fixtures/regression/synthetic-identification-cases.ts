@@ -65,7 +65,13 @@ export function runSyntheticIdentificationCases(): readonly SyntheticCaseResult[
   };
   return syntheticCaseDefinitions.map((definition) => ({
     definition,
-    analysis: runInteractiveSpectrumAnalysis(definition.dataset, syntheticLibrary, parameters, "plasma-emission"),
+    analysis: runInteractiveSpectrumAnalysis(
+      definition.dataset,
+      syntheticLibrary,
+      parameters,
+      "plasma-emission",
+      builtinMolecularSystems,
+    ),
   }));
 }
 

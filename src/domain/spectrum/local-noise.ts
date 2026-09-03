@@ -46,7 +46,34 @@ function clippedMad(values: readonly number[], clippingSnr: number): number {
 
 export function median(values: readonly number[]): number {
   if (values.length === 0) return 0;
-  const sorted = [...values].sort((left, right) => left - right);
-  const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle];
+  const working = [...values];
+  const middle = Math.floor(working.length / 2);
+  const upper = quickSelect(working, middle);
+  if (working.length % 2) return upper;
+  let lower = Number.NEGATIVE_INFINITY;
+  for (let index = 0; index < middle; index += 1) lower = Math.max(lower, working[index]);
+  return (lower + upper) / 2;
+}
+
+function quickSelect(values: number[], targetIndex: number): number {
+  let left = 0;
+  let right = values.length - 1;
+  while (left < right) {
+    const pivot = values[Math.floor((left + right) / 2)];
+    let low = left;
+    let high = right;
+    while (low <= high) {
+      while (values[low] < pivot) low += 1;
+      while (values[high] > pivot) high -= 1;
+      if (low <= high) {
+        [values[low], values[high]] = [values[high], values[low]];
+        low += 1;
+        high -= 1;
+      }
+    }
+    if (targetIndex <= high) right = high;
+    else if (targetIndex >= low) left = low;
+    else break;
+  }
+  return values[targetIndex];
 }

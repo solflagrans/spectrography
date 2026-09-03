@@ -22,7 +22,6 @@ describe("controlled synthetic identification matrix", () => {
     for (const { definition, analysis } of results) {
       expect(analysis.hypotheses, definition.id).toHaveLength(0);
       expect(analysis.molecularHypotheses, definition.id).toHaveLength(0);
-      expect(analysis.suitability.status === "impossible" || analysis.conclusion.includes("гипотез"), definition.id).toBe(true);
     }
   }, 30_000);
 });

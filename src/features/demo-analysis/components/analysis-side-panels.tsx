@@ -4,7 +4,10 @@ import { CircleAlert, LoaderCircle, RotateCcw, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
-import { useAnalysisWorkspace } from "@/features/demo-analysis/model/analysis-workspace-context";
+import {
+  useAnalysisWorkspace,
+  useAnalysisWorkspaceCore,
+} from "@/features/demo-analysis/model/analysis-workspace-context";
 import { DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS } from "@/domain/spectrum";
 import { InfoTooltip } from "@/features/workspace/components/info-tooltip";
 import { formatCount, formatDecimal, formatSignedDecimal } from "@/features/workspace/model/display-format";
@@ -30,7 +33,7 @@ export function ProcessingSettingsPanel() {
     resetProcessingParameters,
     updateProcessingParameters,
     updateWavelengthCalibrationParameters,
-  } = useAnalysisWorkspace();
+  } = useAnalysisWorkspaceCore();
   const canReset = parameters.processing.baselineSmoothness !== DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.processing.baselineSmoothness
     || parameters.processing.noiseWindowNm !== DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.processing.noiseWindowNm
     || parameters.processing.smoothingWindow !== DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.processing.smoothingWindow
@@ -228,6 +231,8 @@ function SelectedPeakContent({
   }
 
   const rawIntensity = selectedPeak.rawIntensity;
+  const selectedChannel = analysis.channels.find((channel) => channel.id === selectedPeak.channelId);
+  const localThreshold = selectedChannel?.thresholdDataset.intensities[selectedPeak.index];
 
   return (
     <>
@@ -258,7 +263,7 @@ function SelectedPeakContent({
           <PeakDetail label="Исходная интенсивность" value={formatValue(rawIntensity, 4)} />
           <PeakDetail label="Подготовленная интенсивность" value={formatValue(selectedPeak.intensity, 4)} />
           <PeakDetail label="Выраженность" value={formatValue(selectedPeak.prominence, 4)} />
-          <PeakDetail label="Порог в этой точке" value={formatValue(analysis.thresholdDataset.intensities[selectedPeak.index], 4)} />
+          <PeakDetail label="Порог в этой точке" value={localThreshold === undefined ? "—" : formatValue(localThreshold, 4)} />
         </dl>
       </details>
     </>

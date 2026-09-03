@@ -126,10 +126,10 @@ function scoreRegion(
   temperatureKelvin: number,
 ): RegionScore {
   const padding = Math.max(channel.spectralResolutionNm * 1.5, 0.25);
-  const indices = channel.preparedDataset.wavelengths.map((wavelength, index) => ({ wavelength, index })).filter(({ wavelength }) => (
-    wavelength >= region.minimumWavelengthNm + shiftNm - padding
-      && wavelength <= region.maximumWavelengthNm + shiftNm + padding
-  )).map((item) => item.index);
+  const wavelengths = channel.preparedDataset.wavelengths;
+  const start = lowerBound(wavelengths, region.minimumWavelengthNm + shiftNm - padding);
+  const end = upperBound(wavelengths, region.maximumWavelengthNm + shiftNm + padding);
+  const indices = Array.from({ length: Math.max(0, end - start) }, (_, offset) => start + offset);
   const rawObserved = indices.map((index) => channel.preparedDataset.intensities[index]);
   const baseline = percentile(rawObserved, 0.2);
   const observed = rawObserved.map((value) => Math.max(0, value - baseline));
@@ -142,7 +142,7 @@ function scoreRegion(
   const fitQuality = observedRms > 0 ? clamp(1 - residualRms / observedRms) : 0;
   const localNoise = median(indices.map((index) => channel.noiseDataset.intensities[index]).filter((value) => value > 0));
   const contrastSnr = localNoise > 0 ? scale / localNoise : scale > 0 ? Number.POSITIVE_INFINITY : 0;
-  const channelMaximum = Math.max(...channel.preparedDataset.intensities, 0);
+  const channelMaximum = Math.max(channel.preparedStats.maximum, 0);
   const relativeContrast = channelMaximum > 0 ? scale / channelMaximum : 0;
   const snrQuality = Number.isFinite(contrastSnr) ? contrastSnr / (contrastSnr + 5) : 1;
   const quality = 0.55 * shapeCorrelation + 0.25 * fitQuality + 0.2 * snrQuality;
@@ -256,4 +256,26 @@ function rootMeanSquare(values: readonly number[]): number {
 
 function clamp(value: number): number {
   return Math.max(0, Math.min(1, value));
+}
+
+function lowerBound(values: readonly number[], target: number): number {
+  let low = 0;
+  let high = values.length;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    if (values[middle] < target) low = middle + 1;
+    else high = middle;
+  }
+  return low;
+}
+
+function upperBound(values: readonly number[], target: number): number {
+  let low = 0;
+  let high = values.length;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    if (values[middle] <= target) low = middle + 1;
+    else high = middle;
+  }
+  return low;
 }

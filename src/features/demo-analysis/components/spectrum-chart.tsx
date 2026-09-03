@@ -46,7 +46,7 @@ registerCharts([
 
 const zoomRangesBySource = new Map<string, SpectrumZoomRange>();
 
-interface SpectrumChartProps {
+export interface SpectrumChartProps {
   readonly rawDataset?: SpectrumDataset;
   readonly preparedDataset?: SpectrumDataset;
   readonly label: string;

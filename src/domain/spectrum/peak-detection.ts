@@ -78,19 +78,52 @@ export function detectInteractivePeaks(
 
   candidates.sort((left, right) => right.snr - left.snr || right.prominence - left.prominence || left.sourceIndex - right.sourceIndex);
   const selected: DetectedPeak[] = [];
+  let maximumSelectedDistance = 0;
   for (const candidate of candidates) {
     const candidateDistance = effectiveMinimumDistance(candidate.localGridStepNm, parameters.minimumDistance);
-    if (selected.every((peak) => (
-      Math.abs(peak.wavelength - candidate.wavelength)
-        >= Math.max(candidateDistance, effectiveMinimumDistance(peak.localGridStepNm, parameters.minimumDistance))
-    ))) selected.push(candidate);
+    const possibleConflictRadius = Math.max(candidateDistance, maximumSelectedDistance);
+    const from = lowerBoundPeaks(selected, candidate.wavelength - possibleConflictRadius);
+    const to = upperBoundPeaks(selected, candidate.wavelength + possibleConflictRadius);
+    let hasConflict = false;
+    for (let index = from; index < to; index += 1) {
+      const peak = selected[index];
+      if (Math.abs(peak.wavelength - candidate.wavelength)
+        < Math.max(candidateDistance, effectiveMinimumDistance(peak.localGridStepNm, parameters.minimumDistance))) {
+        hasConflict = true;
+        break;
+      }
+    }
+    if (hasConflict) continue;
+    selected.splice(lowerBoundPeaks(selected, candidate.wavelength), 0, candidate);
+    maximumSelectedDistance = Math.max(maximumSelectedDistance, candidateDistance);
   }
-  selected.sort((left, right) => left.wavelength - right.wavelength || left.sourceIndex - right.sourceIndex);
 
   return {
     peaks: selected,
     thresholdDataset: { wavelengths, intensities: thresholds.map((value) => round(value, 8)) },
   };
+}
+
+function lowerBoundPeaks(peaks: readonly DetectedPeak[], target: number): number {
+  let low = 0;
+  let high = peaks.length;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    if (peaks[middle].wavelength < target) low = middle + 1;
+    else high = middle;
+  }
+  return low;
+}
+
+function upperBoundPeaks(peaks: readonly DetectedPeak[], target: number): number {
+  let low = 0;
+  let high = peaks.length;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    if (peaks[middle].wavelength <= target) low = middle + 1;
+    else high = middle;
+  }
+  return low;
 }
 
 function effectiveMinimumDistance(gridStepNm: number, requestedDistanceNm: number): number {

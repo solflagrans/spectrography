@@ -1,4 +1,4 @@
-import type { WorkingAnalysis } from "@/application/analysis/create-working-analysis";
+import type { WorkingAnalysis } from "@/application/analysis/working-analysis";
 import type { ElementInterpretation, RejectedHypothesisReason } from "@/domain/spectrum";
 
 export type IdentificationTab = "hypotheses" | "diagnostics";

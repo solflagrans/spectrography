@@ -21,6 +21,7 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const sourcePath = resolve(repositoryRoot, "data/molecular-spectra/moose-nitrogen-systems.tsv");
 const manifestPath = resolve(repositoryRoot, "data/molecular-spectra/source-manifest.json");
 const outputPath = resolve(repositoryRoot, "src/domain/molecular-spectrum/generated/moose-nitrogen-systems.json");
+const summaryOutputPath = resolve(repositoryRoot, "src/domain/molecular-spectrum/generated/moose-nitrogen-systems-summary.json");
 const check = process.argv.includes("--check");
 const sourceText = readFileSync(sourcePath, "utf8");
 const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as Record<string, unknown>;
@@ -105,10 +106,21 @@ const generated = {
   })),
 };
 const serialized = `${JSON.stringify(generated)}\n`;
+const serializedSummary = `${JSON.stringify(generated.systems.map((system) => ({
+  id: system.id,
+  formula: system.formula,
+  displayName: system.displayName,
+  transition: system.transition,
+  wavelengthRange: system.wavelengthRange,
+  characteristicRegionCount: system.characteristicRegions.length,
+})))}\n`;
 if (check) {
-  if (readFileSync(outputPath, "utf8") !== serialized) throw new Error("Сгенерированная молекулярная библиотека устарела.");
+  if (readFileSync(outputPath, "utf8") !== serialized || readFileSync(summaryOutputPath, "utf8") !== serializedSummary) {
+    throw new Error("Сгенерированная молекулярная библиотека устарела.");
+  }
 } else {
   writeFileSync(outputPath, serialized);
+  writeFileSync(summaryOutputPath, serializedSummary);
 }
 
 function parseRow(line: string): SourceRow {
