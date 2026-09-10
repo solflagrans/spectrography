@@ -3020,3 +3020,19 @@
     grid-template-columns: 1fr;
   }
 }
+
+.settingsNavigation {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border-bottom: 1px solid var(--color-border-default);
+}
+.settingsNavigation a, .settingsLink {
+  color: inherit;
+  text-underline-offset: 0.2em;
+}
+.settingsLink { font-size: 0.875rem; }
+.settingsSection { scroll-margin-top: 1rem; }
+.settingsSection + .settingsSection {
+  border-top: 1px solid var(--color-border-default);
+}

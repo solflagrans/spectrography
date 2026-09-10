@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { CircleAlert, LoaderCircle, RotateCcw, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
@@ -26,10 +28,27 @@ import {
 import styles from "./analysis-page.module.css";
 
 export function ProcessingSettingsPanel() {
+  return (
+    <div>
+      <nav className={styles.settingsNavigation} aria-label="Разделы настроек">
+        <strong>Настройки анализа</strong>
+        <a href="#preparation-settings">Подготовка спектра</a>
+        <a href="#peak-settings">Поиск пиков</a>
+        <Link href="/analysis">Вернуться к анализу</Link>
+      </nav>
+      <section id="preparation-settings" aria-label="Подготовка спектра" className={styles.settingsSection}>
+        <PreparationSettingsPanel />
+      </section>
+      <section id="peak-settings" aria-label="Поиск пиков" className={styles.settingsSection}>
+        <PeakSearchSettingsPanel />
+      </section>
+    </div>
+  );
+}
+
+function PreparationSettingsPanel() {
   const {
     parameters,
-    calculationStatus,
-    parameterError,
     resetProcessingParameters,
     updateProcessingParameters,
     updateWavelengthCalibrationParameters,
@@ -42,12 +61,12 @@ export function ProcessingSettingsPanel() {
 
   return (
     <div className={styles.sidePanelContent} data-parameter-panel="processing">
-      <SidePanelHeader title="Настройки обработки" onReset={resetProcessingParameters} resetDisabled={!canReset} />
+      <SidePanelHeader title="Подготовка спектра" onReset={resetProcessingParameters} resetDisabled={!canReset} />
       <ParameterSection title="Базовая линия и шум">
         <LogRangeParameter
           id="baseline-smoothness"
           label="Гладкость базовой линии"
-          help="Метод AsLS"
+          help="Определяет, насколько плавно меняется фон под пиками. Увеличьте значение для более ровного фона; уменьшите, если фон заметно изгибается."
           value={parameters.processing.baselineSmoothness}
           min={100}
           max={10_000_000}
@@ -56,7 +75,7 @@ export function ProcessingSettingsPanel() {
         <NumberParameter
           id="noise-window"
           label="Окно оценки шума"
-          help="Локальная оценка MAD первых разностей"
+          help="Размер участка, по которому оцениваются случайные колебания сигнала. Малое окно лучше учитывает местные изменения шума, большое даёт более устойчивую оценку."
           unit="нм"
           value={parameters.processing.noiseWindowNm}
           min={0.05}
@@ -69,7 +88,7 @@ export function ProcessingSettingsPanel() {
         <RangeParameter
           id="smoothing-window"
           label="Окно сглаживания"
-          help="Метод Савицкого—Голея"
+          help="Убирает мелкие колебания сигнала. Большое окно сильнее сглаживает спектр, но может скрыть узкие пики или объединить близкие. Значение 1 отключает сглаживание."
           value={parameters.processing.smoothingWindow}
           min={1}
           max={51}
@@ -82,6 +101,7 @@ export function ProcessingSettingsPanel() {
         <SelectParameter
           id="normalization-method"
           label="Масштаб интенсивности"
+          help="Приводит наибольшую подготовленную интенсивность к 1, чтобы удобнее сравнивать форму спектра. Исходные измерения сохраняются без изменений."
           value={parameters.processing.normalization}
           onChange={(value) => updateProcessingParameters({ normalization: value === "none" ? "none" : "maximum" })}
           options={[{ value: "maximum", label: "К максимуму (0–1)" }, { value: "none", label: "Не нормировать" }]}
@@ -91,29 +111,23 @@ export function ProcessingSettingsPanel() {
         <ToggleParameter
           id="automatic-wavelength-calibration"
           label="Автоматически уточнять шкалу"
-          help="Коррекция применяется только после проверки по независимым опорным признакам"
+          help="Исправляет небольшое общее смещение длин волн, если несколько уверенных совпадений подтверждают поправку и отдельная проверка показывает улучшение. Исходные измерения сохраняются."
           checked={parameters.wavelengthCalibration.allowAutomaticCorrection}
           onChange={(checked) => updateWavelengthCalibrationParameters({ allowAutomaticCorrection: checked })}
         />
       </ParameterSection>
-      <CalculationFeedback status={calculationStatus} error={parameterError} />
     </div>
   );
 }
 
-export function PeakSettingsPanel() {
+export function PeakSearchSettingsPanel() {
   const {
-    analysis,
     parameters,
     calculationStatus,
     parameterError,
-    peakPanelSection,
     resetPeakSearchParameters,
-    selectedPeakId,
-    setPeakPanelSection,
     updatePeakSearchParameters,
   } = useAnalysisWorkspace();
-  const selectedPeak = analysis?.peaks.find((peak) => peak.id === selectedPeakId) ?? null;
   const canReset = parameters.peakSearch.minimumSnr !== DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.peakSearch.minimumSnr
     || parameters.peakSearch.minimumWidth !== DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.peakSearch.minimumWidth
     || parameters.peakSearch.maximumWidth !== DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.peakSearch.maximumWidth
@@ -122,89 +136,64 @@ export function PeakSettingsPanel() {
 
   return (
     <div className={styles.sidePanelContent}>
-      <div className={styles.sidePanelTabs} role="tablist" aria-label="Разделы панели пиков">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={peakPanelSection === "parameters"}
-          aria-controls="peak-parameters-panel"
-          id="peak-parameters-tab"
-          onClick={() => setPeakPanelSection("parameters")}
-        >
-          Параметры
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={peakPanelSection === "selected"}
-          aria-controls="selected-peak-panel"
-          id="selected-peak-tab"
-          onClick={() => setPeakPanelSection("selected")}
-        >
-          Выбранный пик
-        </button>
-      </div>
+      <SidePanelHeader title="Параметры пиков" onReset={resetPeakSearchParameters} resetDisabled={!canReset} />
+      <ParameterSection title="Поиск пиков">
+        <RangeParameter
+          id="detection-threshold"
+          label="Минимальный SNR"
+          help="Насколько пик должен выделяться на фоне шума. Увеличьте значение, чтобы убрать сомнительные пики; уменьшите, чтобы искать более слабые."
+          value={parameters.peakSearch.minimumSnr}
+          min={0}
+          max={30}
+          step={0.5}
+          output={formatDecimal(parameters.peakSearch.minimumSnr, 1)}
+          onChange={(value) => updatePeakSearchParameters({ minimumSnr: value })}
+        />
+        <ValueRangeParameter
+          label="Ширина пика"
+          help="Оставляет пики в выбранном диапазоне ширины. Нижняя граница отсеивает слишком узкие всплески, верхняя — широкие подъёмы сигнала. Слишком узкий диапазон может исключить реальные линии."
+          minimum={{ id: "minimum-width", value: parameters.peakSearch.minimumWidth, min: 0, max: 50, step: 0.01 }}
+          maximum={{ id: "maximum-width", value: parameters.peakSearch.maximumWidth, min: 0.01, max: 100, step: 0.1 }}
+          unit="нм"
+          onMinimumChange={(value) => updatePeakSearchParameters({ minimumWidth: value })}
+          onMaximumChange={(value) => updatePeakSearchParameters({ maximumWidth: value })}
+        />
+        <NumberParameter
+          id="minimum-prominence"
+          label="Минимальная выраженность"
+          help="Насколько вершина должна возвышаться над соседними впадинами. Увеличьте значение, чтобы отсеять небольшие колебания; уменьшите, чтобы сохранить менее выраженные пики."
+          unit="отн. ед."
+          value={parameters.peakSearch.prominence}
+          min={0}
+          max={1}
+          step={0.01}
+          onChange={(value) => updatePeakSearchParameters({ prominence: value })}
+        />
+        <NumberParameter
+          id="minimum-distance"
+          label="Расстояние между пиками"
+          help="Помогает не считать близкие максимумы отдельными пиками. Чем больше значение, тем сильнее отбор близких максимумов; алгоритм ограничивает его с учётом шага измерений."
+          unit="нм"
+          value={parameters.peakSearch.minimumDistance}
+          min={0.01}
+          max={50}
+          step={0.1}
+          onChange={(value) => updatePeakSearchParameters({ minimumDistance: value })}
+        />
+      </ParameterSection>
+      <CalculationFeedback status={calculationStatus} error={parameterError} />
+    </div>
+  );
+}
 
-      {peakPanelSection === "parameters" ? (
-        <div role="tabpanel" id="peak-parameters-panel" aria-labelledby="peak-parameters-tab">
-          <SidePanelHeader title="Параметры пиков" onReset={resetPeakSearchParameters} resetDisabled={!canReset} />
-          <ParameterSection title="Поиск пиков">
-            <RangeParameter
-              id="detection-threshold"
-              label="Минимальный SNR"
-              help="Минимальное превышение локального уровня шума"
-              value={parameters.peakSearch.minimumSnr}
-              min={0}
-              max={30}
-              step={0.5}
-              output={formatDecimal(parameters.peakSearch.minimumSnr, 1)}
-              onChange={(value) => updatePeakSearchParameters({ minimumSnr: value })}
-            />
-            <ValueRangeParameter
-              label="Ширина пика"
-              minimum={{ id: "minimum-width", value: parameters.peakSearch.minimumWidth, min: 0, max: 50, step: 0.01 }}
-              maximum={{ id: "maximum-width", value: parameters.peakSearch.maximumWidth, min: 0.01, max: 100, step: 0.1 }}
-              unit="нм"
-              onMinimumChange={(value) => updatePeakSearchParameters({ minimumWidth: value })}
-              onMaximumChange={(value) => updatePeakSearchParameters({ maximumWidth: value })}
-            />
-            <NumberParameter
-              id="minimum-prominence"
-              label="Минимальная выраженность"
-              help="Минимальное превышение пика над ближайшим фоном"
-              unit="отн. ед."
-              value={parameters.peakSearch.prominence}
-              min={0}
-              max={1}
-              step={0.01}
-              onChange={(value) => updatePeakSearchParameters({ prominence: value })}
-            />
-            <NumberParameter
-              id="minimum-distance"
-              label="Расстояние между пиками"
-              unit="нм"
-              value={parameters.peakSearch.minimumDistance}
-              min={0.01}
-              max={50}
-              step={0.1}
-              onChange={(value) => updatePeakSearchParameters({ minimumDistance: value })}
-            />
-          </ParameterSection>
-          <CalculationFeedback status={calculationStatus} error={parameterError} />
-        </div>
-      ) : (
-        <section
-          className={styles.selectedPeakPanel}
-          role="tabpanel"
-          id="selected-peak-panel"
-          aria-labelledby="selected-peak-tab"
-        >
-          <SelectedPeakContent
-            analysis={analysis}
-            selectedPeak={selectedPeak}
-          />
-        </section>
-      )}
+export function PeakSettingsPanel() {
+  const { analysis, selectedPeakId } = useAnalysisWorkspace();
+  const selectedPeak = analysis?.peaks.find((peak) => peak.id === selectedPeakId) ?? null;
+  return (
+    <div className={styles.sidePanelContent}>
+      <section className={styles.selectedPeakPanel} aria-label="Инспектор пика">
+        <SelectedPeakContent analysis={analysis} selectedPeak={selectedPeak} />
+      </section>
     </div>
   );
 }
@@ -756,16 +745,17 @@ function LogRangeParameter({ id, label, help, value, min, max, onChange }: Reado
   );
 }
 
-function SelectParameter({ id, label, value, options, onChange }: Readonly<{
+function SelectParameter({ id, label, help, value, options, onChange }: Readonly<{
   id: string;
   label: string;
+  help?: string;
   value: string;
   options: readonly { value: string; label: string }[];
   onChange: (value: string) => void;
 }>) {
   return (
     <div className={styles.parameterControl} data-parameter-control>
-      <ParameterLabel htmlFor={id} label={label} />
+      <ParameterLabel htmlFor={id} label={label} help={help} />
       <select id={id} className={styles.parameterSelect} value={value} onChange={(event) => onChange(event.target.value)}>
         {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
       </select>
@@ -788,8 +778,9 @@ function ToggleParameter({ id, label, help, checked, onChange }: Readonly<{
   );
 }
 
-function ValueRangeParameter({ label, minimum, maximum, unit, onMinimumChange, onMaximumChange }: Readonly<{
+function ValueRangeParameter({ label, help, minimum, maximum, unit, onMinimumChange, onMaximumChange }: Readonly<{
   label: string;
+  help?: string;
   minimum: { id: string; value: number; min: number; max: number; step: number };
   maximum: { id: string; value: number; min: number; max: number; step: number };
   unit: string;
@@ -799,6 +790,7 @@ function ValueRangeParameter({ label, minimum, maximum, unit, onMinimumChange, o
   return (
     <fieldset className={styles.valueRangeParameter} data-parameter-control>
       <legend>{label}</legend>
+      {help ? <InfoTooltip label={label} content={help} /> : null}
       <div className={styles.valueRangeFields}>
         <label htmlFor={minimum.id}>от</label>
         <DeferredNumberInput id={minimum.id} label={`${label}, от`} value={minimum.value} min={minimum.min} max={minimum.max} step={minimum.step} onCommit={onMinimumChange} />

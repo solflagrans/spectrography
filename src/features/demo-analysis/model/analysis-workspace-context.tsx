@@ -34,7 +34,6 @@ import type {
 
 export type AnalysisCalculationStatus = "idle" | "calculating" | "ready" | "error";
 export type SpectrumImportStatus = "idle" | "reading" | "error";
-export type PeakPanelSection = "parameters" | "selected";
 export type AnalysisView = "composition" | "peaks";
 
 export interface SpectrumFileLike {
@@ -50,7 +49,6 @@ interface AnalysisWorkspaceContextValue {
   readonly importStatus: SpectrumImportStatus;
   readonly importError: string | null;
   readonly selectedPeakId: string | null;
-  readonly peakPanelSection: PeakPanelSection;
   readonly selectedHypothesisId: string | null;
   readonly identificationTab: IdentificationTab;
   readonly selectedIdentificationChannelId: string | null;
@@ -66,7 +64,6 @@ interface AnalysisWorkspaceContextValue {
   readonly resetProcessingParameters: () => void;
   readonly resetPeakSearchParameters: () => void;
   readonly selectPeak: (peakId: string | null) => void;
-  readonly setPeakPanelSection: (section: PeakPanelSection) => void;
   readonly selectHypothesis: (hypothesisId: string, tab?: IdentificationTab) => void;
   readonly selectHypothesisForElement: (elementSymbol: string) => boolean;
   readonly setIdentificationTab: (tab: IdentificationTab) => void;
@@ -193,7 +190,6 @@ export function AnalysisWorkspaceProvider({
     setParameterError(null);
     uiStore.setState({
       selectedPeakId: null,
-      peakPanelSection: "parameters",
       selectedHypothesisId: null,
       identificationTab: "hypotheses",
       selectedIdentificationChannelId: null,
@@ -333,12 +329,7 @@ export function AnalysisWorkspaceProvider({
   const selectPeak = useCallback((peakId: string | null) => {
     uiStore.setState({
       selectedPeakId: peakId,
-      ...(peakId ? { peakPanelSection: "selected" as const } : {}),
     });
-  }, [uiStore]);
-
-  const setPeakPanelSection = useCallback((section: PeakPanelSection) => {
-    uiStore.setState({ peakPanelSection: section });
   }, [uiStore]);
 
   const selectHypothesis = useCallback((hypothesisId: string, tab?: IdentificationTab) => {
@@ -389,14 +380,7 @@ export function AnalysisWorkspaceProvider({
   }, [uiStore]);
 
   const setAnalysisView = useCallback((view: AnalysisView) => {
-    const selectedPeakId = uiStore.getState().selectedPeakId;
-    if (view === "composition") {
-      uiStore.setState({ analysisView: view, peakPanelSection: "parameters" });
-    } else if (selectedPeakId) {
-      uiStore.setState({ analysisView: view, peakPanelSection: "selected" });
-    } else {
-      uiStore.setState({ analysisView: view });
-    }
+    uiStore.setState({ analysisView: view });
   }, [uiStore]);
 
   const value = useMemo(
@@ -417,7 +401,6 @@ export function AnalysisWorkspaceProvider({
       resetPeakSearchParameters,
       resetProcessingParameters,
       selectPeak,
-      setPeakPanelSection,
       selectHypothesis,
       selectHypothesisForElement,
       setIdentificationTab,
@@ -437,7 +420,6 @@ export function AnalysisWorkspaceProvider({
       resetPeakSearchParameters,
       resetProcessingParameters,
       selectPeak,
-      setPeakPanelSection,
       selectHypothesis,
       selectHypothesisForElement,
       setIdentificationTab,

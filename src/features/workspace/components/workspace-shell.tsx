@@ -9,7 +9,7 @@ import {
   AnalysisSidePanel,
   ProcessingSettingsPanel,
 } from "@/features/demo-analysis/components/analysis-side-panels";
-import { useAnalysisWorkspaceCore } from "@/features/demo-analysis/model/analysis-workspace-context";
+import { useAnalysisWorkspace } from "@/features/demo-analysis/model/analysis-workspace-context";
 import { formatDecimal } from "@/features/workspace/model/display-format";
 
 import { InfoTooltipProvider } from "./info-tooltip";
@@ -17,7 +17,7 @@ import { WorkspaceNavigation } from "./workspace-navigation";
 import styles from "./workspace-shell.module.css";
 
 export function WorkspaceShell({ children }: Readonly<{ children: ReactNode }>) {
-  const { analysis } = useAnalysisWorkspaceCore();
+  const { analysis, analysisView } = useAnalysisWorkspace();
   const pathname = usePathname();
   const sidePanel = analysis
     ? pathname.startsWith("/processing")
@@ -49,7 +49,7 @@ export function WorkspaceShell({ children }: Readonly<{ children: ReactNode }>) 
 
         <div className={clsx(styles.workspace, sidePanel && styles.workspaceWithPanel)}>
           {sidePanel ? (
-            <aside className={clsx(styles.leftPanel, pathname.startsWith("/analysis") && styles.analysisLeftPanel)} aria-label="Панель текущего раздела">
+            <aside className={clsx(styles.leftPanel, pathname.startsWith("/analysis") && analysisView === "composition" && styles.analysisLeftPanel)} aria-label="Панель текущего раздела">
               {sidePanel}
             </aside>
           ) : null}

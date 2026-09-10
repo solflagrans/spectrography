@@ -16,6 +16,16 @@ test("measurement to evidence and a linked peak", async ({ page }, testInfo) => 
   await expect(page.getByText(/Обнаружено:|Элементы не определены/).first()).toBeVisible();
 
   await page.getByRole("tab", { name: "Все пики" }).click();
+  await expect(page.getByRole("region", { name: "Инспектор пика" })).toBeVisible();
+  await expect(page.getByRole("slider", { name: "Минимальный SNR" })).toHaveCount(0);
+  await page.locator("tr[data-peak-id]").first().click();
+  const peakBeforeSettings = await page.locator('tr[aria-selected="true"]').getAttribute("data-peak-id");
+  await page.getByRole("link", { name: "Настроить поиск пиков" }).click();
+  await expect(page).toHaveURL(/processing#peak-settings$/);
+  await expect(page.getByRole("slider", { name: "Минимальный SNR" })).toBeVisible();
+  await page.getByRole("link", { name: "Вернуться к анализу" }).first().click();
+  await expect(page.getByRole("tab", { name: "Все пики" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator('tr[aria-selected="true"]')).toHaveAttribute("data-peak-id", peakBeforeSettings!);
   await expect(page.getByText("Ближайшая линия", { exact: true }).first()).toBeVisible();
   if (testInfo.project.name === "chromium") {
     const selectedRow = page.locator("tr[data-peak-id]").first();
@@ -83,7 +93,7 @@ test("desktop tooltips, settings and evidence table keep their geometry at 1024 
   await page.getByRole("link", { name: "Обработка", exact: true }).click();
   const tooltipTrigger = page.getByRole("button", { name: "Подсказка: Гладкость базовой линии" });
   await tooltipTrigger.hover();
-  await expect(page.getByRole("tooltip")).toContainText("AsLS");
+  await expect(page.getByRole("tooltip")).toContainText("насколько плавно меняется фон");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("tooltip")).toBeHidden();
 

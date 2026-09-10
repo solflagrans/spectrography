@@ -263,7 +263,7 @@ export function ProcessingAnalysisPage() {
     ?? analysis.channels[0];
   if (!channel) return <AnalysisUnavailable section="Обработка" />;
   return (
-    <AnalysisPage title="Обработка">
+    <AnalysisPage title="Обработка" action={<Link className={styles.settingsLink} href="/analysis">Вернуться к анализу</Link>}>
       <Card
         title={analysis.channels.length === 1 ? "Подготовленный спектр" : `Подготовленный спектр: ${channel.name}`}
         accessory={analysis.channels.length > 1 ? (
@@ -308,6 +308,7 @@ export function PeaksAnalysisPage() {
   return (
     <AnalysisPage
       title="Анализ"
+      action={<Link className={styles.settingsLink} href="/processing#peak-settings">Настроить поиск пиков</Link>}
     >
       <Card
         title="Пики"

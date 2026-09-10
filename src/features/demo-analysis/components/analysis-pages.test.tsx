@@ -14,7 +14,7 @@ import { DEMO_ANALYSIS_INPUT } from "@/application/analysis/working-analysis";
 import { demoSpectra } from "@/fixtures/demo-spectra";
 import { InfoTooltipProvider } from "@/features/workspace/components/info-tooltip";
 
-import { AnalysisSidePanel, IdentificationLinesPanel, PeakSettingsPanel, ProcessingSettingsPanel } from "./analysis-side-panels";
+import { AnalysisSidePanel, IdentificationLinesPanel, PeakSettingsPanel, PeakSearchSettingsPanel, ProcessingSettingsPanel } from "./analysis-side-panels";
 import {
   AnalysisAnalysisPage,
   DataAnalysisPage,
@@ -122,6 +122,7 @@ function PeakSelectionScenario() {
         <DataAnalysisPage />
         <PeaksAnalysisPage />
         <PeakSettingsPanel />
+        <PeakSearchSettingsPanel />
         <AnalysisProbe />
       </AnalysisWorkspaceProvider>
     </InfoTooltipProvider>
@@ -135,6 +136,7 @@ function Scenario() {
         <DataAnalysisPage />
         <ProcessingAnalysisPage />
         <PeakSettingsPanel />
+        <PeakSearchSettingsPanel />
         <AnalysisProbe />
       </AnalysisWorkspaceProvider>
     </InfoTooltipProvider>
@@ -159,6 +161,7 @@ function IdentificationScenario() {
         <IdentificationLinesPanel />
         <IdentificationAnalysisPage />
         <PeakSettingsPanel />
+        <PeakSearchSettingsPanel />
         <AnalysisProbe />
       </AnalysisWorkspaceProvider>
     </InfoTooltipProvider>
@@ -246,7 +249,7 @@ describe("interactive demo analysis", () => {
 
     await openDemoAnalysis();
     const validPeakCount = screen.getByTestId("peak-count").textContent;
-    const minimumDistance = screen.getByLabelText(/Расстояние между пиками/);
+    const minimumDistance = screen.getByRole("spinbutton", { name: "Расстояние между пиками" });
     fireEvent.change(minimumDistance, { target: { value: "0" } });
     fireEvent.blur(minimumDistance);
 
@@ -345,16 +348,14 @@ describe("interactive demo analysis", () => {
     render(<PeakSelectionScenario />);
     await openDemoAnalysis();
 
-    fireEvent.click(screen.getByRole("tab", { name: "Выбранный пик" }));
     expect(screen.getByText(/Выберите пик на графике или в таблице/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("tab", { name: "Параметры" }));
 
     const graphButtons = screen.getAllByRole("button", { name: /График: выбрать пик/ });
     fireEvent.click(graphButtons[0]);
 
     const selectedId = screen.getByTestId("selected-peak").textContent;
     expect(selectedId).not.toBe("—");
-    expect(screen.getByRole("tab", { name: "Выбранный пик" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("region", { name: "Инспектор пика" })).toBeTruthy();
     expect(screen.getByText("Длина")).toBeTruthy();
     expect(screen.getByText("Ширина")).toBeTruthy();
     expect(screen.getByText("Параметры пика")).toBeTruthy();
@@ -373,7 +374,7 @@ describe("interactive demo analysis", () => {
     expect(selectableRows[1].getAttribute("aria-selected")).toBe("true");
     expect(screen.getByRole("heading", { name: "Линии и назначения" })).toBeTruthy();
 
-    const snrSort = screen.getByRole("button", { name: /SNR/ });
+    const snrSort = screen.getByRole("columnheader", { name: /SNR/ }).querySelector("button")!;
     fireEvent.click(snrSort);
     expect(snrSort.closest("th")?.getAttribute("aria-sort")).toMatch(/ascending|descending/);
   });
@@ -433,7 +434,6 @@ describe("interactive demo analysis", () => {
     fireEvent.click(screen.getAllByRole("button", { name: /График: выбрать пик/ })[0]);
     const selectedId = screen.getByTestId("selected-peak").textContent;
 
-    fireEvent.click(screen.getByRole("tab", { name: "Параметры" }));
     fireEvent.change(screen.getByRole("slider", { name: "Минимальный SNR" }), { target: { value: "5.5" } });
     await act(async () => vi.advanceTimersByTime(181));
     expect(screen.getByTestId("selected-peak").textContent).toBe(selectedId);
@@ -443,7 +443,6 @@ describe("interactive demo analysis", () => {
     fireEvent.blur(prominence);
     await act(async () => vi.advanceTimersByTime(181));
     expect(screen.getByTestId("selected-peak").textContent).toBe("—");
-    fireEvent.click(screen.getByRole("tab", { name: "Выбранный пик" }));
     expect(screen.getByText("При текущих параметрах пики не найдены.")).toBeTruthy();
   });
 
@@ -497,7 +496,6 @@ describe("interactive demo analysis", () => {
     fireEvent.click(screen.getByRole("option", { name: /N.*Азот/ }));
     const selectedHypothesis = screen.getByTestId("selected-hypothesis").textContent;
 
-    fireEvent.click(screen.getByRole("tab", { name: "Параметры" }));
     fireEvent.change(screen.getByRole("slider", { name: "Минимальный SNR" }), { target: { value: "5.5" } });
     await act(async () => vi.advanceTimersByTime(181));
     expect(screen.getByTestId("selected-hypothesis").textContent).toBe(selectedHypothesis);
