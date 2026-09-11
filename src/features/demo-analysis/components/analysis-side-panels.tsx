@@ -1,9 +1,7 @@
 "use client";
 
-import Link from "next/link";
-
-import { CircleAlert, LoaderCircle, RotateCcw, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { CircleAlert, Crosshair, SlidersHorizontal, ScanLine, LoaderCircle, RotateCcw, Search } from "lucide-react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 
 import {
@@ -27,21 +25,58 @@ import {
 
 import styles from "./analysis-page.module.css";
 
+const processingSections = [
+  { id: "preparation-settings", label: "Подготовка", icon: SlidersHorizontal },
+  { id: "peak-settings", label: "Поиск пиков", icon: ScanLine },
+] as const;
+
+function subscribeToSettingsHash(onChange: () => void) {
+  window.addEventListener("hashchange", onChange);
+  return () => window.removeEventListener("hashchange", onChange);
+}
+
+function getSettingsSection() {
+  return window.location.hash === "#peak-settings" ? "peak-settings" : "preparation-settings";
+}
+
 export function ProcessingSettingsPanel() {
+  const section = useSyncExternalStore(subscribeToSettingsHash, getSettingsSection, () => "preparation-settings");
+  const selectSection = (index: number) => {
+    const next = processingSections[index];
+    window.history.pushState(null, "", `#${next.id}`);
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+    document.getElementById(`${next.id}-tab`)?.focus();
+  };
   return (
-    <div>
-      <nav className={styles.settingsNavigation} aria-label="Разделы настроек">
-        <strong>Настройки анализа</strong>
-        <a href="#preparation-settings">Подготовка спектра</a>
-        <a href="#peak-settings">Поиск пиков</a>
-        <Link href="/analysis">Вернуться к анализу</Link>
-      </nav>
-      <section id="preparation-settings" aria-label="Подготовка спектра" className={styles.settingsSection}>
-        <PreparationSettingsPanel />
-      </section>
-      <section id="peak-settings" aria-label="Поиск пиков" className={styles.settingsSection}>
-        <PeakSearchSettingsPanel />
-      </section>
+    <div className={styles.processingSettings}>
+      <div className={styles.settingsNavigation}>
+        <div className={styles.settingsTabs} role="tablist" aria-label="Разделы настроек">
+          {processingSections.map(({ id, label, icon: Icon }, index) => (
+            <button
+              key={id}
+              id={`${id}-tab`}
+              type="button"
+              role="tab"
+              aria-selected={section === id}
+              aria-controls={`${id}-panel`}
+              tabIndex={section === id ? 0 : -1}
+              onClick={() => selectSection(index)}
+              onKeyDown={(event) => {
+                if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+                event.preventDefault();
+                selectSection(event.key === "Home" ? 0 : event.key === "End" ? 1 : 1 - index);
+              }}
+            >
+              <Icon size={16} aria-hidden="true" />{label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {processingSections.map(({ id }) => (
+        <section key={id} id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-tab`} hidden={section !== id}>
+          {section === id ? id === "peak-settings" ? <PeakSearchSettingsPanel /> : <PreparationSettingsPanel /> : null}
+        </section>
+      ))}
     </div>
   );
 }
@@ -49,6 +84,8 @@ export function ProcessingSettingsPanel() {
 function PreparationSettingsPanel() {
   const {
     parameters,
+    calculationStatus,
+    parameterError,
     resetProcessingParameters,
     updateProcessingParameters,
     updateWavelengthCalibrationParameters,
@@ -116,6 +153,7 @@ function PreparationSettingsPanel() {
           onChange={(checked) => updateWavelengthCalibrationParameters({ allowAutomaticCorrection: checked })}
         />
       </ParameterSection>
+      <CalculationFeedback status={calculationStatus} error={parameterError} />
     </div>
   );
 }
@@ -214,7 +252,17 @@ function SelectedPeakContent({
     return <PanelEmptyState>При текущих параметрах пики не найдены.</PanelEmptyState>;
   }
   if (!selectedPeak) {
-    return <PanelEmptyState>Выберите пик на графике или в таблице, чтобы увидеть его параметры и кандидатов.</PanelEmptyState>;
+    return (
+      <div className={styles.inspectorWelcome}>
+        <span className={styles.inspectorWelcomeIcon}><Crosshair size={28} strokeWidth={1.5} aria-hidden="true" /></span>
+        <h2>Исследуйте пик</h2>
+        <p>Выберите пик на графике или в таблице, здесь появятся его характеристики и подходящие спектральные линии.</p>
+        <div className={styles.inspectorWelcomeDetails}>
+          <span><ScanLine size={18} aria-hidden="true" /><span><strong>Характеристики сигнала</strong><small>Длина волны, ширина и заметность на фоне шума</small></span></span>
+          <span><Search size={18} aria-hidden="true" /><span><strong>Линии и назначения</strong><small>Ближайшие совпадения и связь с определённым составом</small></span></span>
+        </div>
+      </div>
+    );
   }
 
   const rawIntensity = selectedPeak.rawIntensity;
