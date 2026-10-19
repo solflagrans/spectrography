@@ -3057,7 +3057,7 @@
   cursor: pointer;
 }
 .settingsTabs svg { flex-shrink: 0; width: 14px; height: 14px; }
-@container (max-width: 250px) {
+@container (max-width: 340px) {
   .settingsTabs svg { display: none; }
   .settingsTabs button { padding-inline: 3px; }
 }
@@ -3096,3 +3096,15 @@
 .inspectorWelcomeDetails svg { flex-shrink: 0; margin-top: 2px; color: var(--color-action-primary); }
 .inspectorWelcomeDetails strong { display: block; font-size: var(--font-size-label); color: var(--color-text-primary); font-weight: 600; }
 .inspectorWelcomeDetails small { display: block; margin-top: 5px; line-height: 1.5; }
+
+.elementChoices { display: grid; gap: 8px; max-height: 180px; overflow: auto; padding: 4px; }
+.elementChoices label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.875rem; }
+.elementChoices strong { min-width: 24px; }
+.compositionSearch { display: grid; gap: 8px; font-size: 0.875rem; }
+.compositionSearch input { min-width: 0; width: 100%; padding: 8px; border: 1px solid var(--color-border-default); border-radius: var(--radius-sm); background: var(--color-background-surface); color: inherit; }
+.compositionSummary { color: var(--color-text-secondary); font-size: 0.875rem; overflow-wrap: anywhere; }
+.settingsTabs { flex-wrap: wrap; }
+.settingsTabs button { flex-basis: 70px; }
+
+.mobileCompositionDiagnostics { display: none; }
+@media (max-width: 51.25rem) { .mobileCompositionDiagnostics { display: block; margin-top: 12px; } }

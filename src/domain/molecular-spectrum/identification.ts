@@ -1,3 +1,4 @@
+import { resolveCompositionSettings } from "@/domain/spectrum/composition-settings";
 import { round } from "@/domain/spectrum/math";
 import { IDENTIFICATION_QUALITY_PROFILE } from "@/domain/spectrum/quality-profile";
 import type { ChannelPreparationResult } from "@/domain/spectrum/types";
@@ -25,13 +26,14 @@ interface SystemFit {
   readonly composite: number;
 }
 
-export function identifyMolecularSystems({ channels, systems }: MolecularAnalysisInput): MolecularIdentificationResult {
+export function identifyMolecularSystems({ channels, systems, composition }: MolecularAnalysisInput): MolecularIdentificationResult {
+  const settings = resolveCompositionSettings(composition);
   const usableChannels = channels.filter((channel) => channel.usable);
   const accepted: MolecularHypothesis[] = [];
   const rejected: MolecularHypothesis[] = [];
   for (const system of systems) {
-    const fit = fitSystem(system, usableChannels, candidateShifts(usableChannels));
-    const randomFits = randomOffsets().map((offset) => fitSystem(system, usableChannels, [offset]));
+    const fit = fitSystem(system, usableChannels, candidateShifts(usableChannels), settings.minimumMolecularQuality);
+    const randomFits = randomOffsets().map((offset) => fitSystem(system, usableChannels, [offset], settings.minimumMolecularQuality));
     const strongestRandom = Math.max(...randomFits.map((item) => item.composite), 0);
     const coveredRegions = system.characteristicRegions.filter((region) => usableChannels.some((channel) => covers(channel, region)));
     const supported = fit.observations.filter((observation) => observation.supported);
@@ -47,8 +49,8 @@ export function identifyMolecularSystems({ channels, systems }: MolecularAnalysi
     };
     const reasons: MolecularHypothesisReason[] = [];
     if (coveredRegions.length < 2) reasons.push("insufficient-covered-regions");
-    if (supportedIds.length < 2) reasons.push("single-region");
-    if (fit.composite < 0.42) reasons.push("weak-profile-agreement");
+    if (supportedIds.length < settings.minimumMolecularRegions) reasons.push("single-region");
+    if (fit.composite < settings.minimumMolecularQuality) reasons.push("weak-profile-agreement");
     if (coveredRegions.some((region) => region.key) && !supportedKeyCount) reasons.push("missing-key-region");
     if (!randomAgreement.distinguishableFromRandom) reasons.push("random-like-profile");
     const hypothesis: MolecularHypothesis = {
@@ -69,6 +71,7 @@ export function identifyMolecularSystems({ channels, systems }: MolecularAnalysi
       quality: round(fit.composite, 6),
       randomAgreement,
       accepted: reasons.length === 0,
+      admission: fit.composite < 0.42 || new Set(supported.filter((item) => item.quality >= 0.42).map((item) => item.regionId)).size < 2 ? "sensitive" : "standard",
       reasons,
       explanation: reasons.length === 0
         ? `${supportedIds.length} характерных участка полосы согласуются с формой спектра.`
@@ -87,6 +90,7 @@ function fitSystem(
   system: MolecularSystemDefinition,
   channels: readonly ChannelPreparationResult[],
   shifts: readonly number[],
+  minimumQuality: number,
 ): SystemFit {
   let best: SystemFit = { shiftNm: 0, temperatureKelvin: system.preparation.rotationalTemperatureGridKelvin[0], observations: [], supportedCount: 0, composite: 0 };
   for (const temperatureKelvin of system.preparation.rotationalTemperatureGridKelvin) {
@@ -105,7 +109,7 @@ function fitSystem(
       const observations = channels.flatMap((channel) => system.characteristicRegions.flatMap((region) => {
         if (!covers(channel, region)) return [];
         const profile = shiftProfile(channel.preparedDataset.wavelengths, baseProfiles.get(`${channel.id}:${region.id}`)!, shiftNm);
-        return [scoreRegion(channel, region, profile, shiftNm, temperatureKelvin)];
+        return [scoreRegion(channel, region, profile, shiftNm, temperatureKelvin, minimumQuality)];
       }));
       const supportedCount = new Set(observations.filter((item) => item.supported).map((item) => item.regionId)).size;
       const composite = average([...bestObservationPerRegion(observations)]
@@ -125,6 +129,7 @@ function scoreRegion(
   profile: readonly number[],
   shiftNm: number,
   temperatureKelvin: number,
+  minimumQuality: number,
 ): RegionScore {
   const padding = Math.max(channel.spectralResolutionNm * 1.5, 0.25);
   const wavelengths = channel.preparedDataset.wavelengths;
@@ -152,7 +157,7 @@ function scoreRegion(
     && fitQuality >= 0.2
     && contrastSnr >= 4
     && relativeContrast >= IDENTIFICATION_QUALITY_PROFILE.molecular.minimumRelativeContrast
-    && quality >= 0.42;
+    && quality >= minimumQuality;
   const overlappingAtomicPeakIds = channel.peaks.filter((peak) => (
     peak.wavelength >= region.minimumWavelengthNm + shiftNm - channel.spectralResolutionNm
       && peak.wavelength <= region.maximumWavelengthNm + shiftNm + channel.spectralResolutionNm

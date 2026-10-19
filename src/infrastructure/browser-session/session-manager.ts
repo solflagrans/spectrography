@@ -1,3 +1,4 @@
+import { resolveCompositionSettings } from "@/domain/spectrum/composition-settings";
 import {
   ANALYSIS_SESSION_SCHEMA_VERSION,
   createAnalysisSession,
@@ -49,6 +50,7 @@ function migrateLegacySession(session: AnalysisSession): AnalysisSession {
     spectrumType: normalizeSpectrumType(legacySession.spectrumType),
     analysisOptions: {
       ...legacySession.analysisOptions,
+      composition: resolveCompositionSettings(legacySession.analysisOptions?.composition),
       wavelengthCalibration: legacySession.analysisOptions?.wavelengthCalibration
         ?? DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.wavelengthCalibration,
     },

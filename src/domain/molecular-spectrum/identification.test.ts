@@ -1,3 +1,4 @@
+import { DEFAULT_COMPOSITION_SETTINGS } from "@/domain/spectrum/composition-settings";
 import { describe, expect, it } from "vitest";
 
 import { DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS } from "@/domain/spectrum";
@@ -43,21 +44,21 @@ describe("molecular emission identification", () => {
     expect(result.hypotheses[0].commonShiftNm).toBeCloseTo(0.16, 1);
   });
 
-  it("treats one matching band as weak evidence", () => {
+  it.each(["standard", "sensitive"] as const)("treats one matching band as weak evidence in %s mode", (mode) => {
     const system = syntheticSystem();
     const wavelengths = grid(5, 35, 0.05);
     const intensities = synthesize(system, wavelengths, 0.12, ["a"]);
-    const result = identifyMolecularSystems({ channels: [channel(wavelengths, intensities)], systems: [system] });
+    const result = identifyMolecularSystems({ channels: [channel(wavelengths, intensities)], systems: [system], composition: { ...DEFAULT_COMPOSITION_SETTINGS, mode } });
 
     expect(result.hypotheses).toHaveLength(0);
     expect(result.rejectedHypotheses[0].reasons).toContain("single-region");
   });
 
-  it("rejects a profile that agrees only after a large accidental offset", () => {
+  it.each(["standard", "sensitive"] as const)("rejects an accidental offset in %s mode", (mode) => {
     const system = syntheticSystem();
     const wavelengths = grid(-15, 55, 0.05);
     const intensities = synthesize(system, wavelengths, 8, ["a", "b", "c"]);
-    const result = identifyMolecularSystems({ channels: [channel(wavelengths, intensities)], systems: [system] });
+    const result = identifyMolecularSystems({ channels: [channel(wavelengths, intensities)], systems: [system], composition: { ...DEFAULT_COMPOSITION_SETTINGS, mode } });
 
     expect(result.hypotheses).toHaveLength(0);
     expect(result.rejectedHypotheses[0].reasons).toContain("random-like-profile");

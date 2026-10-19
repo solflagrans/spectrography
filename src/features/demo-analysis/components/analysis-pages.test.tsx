@@ -465,7 +465,7 @@ describe("interactive demo analysis", () => {
     render(<IdentificationScenario />);
     await openDemoAnalysis();
 
-    const diagnosticDetails = screen.getByText(/^Другие совпадения ·/).closest("details")!;
+    const diagnosticDetails = screen.getByText(/^Возможные совпадения ·/).closest("details")!;
     diagnosticDetails.open = true;
     fireEvent(diagnosticDetails, new Event("toggle"));
     expect(screen.getByTestId("identification-tab").textContent).toBe("diagnostics");
@@ -490,7 +490,7 @@ describe("interactive demo analysis", () => {
     vi.useFakeTimers();
     render(<IdentificationScenario />);
     await openDemoAnalysis();
-    const diagnosticDetails = screen.getByText(/^Другие совпадения ·/).closest("details")!;
+    const diagnosticDetails = screen.getByText(/^Возможные совпадения ·/).closest("details")!;
     diagnosticDetails.open = true;
     fireEvent(diagnosticDetails, new Event("toggle"));
     fireEvent.click(screen.getByRole("option", { name: /N.*Азот/ }));
@@ -510,7 +510,7 @@ describe("interactive demo analysis", () => {
   it("opens a supporting observation and carries the selected peak to the peak mode", async () => {
     render(<IdentificationScenario />);
     await openDemoAnalysis();
-    const diagnosticDetails = screen.getByText(/^Другие совпадения ·/).closest("details")!;
+    const diagnosticDetails = screen.getByText(/^Возможные совпадения ·/).closest("details")!;
     diagnosticDetails.open = true;
     fireEvent(diagnosticDetails, new Event("toggle"));
     fireEvent.click(screen.getByRole("option", { name: /N.*Азот/ }));

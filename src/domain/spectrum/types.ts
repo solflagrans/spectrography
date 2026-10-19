@@ -42,6 +42,7 @@ export interface PeakSearchParameters {
 }
 
 export interface InteractiveAnalysisParameters {
+  readonly composition?: import("./composition-settings").CompositionSettings;
   readonly processing: SpectrumProcessingParameters;
   readonly peakSearch: PeakSearchParameters;
   readonly wavelengthCalibration: WavelengthCalibrationParameters;
@@ -389,6 +390,7 @@ export interface ElementInterpretation {
   readonly symbol: string;
   readonly name: string;
   readonly reliability: HypothesisReliability;
+  readonly admission?: "standard" | "sensitive";
   readonly independentMatchedGroupCount: number;
   readonly independentMatchedLineCount: number;
   readonly strongCharacteristicGroupCount: number;

@@ -34,14 +34,16 @@ describe("browser analysis session migration", () => {
     const current = createAnalysisSession({ id: "legacy-session", now: new Date("2026-01-01T00:00:00Z") });
     const { spectrumType, ...legacy } = current;
     expect(spectrumType).toBe("plasma-emission");
-    const { wavelengthCalibration, ...legacyAnalysisOptions } = current.analysisOptions;
+    const { wavelengthCalibration, composition, ...legacyAnalysisOptions } = current.analysisOptions;
     expect(wavelengthCalibration.allowAutomaticCorrection).toBe(true);
+    expect(composition?.mode).toBe("standard");
     repository.sessions.set(current.id, { ...legacy, schemaVersion: 1, analysisOptions: legacyAnalysisOptions } as unknown as AnalysisSession);
     window.localStorage.setItem(ACTIVE_SESSION_KEY, current.id);
 
     const migrated = await loadOrCreateBrowserSession(repository);
 
-    expect(migrated.schemaVersion).toBe(3);
+    expect(migrated.schemaVersion).toBe(4);
+    expect(migrated.analysisOptions.composition?.mode).toBe("standard");
     expect(migrated.spectrumType).toBe("plasma-emission");
     expect(migrated.analysisOptions.wavelengthCalibration.allowAutomaticCorrection).toBe(true);
     expect(repository.sessions.get(current.id)).toEqual(migrated);

@@ -1,5 +1,8 @@
 "use client";
 
+import { COMPOSITION_MODE_LABELS, DEFAULT_COMPOSITION_SETTINGS, resolveCompositionSettings, type CompositionSettings } from "@/domain/spectrum/composition-settings";
+import { builtinSpectralLibraryElements } from "@/domain/spectral-library/builtin-library-summary";
+
 import { CircleAlert, Crosshair, SlidersHorizontal, ScanLine, LoaderCircle, RotateCcw, Search } from "lucide-react";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
@@ -28,6 +31,7 @@ import styles from "./analysis-page.module.css";
 const processingSections = [
   { id: "preparation-settings", label: "Подготовка", icon: SlidersHorizontal },
   { id: "peak-settings", label: "Поиск пиков", icon: ScanLine },
+  { id: "composition-settings", label: "Состав", icon: Search },
 ] as const;
 
 function subscribeToSettingsHash(onChange: () => void) {
@@ -36,7 +40,7 @@ function subscribeToSettingsHash(onChange: () => void) {
 }
 
 function getSettingsSection() {
-  return window.location.hash === "#peak-settings" ? "peak-settings" : "preparation-settings";
+  return processingSections.find((item) => `#${item.id}` === window.location.hash)?.id ?? "preparation-settings";
 }
 
 export function ProcessingSettingsPanel() {
@@ -64,7 +68,7 @@ export function ProcessingSettingsPanel() {
               onKeyDown={(event) => {
                 if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
                 event.preventDefault();
-                selectSection(event.key === "Home" ? 0 : event.key === "End" ? 1 : 1 - index);
+                selectSection(event.key === "Home" ? 0 : event.key === "End" ? processingSections.length - 1 : (index + (event.key === "ArrowLeft" ? -1 : 1) + processingSections.length) % processingSections.length);
               }}
             >
               <Icon size={16} aria-hidden="true" />{label}
@@ -74,9 +78,52 @@ export function ProcessingSettingsPanel() {
       </div>
       {processingSections.map(({ id }) => (
         <section key={id} id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-tab`} hidden={section !== id}>
-          {section === id ? id === "peak-settings" ? <PeakSearchSettingsPanel /> : <PreparationSettingsPanel /> : null}
+          {section === id ? id === "peak-settings" ? <PeakSearchSettingsPanel /> : id === "composition-settings" ? <CompositionSettingsPanel /> : <PreparationSettingsPanel /> : null}
         </section>
       ))}
+    </div>
+  );
+}
+
+export function CompositionSettingsPanel() {
+  const { parameters, updateCompositionSettings, calculationStatus, parameterError } = useAnalysisWorkspace();
+  const settings = resolveCompositionSettings(parameters.composition);
+  const [query, setQuery] = useState("");
+  const elements = builtinSpectralLibraryElements.filter((item) => `${item.symbol} ${item.name}`.toLocaleLowerCase("ru-RU").includes(query.toLocaleLowerCase("ru-RU")));
+  const custom = (patch: Partial<CompositionSettings>) => updateCompositionSettings({ ...patch, mode: "custom" });
+  return (
+    <div className={styles.sidePanelContent}>
+      <SidePanelHeader title="Определение состава" onReset={() => updateCompositionSettings(DEFAULT_COMPOSITION_SETTINGS)} resetDisabled={JSON.stringify(settings) === JSON.stringify(DEFAULT_COMPOSITION_SETTINGS)} />
+      <ParameterSection title="Проверяемые элементы">
+        <SelectParameter id="element-mode" label="Область поиска" value={settings.elementMode} onChange={(value) => updateCompositionSettings({ elementMode: value as CompositionSettings["elementMode"] })} options={[{ value: "all", label: "Все элементы библиотеки" }, { value: "exclude", label: "Исключить выбранные" }, { value: "only", label: "Только выбранные" }]} />
+        {settings.elementMode !== "all" ? <>
+          <label className={styles.compositionSearch}>Найти элемент<input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Название или символ" /></label>
+          <p className={styles.sidePanelEmpty}>Выбрано: {settings.elements.length}. Доступны элементы встроенной библиотеки. Азот включает N, N₂ и N₂⁺.</p>
+          <div className={styles.elementChoices}>
+            {elements.map((element) => <label key={element.symbol}>
+              <input type="checkbox" checked={settings.elements.includes(element.symbol)} onChange={(event) => updateCompositionSettings({ elements: event.target.checked ? [...settings.elements, element.symbol].sort() : settings.elements.filter((item) => item !== element.symbol) })} />
+              <strong>{element.symbol}</strong><span>{element.name}</span>
+            </label>)}
+          </div>
+          {!elements.length ? <p>Элемент не найден в библиотеке.</p> : null}
+          {settings.elementMode === "only" && !settings.elements.length ? <p role="status">Выберите хотя бы один элемент. Пока определение состава отключено.</p> : null}
+        </> : null}
+      </ParameterSection>
+      <ParameterSection title="Требования к подтверждениям">
+        <SelectParameter id="composition-mode" label="Режим отбора" value={settings.mode} onChange={(value) => updateCompositionSettings({ mode: value as CompositionSettings["mode"] })} options={Object.entries(COMPOSITION_MODE_LABELS).map(([value, label]) => ({ value, label }))} />
+        <p className={styles.sidePanelEmpty}>{settings.mode === "sensitive" ? "Допускает менее выраженные подтверждения в составе. Такие результаты отмечены; остальные совпадения доступны для исследования." : settings.mode === "strict" ? "Требует больше независимых подтверждений и более высокого качества совпадений." : "Количество обнаруженных элементов зависит от спектра и качества подтверждений."}</p>
+        <details className={styles.identificationDisclosure}>
+          <summary>Дополнительные параметры</summary>
+          <div className={styles.parameterStack}>
+            <NumberParameter id="composition-groups" label="Минимум атомных групп" help="Независимые группы линий, подтверждающие элемент. Несколько неразрешимых линий одного пика считаются одной группой. Увеличьте значение для более строгого отбора." unit="" value={settings.minimumGroups} min={3} max={10} step={1} onChange={(minimumGroups) => custom({ minimumGroups })} />
+            <RangeParameter id="composition-quality" label="Качество атомного подтверждения" help="Учитывает заметность сигнала, точность совпадения и неоднозначность. Большее значение исключает слабые подтверждения. Это индекс отбора, а не вероятность." value={settings.minimumQuality} min={0.4} max={0.75} step={0.01} output={formatDecimal(settings.minimumQuality, 2)} onChange={(minimumQuality) => custom({ minimumQuality })} />
+            <NumberParameter id="composition-strong" label="Минимум сильных групп" help="Сколько подтверждений должны быть особенно выраженными и однозначными. Ключевой признак и проверка случайных совпадений обязательны при любом значении." unit="" value={settings.minimumStrongGroups} min={0} max={5} step={1} onChange={(minimumStrongGroups) => custom({ minimumStrongGroups })} />
+            <NumberParameter id="composition-regions" label="Минимум областей полос" help="Для N₂ и N₂⁺ проверяется форма нескольких участков спектра. Атомные группы и молекулярные области не суммируются." unit="" value={settings.minimumMolecularRegions} min={2} max={5} step={1} onChange={(minimumMolecularRegions) => custom({ minimumMolecularRegions })} />
+            <RangeParameter id="composition-molecular-quality" label="Качество формы полос" help="Насколько хорошо наблюдаемая форма должна совпадать с молекулярной полосой. Большее значение делает отбор строже; сравнение со случайными совпадениями остаётся обязательным." value={settings.minimumMolecularQuality} min={0.36} max={0.75} step={0.01} output={formatDecimal(settings.minimumMolecularQuality, 2)} onChange={(minimumMolecularQuality) => custom({ minimumMolecularQuality })} />
+          </div>
+        </details>
+      </ParameterSection>
+      <CalculationFeedback status={calculationStatus} error={parameterError} />
     </div>
   );
 }
@@ -547,6 +594,7 @@ export function IdentificationLinesPanel() {
               <span className={styles.hypothesisMasterHeading}>
                 <strong>{hypothesis.formula}</strong>
                 <span>{hypothesis.displayName}</span>
+                {hypothesis.admission === "sensitive" ? <small>Чувствительный отбор</small> : null}
               </span>
               <span className={styles.hypothesisMasterMetrics}>
                 <span>{formatCount(hypothesis.supportedRegionIds.length, "подтверждённый участок", "подтверждённых участка", "подтверждённых участков")}</span>
@@ -562,6 +610,7 @@ export function IdentificationLinesPanel() {
               <span className={styles.hypothesisMasterHeading}>
                 <strong>{entry.hypothesis.symbol}</strong>
                 <span>{entry.hypothesis.name}</span>
+                {entry.hypothesis.admission === "sensitive" ? <small>Чувствительный отбор</small> : null}
               </span>
               <span className={styles.hypothesisMasterMetrics}>
                 <span>{formatCount(entry.hypothesis.reliableCharacteristicGroupCount, "подтверждённая группа", "подтверждённые группы", "подтверждённых групп")}</span>
@@ -576,7 +625,7 @@ export function IdentificationLinesPanel() {
         open={identificationTab === "diagnostics"}
         onToggle={(event) => setIdentificationTab(event.currentTarget.open ? "diagnostics" : "hypotheses")}
       >
-        <summary>Другие совпадения · {analysis.rejectedHypotheses.length}</summary>
+        <summary>Возможные совпадения · {analysis.rejectedHypotheses.length}</summary>
         <label className={styles.hypothesisSearch} htmlFor="hypothesis-search">
           <Search size={14} aria-hidden="true" />
           <input id="hypothesis-search" type="search" aria-label="Поиск другого совпадения по элементу или символу" placeholder="Элемент или символ" value={query} onChange={(event) => setQuery(event.target.value)} />
@@ -598,6 +647,7 @@ export function IdentificationLinesPanel() {
                 <span className={styles.hypothesisMasterHeading}>
                   <strong>{entry.hypothesis.symbol}</strong>
                   <span>{entry.hypothesis.name}</span>
+                {entry.hypothesis.admission === "sensitive" ? <small>Чувствительный отбор</small> : null}
                 </span>
                 <span className={styles.hypothesisMasterMetrics}>
                   <span>Качественные группы {entry.hypothesis.reliableCharacteristicGroupCount}</span>

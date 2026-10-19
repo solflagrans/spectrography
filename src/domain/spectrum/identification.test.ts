@@ -1,3 +1,4 @@
+import { DEFAULT_COMPOSITION_SETTINGS } from "./composition-settings";
 import { describe, expect, it } from "vitest";
 
 import type { SpectralLine } from "@/domain/spectral-library/types";
@@ -245,3 +246,30 @@ function channel(id: string, minimum: number, maximum: number, peaks: readonly A
     transformations: [],
   };
 }
+
+describe("composition controls", () => {
+  it("keeps ambiguity evidence identical when competing elements are excluded", () => {
+    const library = [line("a", "Fe", 26, 500, 100), line("b", "Fe", 26, 513, 90), line("c", "Fe", 26, 531, 80), line("d", "Cu", 29, 500.04, 100)];
+    const peaks = library.slice(0, 3).map((item, i) => peak(`p${i}`, "c", i, item.preferredWavelength.valueNm, [candidateFromLine(item, item.preferredWavelength.valueNm), ...(i === 0 ? [candidateFromLine(library[3], 500)] : [])]));
+    const channels = [channel("c", 490, 550, peaks)];
+    const full = buildElementHypotheses(channels, library);
+    const filtered = buildElementHypotheses(channels, library, { ...DEFAULT_COMPOSITION_SETTINGS, elementMode: "exclude", elements: ["Cu"] });
+    const find = (result: ReturnType<typeof buildElementHypotheses>) => [...result.hypotheses, ...result.rejectedHypotheses.map((item) => item.hypothesis)].find((item) => item.symbol === "Fe");
+    expect(find(filtered)).toEqual(find(full));
+    expect(filtered.rejectedHypotheses.some((item) => item.hypothesis.symbol === "Cu")).toBe(false);
+    expect(buildElementHypotheses(channels, library, { ...DEFAULT_COMPOSITION_SETTINGS, elementMode: "only", elements: [] })).toEqual({ hypotheses: [], rejectedHypotheses: [] });
+  });
+  it("admits weaker multi-line evidence in sensitive mode while keeping isolated matches rejected", () => {
+    const library = [line("a", "Fe", 26, 500, 100), line("b", "Fe", 26, 513, 90), line("c", "Fe", 26, 531, 80)];
+    const peaks = library.map((item, i) => ({ ...peak(`p${i}`, "c", i, item.preferredWavelength.valueNm, [candidateFromLine(item, item.preferredWavelength.valueNm)]), snr: 5, prominence: 0.01, widthNm: 0.02 }));
+    const channels = [channel("c", 490, 550, peaks)];
+    expect(buildElementHypotheses(channels, library).hypotheses).toHaveLength(0);
+    const sensitive = { ...DEFAULT_COMPOSITION_SETTINGS, mode: "sensitive" as const };
+    const result = buildElementHypotheses(channels, library, sensitive);
+    expect(result.hypotheses).toHaveLength(1);
+    expect(result.hypotheses[0].admission).toBe("sensitive");
+    expect(result.hypotheses[0].randomAgreement.distinguishableFromRandom).toBe(true);
+    expect(buildElementHypotheses([channel("c", 490, 550, peaks.slice(0, 1))], library, sensitive).hypotheses).toHaveLength(0);
+    expect(buildElementHypotheses(channels, library, { ...DEFAULT_COMPOSITION_SETTINGS, mode: "strict" }).hypotheses).toHaveLength(0);
+  });
+});

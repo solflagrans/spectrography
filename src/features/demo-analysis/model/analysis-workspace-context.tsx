@@ -1,4 +1,6 @@
 "use client";
+import { DEFAULT_COMPOSITION_SETTINGS, resolveCompositionSettings, type CompositionSettings } from "@/domain/spectrum/composition-settings";
+
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
@@ -58,6 +60,7 @@ interface AnalysisWorkspaceContextValue {
   readonly openDemoAnalysis: () => void;
   readonly importSpectrumFile: (file: SpectrumFileLike) => Promise<void>;
   readonly updateProcessingParameters: (patch: Partial<SpectrumProcessingParameters>) => void;
+  readonly updateCompositionSettings: (patch: Partial<CompositionSettings>) => void;
   readonly updatePeakSearchParameters: (patch: Partial<PeakSearchParameters>) => void;
   readonly updateSpectrumType: (spectrumType: NewAnalysisSpectrumType) => void;
   readonly updateWavelengthCalibrationParameters: (patch: Partial<WavelengthCalibrationParameters>) => void;
@@ -108,6 +111,10 @@ export function AnalysisWorkspaceProvider({
 
   const applyAnalysis = useCallback((nextAnalysis: WorkingAnalysis, previousHypothesisId: string | null) => {
     setAnalysis(nextAnalysis);
+    if (!analysisRunner && sourceRef.current) {
+      const sourceToSave = sourceRef.current;
+      void import("@/infrastructure/browser-session/workspace-session").then(({ persistWorkspace }) => persistWorkspace(sourceToSave, nextAnalysis)).catch(() => setParameterError("Анализ рассчитан, но не удалось сохранить сессию в браузере."));
+    }
     const currentUi = uiStore.getState();
     const selectedPeakId = currentUi.selectedPeakId
       && nextAnalysis.peaks.some((peak) => peak.id === currentUi.selectedPeakId)
@@ -143,7 +150,7 @@ export function AnalysisWorkspaceProvider({
       hypothesisSelectionNotice,
     });
     setCalculationStatus("ready");
-  }, [uiStore]);
+  }, [uiStore, analysisRunner]);
 
   const calculate = useCallback((
     nextParameters: InteractiveAnalysisParameters,
@@ -179,6 +186,23 @@ export function AnalysisWorkspaceProvider({
     if (recalculationTimer.current) clearTimeout(recalculationTimer.current);
     runnerRef.current?.dispose();
   }, []);
+
+  useEffect(() => {
+    if (analysisRunner) return;
+    let cancelled = false;
+    const initialRequest = importRequest.current;
+    void import("@/infrastructure/browser-session/workspace-session").then(({ restoreWorkspace }) => restoreWorkspace()).then((saved) => {
+      if (!saved || cancelled || sourceRef.current || importRequest.current !== initialRequest) return;
+      sourceRef.current = saved.source;
+      parametersRef.current = saved.parameters;
+      setParameters(saved.parameters);
+      setSelectedSpectrumType(normalizeSpectrumType(saved.source.spectrumType));
+      calculate(saved.parameters, saved.source);
+    }).catch(() => {
+      if (!cancelled && !sourceRef.current) setParameterError("Не удалось восстановить сохранённую сессию. Можно загрузить измерение заново.");
+    });
+    return () => { cancelled = true; };
+  }, [analysisRunner, calculate]);
 
   const activateSource = useCallback(async (source: CreateWorkingAnalysisInput) => {
     calculationRequest.current += 1;
@@ -273,6 +297,21 @@ export function AnalysisWorkspaceProvider({
     },
     [calculate],
   );
+
+  const updateCompositionSettings = useCallback((patch: Partial<CompositionSettings>) => {
+    const current = parametersRef.current;
+    let composition: CompositionSettings;
+    try {
+      composition = resolveCompositionSettings({ ...(current.composition ?? DEFAULT_COMPOSITION_SETTINGS), ...patch });
+    } catch {
+      setParameterError("Проверьте параметры состава: от 3 до 10 атомных групп, от 0 до 5 сильных групп, от 2 до 5 областей полос; качество атомных подтверждений от 0,4 до 0,75, формы полос от 0,36 до 0,75.");
+      return;
+    }
+    const next = { ...current, composition };
+    parametersRef.current = next;
+    setParameters(next);
+    calculate(next);
+  }, [calculate]);
 
   const updatePeakSearchParameters = useCallback(
     (patch: Partial<PeakSearchParameters>) => {
@@ -395,6 +434,7 @@ export function AnalysisWorkspaceProvider({
       openDemoAnalysis,
       importSpectrumFile,
       updateProcessingParameters,
+      updateCompositionSettings,
       updatePeakSearchParameters,
       updateSpectrumType,
       updateWavelengthCalibrationParameters,
@@ -425,6 +465,7 @@ export function AnalysisWorkspaceProvider({
       setIdentificationTab,
       selectIdentificationChannel,
       setAnalysisView,
+      updateCompositionSettings,
       updatePeakSearchParameters,
       updateSpectrumType,
       updateWavelengthCalibrationParameters,

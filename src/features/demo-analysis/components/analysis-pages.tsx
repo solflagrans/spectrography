@@ -1,5 +1,7 @@
 "use client";
 
+import { describeCompositionSettings, resolveCompositionSettings } from "@/domain/spectrum/composition-settings";
+
 import {
   CircleAlert,
   Database,
@@ -565,13 +567,13 @@ function AnalysisConclusion({ analysis }: Readonly<{ analysis: WorkingAnalysis }
       id: hypothesis.id,
       symbol: hypothesis.symbol,
       name: hypothesis.name,
-      support: formatElementSupportSummary(hypothesis),
+      support: `${formatElementSupportSummary(hypothesis)}${hypothesis.admission === "sensitive" ? " Чувствительный отбор." : ""}`,
     })),
     ...analysis.molecularHypotheses.map((hypothesis) => ({
       id: hypothesis.id,
       symbol: hypothesis.formula,
       name: hypothesis.displayName,
-      support: formatMolecularSupportSummary(hypothesis),
+      support: `${formatMolecularSupportSummary(hypothesis)}${hypothesis.admission === "sensitive" ? " Чувствительный отбор." : ""}`,
     })),
   ];
   const primary = reliableItems[0];
@@ -580,6 +582,9 @@ function AnalysisConclusion({ analysis }: Readonly<{ analysis: WorkingAnalysis }
     <section className={styles.analysisConclusion} aria-labelledby="analysis-conclusion-title">
       <div className={styles.analysisConclusionCopy}>
         <h2 id="analysis-conclusion-title">Состав</h2>
+        <p className={styles.compositionSummary}>{describeCompositionSettings(analysis.parameters.composition)}</p>
+        {resolveCompositionSettings(analysis.parameters.composition).elementMode !== "all" ? <p>Результат относится только к проверяемым элементам.</p> : null}
+        {analysis.hypotheses.some((item) => item.admission === "sensitive") ? <p>В составе есть результаты чувствительного отбора с менее выраженными подтверждениями.</p> : null}
         <p>{primary ? <><strong>Обнаружено: {primary.name} ({primary.symbol}).</strong> {primary.support}{additional.length ? <> Также: {additional.map((item) => `${item.name.toLocaleLowerCase("ru-RU")} (${item.symbol})`).join(", ")}.</> : null}</> : "Элементы не определены."}</p>
         {reliableItems.length ? (
           <label className={styles.mobileHypothesisSelect}>
@@ -592,6 +597,18 @@ function AnalysisConclusion({ analysis }: Readonly<{ analysis: WorkingAnalysis }
             </select>
           </label>
         ) : null}
+        {analysis.rejectedHypotheses.length ? <details className={styles.mobileCompositionDiagnostics}>
+          <summary>Возможные атомные совпадения · {analysis.rejectedHypotheses.length}</summary>
+          <div className={styles.elementChoices}>{analysis.rejectedHypotheses.map(({ hypothesis }) => <button key={hypothesis.id} type="button" onClick={() => selectHypothesis(hypothesis.id, "diagnostics")}>{hypothesis.name} ({hypothesis.symbol}) · {hypothesis.reliableCharacteristicGroupCount} групп</button>)}</div>
+        </details> : null}
+        {analysis.rejectedMolecularHypotheses.length ? <details className={styles.identificationDisclosure}>
+          <summary>Возможные молекулярные совпадения · {analysis.rejectedMolecularHypotheses.length}</summary>
+          {analysis.rejectedMolecularHypotheses.map((item) => <div key={item.id}>
+            <strong>{item.formula} · {item.systemName}</strong>
+            <p>{item.explanation}</p>
+            <ul>{item.reasons.map((reason) => <li key={reason}>{formatMolecularReason(reason)}</li>)}</ul>
+          </div>)}
+        </details> : null}
       </div>
     </section>
   );
@@ -823,7 +840,7 @@ function formatMolecularReason(reason: MolecularHypothesisReason): string {
   const labels: Record<MolecularHypothesisReason, string> = {
     "spectrum-type-not-supported": "тип спектра не разрешает молекулярную интерпретацию",
     "insufficient-covered-regions": "диапазон покрывает меньше двух характерных участков",
-    "single-region": "поддержан только один или ни одного участка",
+    "single-region": "недостаточно подтверждённых участков для выбранного режима",
     "weak-profile-agreement": "форма полосы согласуется недостаточно",
     "missing-key-region": "ключевой участок не найден",
     "random-like-profile": "результат не отделяется от случайных смещений",

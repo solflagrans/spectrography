@@ -155,3 +155,35 @@ test("desktop tooltips, settings and evidence table keep their geometry at 1024 
 
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
 });
+
+test("composition settings filter hypotheses and survive reload", async ({ page }) => {
+  await page.goto("/data");
+  await page.getByRole("button", { name: "Открыть образец NASA PDS" }).click();
+  await expect(page.locator("dd").filter({ hasText: "nasa-pds-h92649-iron-rich.json" })).toBeVisible();
+  await page.getByRole("link", { name: "Обработка", exact: true }).click();
+  await page.getByRole("tab", { name: "Состав", exact: true }).click();
+  await page.getByRole("combobox", { name: "Режим отбора" }).selectOption("sensitive");
+  await page.getByRole("combobox", { name: "Область поиска" }).selectOption("only");
+  await expect(page.getByText("Выберите хотя бы один элемент.", { exact: false })).toBeVisible();
+  await page.getByRole("checkbox", { name: "Fe Железо" }).check();
+  await expect(page.getByText("Обновляем графики и результаты…")).toBeHidden();
+  await page.getByRole("link", { name: "Анализ", exact: true }).click();
+  await expect(page.getByText("Чувствительный · Только: Fe")).toBeVisible();
+  await expect.poll(() => page.evaluate(async () => {
+    const sessionId = localStorage.getItem("spectrography.active-session-id");
+    return new Promise<string>((resolve) => {
+      const request = indexedDB.open("spectrography");
+      request.onsuccess = () => {
+        const db = request.result;
+        const get = db.transaction("analysis-sessions").objectStore("analysis-sessions").get(sessionId!);
+        get.onsuccess = () => { resolve(JSON.stringify(get.result?.analysisOptions?.composition?.elements)); db.close(); };
+      };
+    });
+  })).toBe('["Fe"]');
+  await page.reload();
+  await expect(page.getByText("Чувствительный · Только: Fe")).toBeVisible();
+  await page.getByRole("link", { name: "Обработка", exact: true }).click();
+  await page.getByRole("tab", { name: "Состав", exact: true }).click();
+  await expect(page.getByRole("combobox", { name: "Режим отбора" })).toHaveValue("sensitive");
+  await expect(page.getByRole("checkbox", { name: "Fe Железо" })).toBeChecked();
+});
