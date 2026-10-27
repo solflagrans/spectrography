@@ -1,6 +1,10 @@
 "use client";
 
 import { formatCalibrationReason } from "../model/calibration-ui";
+import { Disclosure } from "@/components/ui/disclosure";
+import { CardHeader, MetricList } from "@/components/ui/card-header";
+import { DialogSurface, DialogHeader } from "@/components/ui/dialog";
+import { StatusBadge as Tag } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectItem } from "@/components/ui/select";
 
@@ -16,7 +20,6 @@ import {
   LoaderCircle,
   Sparkles,
   Upload,
-  X,
 } from "lucide-react";
 import Link from "next/link";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
@@ -136,8 +139,8 @@ function dataChannelLabel(channel: WorkingAnalysis["channels"][number]): string 
 function ChannelDataDetails({ channel }: Readonly<{ channel: WorkingAnalysis["channels"][number] }>) {
   const label = dataChannelLabel(channel);
   return <Dialog.Root><Dialog.Trigger asChild><Button variant="ghost" size="compact" aria-label={`Подробности: ${label}`}>Подробнее…</Button></Dialog.Trigger>
-    <Dialog.Portal><Dialog.Overlay className={`${styles.dialogOverlay} ${styles.referenceOverlay}`} /><Dialog.Content className={`${styles.referenceDialog} ${styles.importDialog}`} aria-describedby={undefined}>
-      <div className={styles.referenceDialogHeader}><Dialog.Title>{label}</Dialog.Title><Dialog.Close asChild><Button size="icon" aria-label="Закрыть характеристики участка"><X size={18} /></Button></Dialog.Close></div>
+    <DialogSurface className={`${styles.referenceDialog} ${styles.importDialog}`} aria-describedby={undefined}>
+      <DialogHeader className={styles.referenceDialogHeader} title={label} closeLabel="Закрыть характеристики участка" />
       <div className={styles.channelDialogBody}>
         <div className={styles.channelDialogSummary}><span>{formatDecimal(channel.wavelengthRange.minimum, 2)}–{formatDecimal(channel.wavelengthRange.maximum, 2)} нм</span><span data-usable={channel.usable}>{channel.usable ? "Используется в анализе" : "Исключён из анализа"}</span></div>
         <section className={styles.channelDialogSection}><h3>Показатели сигнала</h3><DefinitionList items={[
@@ -152,15 +155,15 @@ function ChannelDataDetails({ channel }: Readonly<{ channel: WorkingAnalysis["ch
           <div><div className={styles.channelDiagnosticHeading}><strong>{({ "insufficient-range": "Покрытие диапазона", "low-dynamic-range": "Динамический диапазон", "baseline-drift": "Базовая линия", "isolated-outliers": "Одиночные выбросы", "possible-signal-limit": "Предельные значения сигнала", "insufficient-features": "Спектральные признаки", "uncertain-resolution": "Оценка разрешения", "uncertain-calibration": "Неопределённость шкалы" } as const)[issue.code]}</strong><span>{issue.severity === "diagnostic" ? "Справочно" : issue.severity === "critical" ? "Критично" : "Предупреждение"}</span></div><p>{issue.explanation}</p></div>
         </li>)}</ul></section> : null}
       </div>
-    </Dialog.Content></Dialog.Portal>
+    </DialogSurface>
   </Dialog.Root>;
 }
 
 function ImportDetails({ analysis }: Readonly<{ analysis: WorkingAnalysis }>) {
   const metadata = analysis.instrumentMetadata;
   return <Dialog.Root><Dialog.Trigger asChild><Button variant="ghost" size="compact" aria-label="Подробности импорта">Подробнее…</Button></Dialog.Trigger>
-    <Dialog.Portal><Dialog.Overlay className={`${styles.dialogOverlay} ${styles.referenceOverlay}`} /><Dialog.Content className={`${styles.referenceDialog} ${styles.importDialog}`} aria-describedby={undefined}>
-      <div className={styles.referenceDialogHeader}><Dialog.Title>Подробности импорта</Dialog.Title><Dialog.Close asChild><Button size="icon" aria-label="Закрыть подробности импорта"><X size={18} /></Button></Dialog.Close></div>
+    <DialogSurface className={`${styles.referenceDialog} ${styles.importDialog}`} aria-describedby={undefined}>
+      <DialogHeader className={styles.referenceDialogHeader} title="Подробности импорта" closeLabel="Закрыть подробности импорта" />
       <DefinitionList items={[
         ["Файл", analysis.source.fileName], ["Формат", analysis.source.format], ["Источник", analysis.source.kind],
         ["Минимальная интенсивность", formatMeasuredValue(analysis.rawStats.minimum)], ["Максимальная интенсивность", formatMeasuredValue(analysis.rawStats.maximum)], ["Средняя интенсивность", formatMeasuredValue(analysis.rawStats.mean)],
@@ -168,7 +171,7 @@ function ImportDetails({ analysis }: Readonly<{ analysis: WorkingAnalysis }>) {
         ...(analysis.auxiliaryData ? [["Массив dark", `${analysis.auxiliaryData.dark.length} значений`], ["Массив reference", `${analysis.auxiliaryData.reference.length} значений`]] as const : []),
       ]} />
       {analysis.auxiliaryData ? <p className={styles.detailNote}>Dark и reference сохранены как исходные вспомогательные данные и автоматически не применяются.</p> : null}
-    </Dialog.Content></Dialog.Portal>
+    </DialogSurface>
   </Dialog.Root>;
 }
 
@@ -455,7 +458,7 @@ export function IdentificationAnalysisPage() {
         <p>{formatElementSupportSummary(hypothesis)}{hypothesis.admission === "sensitive" ? " Чувствительный отбор." : ""}</p>
         {selectedEntry.rejectionReasons.length ? <div className={styles.resultRejection} aria-label="Причины диагностического результата">
           <p>{diagnosticReasonLabels[selectedEntry.rejectionReasons[0]]}</p>
-          {selectedEntry.rejectionReasons.length > 1 ? <details><summary>Другие причины · {selectedEntry.rejectionReasons.length - 1}</summary><ul>{selectedEntry.rejectionReasons.slice(1).map((reason) => <li key={reason}>{diagnosticReasonLabels[reason]}</li>)}</ul></details> : null}
+          {selectedEntry.rejectionReasons.length > 1 ? <Disclosure title={`Другие причины · ${selectedEntry.rejectionReasons.length - 1}`}><ul>{selectedEntry.rejectionReasons.slice(1).map((reason) => <li key={reason}>{diagnosticReasonLabels[reason]}</li>)}</ul></Disclosure> : null}
         </div> : null}
       </section>
 
@@ -878,26 +881,14 @@ function Card({
 }: Readonly<{ className?: string; title: ReactNode; accessory?: ReactNode; description?: ReactNode; children: ReactNode }>) {
   return (
     <section className={[styles.card, className].filter(Boolean).join(" ")}>
-      <header className={styles.cardHeader}>
-        <div className={styles.cardHeading}><h2>{title}</h2>{description ? <p>{description}</p> : null}</div>
-        {accessory}
-      </header>
+      <CardHeader className={styles.cardHeader} headingClassName={styles.cardHeading} title={title} description={description} accessory={accessory} />
       {children}
     </section>
   );
 }
 
 function DefinitionList({ items }: Readonly<{ items: readonly (readonly [string, string])[] }>) {
-  return (
-    <dl className={styles.definitionList}>
-      {items.map(([term, description]) => (
-        <div key={term}>
-          <dt>{term}</dt>
-          <dd>{description}</dd>
-        </div>
-      ))}
-    </dl>
-  );
+  return <MetricList className={styles.definitionList} items={items} />;
 }
 
 function PeakTable({
@@ -1013,13 +1004,6 @@ const peakTableColumns = peakColumnHelper.columns([
   peakColumnHelper.display({ id: "assignment", header: "Назначение", cell: ({ row }) => <PeakAssignment peakId={row.original.id} /> }),
   peakColumnHelper.accessor("snr", { header: "SNR", cell: ({ row }) => <code>{Number.isFinite(row.original.snr) ? formatDecimal(row.original.snr, 2) : "∞"}</code> }),
 ]);
-
-function Tag({
-  tone,
-  children,
-}: Readonly<{ tone: "neutral" | "success" | "warning" | "danger" | "info"; children: ReactNode }>) {
-  return <span className={`${styles.tag} ${styles[`tag_${tone}`]}`}>{children}</span>;
-}
 
 function ChannelPicker({
   id,

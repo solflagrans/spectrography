@@ -1,6 +1,8 @@
 "use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
+import { Input } from "@/components/ui/input";
+import { DialogSurface, DialogHeader } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
 import { LineChart, ScatterChart } from "echarts/charts";
@@ -15,7 +17,7 @@ import {
 } from "echarts/components";
 import { init, use as registerCharts } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
-import { RotateCcw, ScanLine, X } from "lucide-react";
+import { RotateCcw, ScanLine } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { AnalyzedPeak, SpectrumDataset } from "@/domain/spectrum";
@@ -272,9 +274,8 @@ export function SpectrumChart({
             }
           }}>
             <Dialog.Trigger asChild><Button size="compact">Диапазон…</Button></Dialog.Trigger>
-            <Dialog.Portal><Dialog.Overlay className={`${styles.dialogOverlay} ${styles.referenceOverlay}`} />
-              <Dialog.Content className={`${styles.referenceDialog} ${styles.chartRangeDialog}`} aria-describedby={undefined}>
-                <div className={styles.referenceDialogHeader}><Dialog.Title>Видимый диапазон</Dialog.Title><Dialog.Close asChild><Button size="icon" aria-label="Закрыть диапазон"><X size={18} /></Button></Dialog.Close></div>
+            <DialogSurface className={`${styles.referenceDialog} ${styles.chartRangeDialog}`} aria-describedby={undefined}>
+                <DialogHeader className={styles.referenceDialogHeader} title="Видимый диапазон" closeLabel="Закрыть диапазон" />
                 <form className={styles.chartRangeForm} onSubmit={(event) => {
                   event.preventDefault();
                   const [minimum, maximum] = getWavelengthExtent(chartData);
@@ -291,14 +292,13 @@ export function SpectrumChart({
                 }}>
                   <p>Меняет только масштаб графика.</p>
                   <div className={styles.chartRangeFields}>
-                    <label>От, нм<input inputMode="decimal" value={rangeMinimum} onChange={(event) => setRangeMinimum(event.target.value)} /></label>
-                    <label>До, нм<input inputMode="decimal" value={rangeMaximum} onChange={(event) => setRangeMaximum(event.target.value)} /></label>
+                    <label>От, нм<Input inputMode="decimal" value={rangeMinimum} onChange={(event) => setRangeMinimum(event.target.value)} /></label>
+                    <label>До, нм<Input inputMode="decimal" value={rangeMaximum} onChange={(event) => setRangeMaximum(event.target.value)} /></label>
                   </div>
                   {rangeError ? <p role="alert">{rangeError}</p> : null}
                   <Button type="submit">Применить</Button>
                 </form>
-              </Dialog.Content>
-            </Dialog.Portal>
+              </DialogSurface>
           </Dialog.Root>
           <Button size="compact" className={styles.graphToolButton} aria-label="Выделить участок" aria-pressed={selectingRange} onClick={() => {
             selectionActive.current = !selectionActive.current;

@@ -1,6 +1,9 @@
 "use client";
 
 import { formatCalibrationReason } from "../model/calibration-ui";
+import { Input, Checkbox, Switch, RangeInput } from "@/components/ui/input";
+import { NumberField as DeferredNumberInput } from "@/components/ui/number-field";
+import { FieldLabel } from "@/components/ui/field-label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectItem } from "@/components/ui/select";
 
@@ -107,11 +110,11 @@ export function CompositionSettingsPanel() {
       <ParameterSection title="Проверяемые элементы">
         <SelectParameter id="element-mode" label="Область поиска" value={settings.elementMode} onChange={(value) => updateCompositionSettings({ elementMode: value as CompositionSettings["elementMode"] })} options={[{ value: "all", label: "Все элементы библиотеки" }, { value: "exclude", label: "Исключить выбранные" }, { value: "only", label: "Только выбранные" }]} />
         {settings.elementMode !== "all" ? <>
-          <label className={styles.compositionSearch}>Найти элемент<input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Название или символ" /></label>
+          <label className={styles.compositionSearch}>Найти элемент<Input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Название или символ" /></label>
           <p className={styles.sidePanelEmpty}>Выбрано: {settings.elements.length}. Доступны элементы встроенной библиотеки. Азот включает N, N₂ и N₂⁺.</p>
           <div className={styles.elementChoices}>
             {elements.map((element) => <label key={element.symbol}>
-              <input type="checkbox" checked={settings.elements.includes(element.symbol)} onChange={(event) => updateCompositionSettings({ elements: event.target.checked ? [...settings.elements, element.symbol].sort() : settings.elements.filter((item) => item !== element.symbol) })} />
+              <Checkbox checked={settings.elements.includes(element.symbol)} onChange={(event) => updateCompositionSettings({ elements: event.target.checked ? [...settings.elements, element.symbol].sort() : settings.elements.filter((item) => item !== element.symbol) })} />
               <strong>{element.symbol}</strong><span>{element.name}</span>
             </label>)}
           </div>
@@ -454,7 +457,7 @@ function PeakCandidateBrowser({
           <div className={styles.candidateFilters}>
             <label className={styles.searchField} htmlFor={`candidate-search-${selectedPeak.id}`}>
               <Search size={14} aria-hidden="true" />
-              <input
+              <Input
                 id={`candidate-search-${selectedPeak.id}`}
                 type="search"
                 value={query}
@@ -589,7 +592,7 @@ export function IdentificationLinesPanel() {
         <summary>Другие совпадения · {analysis.rejectedHypotheses.length}</summary>
         <label className={styles.hypothesisSearch} htmlFor="hypothesis-search">
           <Search size={14} aria-hidden="true" />
-          <input id="hypothesis-search" type="search" aria-label="Поиск другого совпадения по элементу или символу" placeholder="Элемент или символ" value={query} onChange={(event) => setQuery(event.target.value)} />
+          <Input id="hypothesis-search" type="search" aria-label="Поиск другого совпадения по элементу или символу" placeholder="Элемент или символ" value={query} onChange={(event) => setQuery(event.target.value)} />
         </label>
         <label className={styles.hypothesisSort} htmlFor="hypothesis-sort">
           <span>Сортировка</span>
@@ -663,6 +666,7 @@ function NumberParameter({
       <span className={styles.numberInputWrap}>
         <DeferredNumberInput
           id={id}
+          label={label}
           min={min}
           max={max}
           step={step}
@@ -672,55 +676,6 @@ function NumberParameter({
         {unit && unit.length <= 5 ? <span>{unit}</span> : null}
       </span>
     </div>
-  );
-}
-
-function DeferredNumberInput({
-  id,
-  label,
-  value,
-  min,
-  max,
-  step,
-  onCommit,
-}: Readonly<{
-  id: string;
-  label?: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  onCommit: (value: number) => void;
-}>) {
-  const commit = (input: HTMLInputElement) => {
-    const parsed = Number(input.value);
-    if (input.value.trim() === "" || !Number.isFinite(parsed)) {
-      input.value = String(value);
-      return;
-    }
-    input.value = String(parsed);
-    if (parsed !== value) onCommit(parsed);
-  };
-
-  return (
-    <input
-      key={`${id}:${value}`}
-      id={id}
-      aria-label={label}
-      type="number"
-      defaultValue={value}
-      min={min}
-      max={max}
-      step={step}
-      onBlur={(event) => commit(event.currentTarget)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") event.currentTarget.blur();
-        if (event.key === "Escape") {
-          event.currentTarget.value = String(value);
-          event.currentTarget.blur();
-        }
-      }}
-    />
   );
 }
 
@@ -734,12 +689,7 @@ function ParameterSection({ title, children }: Readonly<{ title?: string; childr
 }
 
 function ParameterLabel({ htmlFor, label, help }: Readonly<{ htmlFor: string; label: string; help?: string }>) {
-  return (
-    <div className={styles.parameterLabelRow}>
-      <label htmlFor={htmlFor}>{label}</label>
-      {help ? <InfoTooltip label={label} content={help} /> : null}
-    </div>
-  );
+  return <FieldLabel className={styles.parameterLabelRow} htmlFor={htmlFor} label={label} help={help ? <InfoTooltip label={label} content={help} /> : null} />;
 }
 
 function RangeParameter({ id, label, help, value, min, max, step, output, onChange }: Readonly<{
@@ -795,7 +745,7 @@ function ToggleParameter({ id, label, help, checked, onChange }: Readonly<{
   return (
     <div className={styles.toggleParameter} data-parameter-control>
       <ParameterLabel htmlFor={id} label={label} help={help} />
-      <input id={id} className={styles.switchInput} type="checkbox" role="switch" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+      <Switch id={id} checked={checked} onChange={(event) => onChange(event.target.checked)} />
     </div>
   );
 }
@@ -878,7 +828,7 @@ function formatCandidateGroupLine(group: CandidateDisplayGroup): string {
 function DeferredRangeControl({ id, min, max, step, value, onCommit }: Readonly<{ id: string; min: number; max: number; step: number; value: number; onCommit: (value: number) => void }>) {
   const [draft, setDraft] = useState(value);
   const commit = () => { if (draft !== value) onCommit(draft); };
-  return <div className={styles.sliderRow}><input id={id} className={styles.rangeInput} type="range" min={min} max={max} step={step} value={draft} onChange={(event) => setDraft(Number(event.target.value))} onPointerUp={commit} onKeyUp={commit} onBlur={commit} />{draft !== value ? <output htmlFor={id}>{formatDecimal(id === "baseline-smoothness" ? Math.round(10 ** draft) : draft, 2)}</output> : null}</div>;
+  return <div className={styles.sliderRow}><RangeInput id={id} min={min} max={max} step={step} value={draft} onChange={(event) => setDraft(Number(event.target.value))} onPointerUp={commit} onKeyUp={commit} onBlur={commit} />{draft !== value ? <output htmlFor={id}>{formatDecimal(id === "baseline-smoothness" ? Math.round(10 ** draft) : draft, 2)}</output> : null}</div>;
 }
 
 function formatSettingValue(value: number): string {

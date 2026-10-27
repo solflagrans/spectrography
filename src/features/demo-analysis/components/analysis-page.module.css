@@ -564,7 +564,7 @@
   font-weight: 600;
 }
 .parameterControl .numberInputWrap,
-.valueRangeFields input {
+.valueRangeFields input:not([data-ui]) {
   min-height: 2.25rem;
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-sm);
@@ -581,42 +581,13 @@
   min-height: 2.5rem;
 }
 
-.switchInput {
-  position: relative;
-  width: 2.25rem;
-  height: 1.25rem;
-  flex: 0 0 auto;
-  margin: 0;
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-full);
-  appearance: none;
-  background: var(--color-background-elevated);
-  cursor: pointer;
-  transition: background-color var(--transition-fast), border-color var(--transition-fast);
-}
 
-.switchInput::after {
-  position: absolute;
-  top: 0.125rem;
-  left: 0.125rem;
-  width: 0.875rem;
-  height: 0.875rem;
-  border-radius: 50%;
-  background: var(--color-background-surface);
-  box-shadow: 0 1px 2px rgb(22 31 43 / 24%);
-  content: "";
-  transition: transform var(--transition-fast);
-}
 
-.switchInput:checked {
-  border-color: var(--color-action-primary);
-  background: var(--color-action-primary);
-}
 
-.switchInput:checked::after {
-  transform: translateX(1rem);
-}
-.switchInput:focus-visible,
+
+
+
+
 .valueRangeFields input:focus-visible,
 .numberInputWrap input:focus-visible {
   outline: 2px solid var(--color-action-primary);
@@ -650,7 +621,7 @@
   font-size: var(--font-size-label);
 }
 
-.valueRangeFields input {
+.valueRangeFields input:not([data-ui]) {
   min-width: 0;
   width: 100%;
   padding: var(--spacing-xs);
@@ -1313,10 +1284,7 @@
   font-weight: 600;
 }
 
-.rangeInput {
-  width: 100%;
-  accent-color: var(--color-action-primary);
-}
+.rangeInput { width: 100%; }
 
 .selectField,
 .numberField {
@@ -1509,43 +1477,6 @@
   color: var(--color-text-secondary);
 }
 
-.tag {
-  display: inline-flex;
-  width: fit-content;
-  align-items: center;
-  padding: var(--spacing-2xs) var(--spacing-xs);
-  border-radius: var(--radius-full);
-  font-size: var(--font-size-label);
-  font-weight: 600;
-  line-height: var(--line-height-label);
-  white-space: nowrap;
-}
-
-.tag_neutral {
-  background: var(--color-background-elevated);
-  color: var(--color-text-secondary);
-}
-
-.tag_success {
-  background: color-mix(in srgb, var(--color-status-success) 11%, white);
-  color: var(--color-status-success);
-}
-
-.tag_warning {
-  background: color-mix(in srgb, var(--color-status-warning) 11%, white);
-  color: var(--color-status-warning);
-}
-
-.tag_danger {
-  background: color-mix(in srgb, var(--color-status-danger) 10%, white);
-  color: var(--color-status-danger);
-}
-
-.tag_info {
-  background: color-mix(in srgb, var(--color-data-series-2) 10%, white);
-  color: color-mix(in srgb, var(--color-data-series-2) 82%, black);
-}
-
 .tableScroll {
   max-width: 100%;
   min-width: 0;
@@ -1554,30 +1485,11 @@
   container-type: inline-size;
 }
 
-.table {
-  width: 100%;
-  min-width: 42rem;
-  border-collapse: collapse;
-  font-size: var(--font-size-navigation);
-}
+.table { composes: table from "../../../components/ui/surfaces.module.css"; min-width: 42rem; }
 
-.table th,
-.table td {
-  padding: var(--spacing-sm);
-  border-bottom: 1px solid var(--color-border-default);
-  text-align: left;
-  vertical-align: middle;
-}
 
-.table th {
-  position: sticky;
-  z-index: 1;
-  top: 0;
-  background: var(--color-background-canvas);
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-label);
-  letter-spacing: var(--letter-spacing-label);
-}
+
+
 .sortableHeader {
   display: inline-flex;
   align-items: center;
@@ -2685,7 +2597,7 @@
 }
 
 .processingSettings .sidePanelHeader { min-height: 24px; padding: 0; margin-bottom: 20px; }
-.processingSettings .sidePanelHeader h2 { font-size: 15px; line-height: 20px; }
+.processingSettings .sidePanelHeader h2 { font-size: var(--font-size-heading-medium); line-height: 20px; }
 .processingSettings .sideParameterGroup { gap: 0; padding: 0; border: 0; }
 .processingSettings .sideParameterGroup + .sideParameterGroup { margin-top: 20px; }
 .processingSettings .sideParameterGroup h3 { margin: 0 0 12px; font-size: 14px; line-height: 20px; letter-spacing: normal; text-transform: none; color: var(--color-text-primary); font-weight: 650; }
@@ -2696,8 +2608,8 @@
 
 
 .processingSettings .parameterHeading { gap: 12px; align-items: center; }
-.processingSettings input[type="number"],
-.processingSettings input[type="search"] {
+.processingSettings input[type="number"]:not([data-ui]),
+.processingSettings input[type="search"]:not([data-ui]) {
   box-sizing: border-box; height: 36px; min-height: 36px; min-width: 0; width: 100%; margin: 0;
   padding: 6px 8px; border: 1px solid var(--color-border-default); border-radius: var(--radius-sm);
   background: var(--color-background-canvas); color: var(--color-text-primary); font: inherit; line-height: 20px;
@@ -2716,9 +2628,9 @@
 .sliderRow { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .sliderRow output { flex-shrink: 0; font-size: 12px; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
 .processingSettings .rangeInput { display: block; flex: 1; min-width: 0; height: 20px; margin: 0; padding: 0; }
-.processingSettings .numberParameter { grid-template-columns: minmax(0, 1fr) 116px; align-items: center; gap: 12px; }
+.processingSettings .numberParameter { grid-template-columns: minmax(0, 1fr) 126px; align-items: center; gap: 12px; }
 .processingSettings .numberInputWrap { min-height: 36px; padding: 0; gap: 4px; border: 0; background: transparent; }
-.processingSettings .numberInputWrap > span { max-width: 62px; font-size: 12px; white-space: normal; line-height: 16px; }
+.processingSettings .numberInputWrap > span:not([data-ui]) { max-width: 62px; font-size: 12px; white-space: normal; line-height: 16px; }
 .processingSettings .toggleParameter { min-height: 36px; gap: 12px; }
 .processingSettings .valueRangeParameter { font-family: inherit; font-size: 14px; font-weight: 400; }
 .processingSettings .valueRangeParameter legend { width: 100%; margin-bottom: 8px; }
@@ -2739,7 +2651,7 @@
 .settingsDisclosure[data-disclosure-kind="result"] > summary { font-weight: 400; }
 .disclosureContent { display: grid; gap: 12px; min-width: 0; padding-left: 14px; }
 .compactNumber:has(.compactUnit) { display: flex; flex-basis: 132px; align-items: center; gap: 6px; }
-.processingSettings .compactNumber:has(.compactUnit) input { flex: 1; width: 0; min-width: 0; }
+.processingSettings .compactNumber:has(.compactUnit) [data-ui="number-field"] { flex: 1; width: 0; min-width: 0; }
 .compactUnit { color: var(--color-text-secondary); font-size: 12px; }
 .calibrationChannels { display: grid; gap: 12px; margin: 0; font-size: 12px; line-height: 18px; }
 .calibrationChannels dt { color: var(--color-text-secondary); }
@@ -2747,7 +2659,7 @@
 .processingSettings .sidePanelEmpty { margin: 0; font-size: 12px; line-height: 18px; }
 @media (pointer: coarse) {
 .settingsDisclosure > summary { min-height: 44px; }
-.processingSettings input[type="number"],
+.processingSettings input[type="number"]:not([data-ui]),
 .processingSettings input[type="search"],
 .processingSettings .toggleParameter { min-height: 44px; }
 
@@ -2857,11 +2769,9 @@
   text-align: left;
 }
 
-.dialogOverlay { position: fixed; inset: 0; z-index: 40; background: rgb(16 25 40 / 35%); }
-.referenceOverlay { z-index: 60; }
-.referenceDialog { position: fixed; z-index: 61; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(760px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); overflow-y: auto; border: 1px solid var(--color-border-default); border-radius: 12px; background: var(--color-background-surface); box-shadow: 0 16px 60px rgb(0 0 0 / 18%); }
-.referenceDialogHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; position: sticky; top: 0; z-index: 1; padding: 20px; background: var(--color-background-surface); border-bottom: 1px solid var(--color-border-default); }
-.referenceDialogHeader h2 { margin: 0; font-size: 18px; line-height: 24px; }
+.referenceDialog { min-width: 0; }
+.referenceDialogHeader { min-width: 0; }
+
 .referenceRecords { padding: 20px; display: grid; gap: 20px; min-width: 0; }
 .referenceRecords h3 { margin: 0 0 12px; font-size: 15px; }
 .referenceRecords h4 { margin: 12px 0 8px; }
@@ -2870,7 +2780,7 @@
 .referenceRecords dt { color: var(--color-text-secondary); }
 .referenceRecords dd { margin: 0; overflow-wrap: anywhere; }
 .referenceRecords article + article { border-top: 1px solid var(--color-border-default); padding-top: 20px; }
-.inspectorDrawer { position: fixed; inset: 0 0 0 auto; z-index: 41; width: min(100vw, 420px); overflow-y: auto; padding: 0 20px 20px; background: var(--color-background-surface); }
+.inspectorDrawer { min-width: 0; }
 .drawerClose {
   position: sticky;
   top: 8px;
@@ -3259,3 +3169,25 @@
 
 .calibrationChannelItem > span:first-child { color: var(--color-text-primary); font-weight: 600; }
 .processingSettings .disclosureContent:has(> .calibrationChannelList) { padding-left: 0; }
+
+.interpretationDisclosure { composes: root from "../../../components/ui/disclosure.module.css"; }
+
+.technicalDisclosure { composes: root from "../../../components/ui/disclosure.module.css"; }
+
+.identificationDisclosure { composes: root from "../../../components/ui/disclosure.module.css"; }
+
+.molecularCheck { composes: root from "../../../components/ui/disclosure.module.css"; }
+
+.candidateRow { composes: root from "../../../components/ui/disclosure.module.css"; }
+
+
+
+.cardHeader h2, .compositionPage .cardHeader h2 { font-size: var(--font-size-heading-medium); line-height: 24px; }
+.processingSettings { font-size: var(--font-size-control); }
+.processingSettings .sideParameterGroup h3, .processingSettings .valueRangeParameter { font-size: var(--font-size-control); }
+.processingSettings [data-ui="number-field"] { flex: 1 1 auto; min-width: 0; }
+.processingSettings .rangeInput { height: 24px; }
+.settingsDisclosure > summary { min-height: 32px; font-size: var(--font-size-control); }
+.definitionList { gap: 0; font-size: var(--font-size-control); }
+.definitionList > div { padding: 8px 0; }
+.definitionList dd { font-family: inherit; font-size: inherit; }

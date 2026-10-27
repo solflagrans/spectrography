@@ -1,4 +1,5 @@
 "use client";
+import { DialogSurface } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
@@ -20,12 +21,10 @@ export function MobilePeakInspector() {
   const { open, setOpen } = usePeakInspectorUi();
   return <Dialog.Root open={open && Boolean(selectedPeakId)} onOpenChange={setOpen}>
     {selectedPeakId ? <Dialog.Trigger asChild><Button className={styles.mobileInspectorTrigger}>Открыть выбранный пик</Button></Dialog.Trigger> : null}
-    <Dialog.Portal><Dialog.Overlay className={styles.dialogOverlay} />
-      <Dialog.Content className={styles.inspectorDrawer} aria-describedby={undefined}>
+    <DialogSurface variant="drawer" className={styles.inspectorDrawer} aria-describedby={undefined}>
         <Dialog.Title className={styles.visuallyHidden}>Инспектор пика</Dialog.Title>
         <Dialog.Close asChild><Button size="icon" className={styles.drawerClose} aria-label="Закрыть инспектор"><X size={18} /></Button></Dialog.Close>
         <PeakSettingsPanel />
-      </Dialog.Content>
-    </Dialog.Portal>
+      </DialogSurface>
   </Dialog.Root>;
 }

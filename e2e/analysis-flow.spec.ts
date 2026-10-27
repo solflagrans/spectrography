@@ -4,7 +4,7 @@ test("measurement to evidence and a linked peak", async ({ page }, testInfo) => 
   await page.goto("/data");
 
   await page.getByRole("button", { name: "Открыть образец NASA PDS" }).click();
-  await expect(page.locator("dd").filter({ hasText: "nasa-pds-h92649-iron-rich.json" })).toBeVisible();
+  await expect(page.getByText("nasa-pds-h92649-iron-rich.json", { exact: true })).toBeVisible();
 
   const spectrumType = page.getByRole("combobox", { name: "Тип спектра" });
   await expect(spectrumType).toHaveText("Эмиссия плазмы/разряда");
@@ -87,7 +87,7 @@ test("desktop routes do not overflow horizontally", async ({ page }, testInfo) =
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/data");
     await page.getByRole("button", { name: "Открыть образец NASA PDS" }).click();
-    await expect(page.locator("dd").filter({ hasText: "nasa-pds-h92649-iron-rich.json" })).toBeVisible();
+    await expect(page.getByText("nasa-pds-h92649-iron-rich.json", { exact: true })).toBeVisible();
 
     for (const route of ["Данные", "Обработка", "Анализ", "Библиотека"]) {
       await page.getByRole("link", { name: route, exact: true }).click();
@@ -105,7 +105,7 @@ test("desktop tooltips, settings and evidence table keep their geometry at 1024 
   await page.setViewportSize({ width: 1024, height: 900 });
   await page.goto("/data");
   await page.getByRole("button", { name: "Открыть образец NASA PDS" }).click();
-  await expect(page.locator("dd").filter({ hasText: "nasa-pds-h92649-iron-rich.json" })).toBeVisible();
+  await expect(page.getByText("nasa-pds-h92649-iron-rich.json", { exact: true })).toBeVisible();
 
   await page.getByRole("link", { name: "Обработка", exact: true }).click();
   const tooltipTrigger = page.getByRole("button", { name: "Подсказка: Гладкость базовой линии" });
@@ -172,7 +172,7 @@ test("desktop tooltips, settings and evidence table keep their geometry at 1024 
 test("composition settings survive navigation but workspace resets on reload", async ({ page }) => {
   await page.goto("/data");
   await page.getByRole("button", { name: "Открыть образец NASA PDS" }).click();
-  await expect(page.locator("dd").filter({ hasText: "nasa-pds-h92649-iron-rich.json" })).toBeVisible();
+  await expect(page.getByText("nasa-pds-h92649-iron-rich.json", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Обработка", exact: true }).click();
   await page.getByRole("tab", { name: "Состав", exact: true }).click();
   await page.getByRole("combobox", { name: "Режим отбора" }).click();
@@ -191,7 +191,7 @@ test("composition settings survive navigation but workspace resets on reload", a
   await page.reload();
   await page.getByRole("link", { name: "Данные", exact: true }).click();
   await expect(page.getByRole("button", { name: "Открыть образец NASA PDS" })).toBeVisible();
-  await expect(page.locator("dd").filter({ hasText: "nasa-pds-h92649-iron-rich.json" })).toHaveCount(0);
+  await expect(page.getByText("nasa-pds-h92649-iron-rich.json", { exact: true })).toHaveCount(0);
 });
 
 test("analysis range and exports retain source measurement", async ({ page }) => {
@@ -221,7 +221,7 @@ test("processing controls keep one scale and tab previews retain layer choices",
   if (testInfo.project.name === "chromium") await page.setViewportSize({ width: 1024, height: 768 });
   await page.goto("/data");
   await page.getByRole("button", { name: "Открыть образец NASA PDS" }).click();
-  await expect(page.locator("dd").filter({ hasText: "nasa-pds-h92649-iron-rich.json" })).toBeVisible();
+  await expect(page.getByText("nasa-pds-h92649-iron-rich.json", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Обработка", exact: true }).click();
 
   const layers = page.getByRole("group", { name: "Слои графика" });
@@ -239,11 +239,11 @@ test("processing controls keep one scale and tab previews retain layer choices",
   const sizes = await page.getByRole("tabpanel", { name: "Поиск пиков" }).evaluate((panel) => {
     const inputs = [...panel.querySelectorAll<HTMLInputElement>('input[type="number"]')].filter((input) => !input.closest("details:not([open])"));
     const bounds = panel.getBoundingClientRect();
-    return inputs.map((input) => { const rect = input.getBoundingClientRect(); return { height: rect.height, contained: rect.left >= bounds.left && rect.right <= bounds.right }; });
+    return inputs.map((input) => { const rect = (input.closest('[data-ui="number-field"]') ?? input).getBoundingClientRect(); return { height: rect.height, contained: rect.left >= bounds.left && rect.right <= bounds.right }; });
   });
   expect(sizes).toHaveLength(3);
   for (const size of sizes) {
-    expect(size.height).toBe(testInfo.project.name === "mobile" ? 44 : 36);
+    expect(size.height).toBe(testInfo.project.name === "mobile" ? 44 : 32);
     expect(size.contained).toBe(true);
   }
   await page.getByRole("tab", { name: "Подготовка", exact: true }).click();
@@ -260,7 +260,7 @@ test("processing controls keep one scale and tab previews retain layer choices",
 test("compact disclosures show current values and keep failed edits available", async ({ page }) => {
   await page.goto("/data");
   await page.getByRole("button", { name: "Открыть образец NASA PDS" }).click();
-  await expect(page.locator("dd").filter({ hasText: "nasa-pds-h92649-iron-rich.json" })).toBeVisible();
+  await expect(page.getByText("nasa-pds-h92649-iron-rich.json", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Обработка", exact: true }).click();
   const parameterError = page.getByRole("complementary", { name: "Панель текущего раздела" }).getByRole("alert");
   const summary = page.locator("summary").filter({ hasText: "Оценка шума" });
@@ -286,7 +286,7 @@ test("compact disclosures show current values and keep failed edits available", 
 test("independent peak inspector preserves selection, opens records and reveals sorted rows", async ({ page }, testInfo) => {
   await page.goto("/data");
   await page.getByRole("button", { name: "Открыть образец NASA PDS" }).click();
-  await expect(page.locator("dd").filter({ hasText: "nasa-pds-h92649-iron-rich.json" })).toBeVisible();
+  await expect(page.getByText("nasa-pds-h92649-iron-rich.json", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Анализ", exact: true }).click();
   await page.locator("tr[data-peak-id]").first().click();
   await expect(page.getByRole("tab", { name: "Параметры", exact: true })).toHaveAttribute("aria-selected", "true");
@@ -372,7 +372,7 @@ test("select popups keep page width and inline channel pickers stay inside cards
 test("interpretation separates a rejected result from composition and expands one evidence row", async ({ page }, testInfo) => {
   await page.goto("/data");
   await page.getByRole("button", { name: "Открыть образец NASA PDS" }).click();
-  await expect(page.locator("dd").filter({ hasText: "nasa-pds-h92649-iron-rich.json" })).toBeVisible();
+  await expect(page.getByText("nasa-pds-h92649-iron-rich.json", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Анализ", exact: true }).click();
   await page.getByRole("tab", { name: "Интерпретация", exact: true }).click();
   if (testInfo.project.name === "mobile") {

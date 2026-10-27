@@ -19,9 +19,9 @@
   transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
 }
 .button > svg { flex-shrink: 0; }
-.default { min-height: 36px; padding: 7px 12px; }
-.compact { min-height: 30px; padding: 4px 8px; gap: 6px; }
-.icon { width: 36px; min-height: 36px; padding: 0; }
+.default { min-height: var(--control-height); padding: 5px 10px; }
+.compact { min-height: var(--control-height-compact); padding: 3px 8px; gap: 6px; }
+.icon { width: var(--control-height); min-height: var(--control-height); padding: 0; }
 .hint { width: 24px; min-height: 24px; padding: 0; }
 .secondary:hover, .secondary[data-state="open"] { background: var(--color-background-elevated); border-color: var(--color-action-primary); }
 .primary { background: var(--color-action-primary); border-color: var(--color-action-primary); color: var(--color-text-on-dark); }

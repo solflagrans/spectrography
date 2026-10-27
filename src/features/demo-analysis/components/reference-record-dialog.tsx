@@ -1,7 +1,6 @@
 "use client";
-import { Button } from "@/components/ui/button";
+import { DialogSurface, DialogHeader } from "@/components/ui/dialog";
 import * as Dialog from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { SpectralLine } from "@/domain/spectral-library/types";
 import type { CandidateDisplayGroup } from "../model/peak-candidates-ui";
@@ -10,10 +9,10 @@ import styles from "./analysis-page.module.css";
 export function ReferenceRecordDialog({ group, lineIds, title, onClose, restoreFocus }: Readonly<{ group?: CandidateDisplayGroup | null; lineIds?: readonly string[]; title?: string; onClose: () => void; restoreFocus: () => void }>) {
   const ids = lineIds ?? group?.lineIds;
   return <Dialog.Root open={Boolean(ids?.length)} onOpenChange={(open) => { if (!open) onClose(); }}>
-    <Dialog.Portal><Dialog.Overlay className={`${styles.dialogOverlay} ${styles.referenceOverlay}`} /><Dialog.Content className={styles.referenceDialog} aria-describedby={undefined} onCloseAutoFocus={(event) => { event.preventDefault(); restoreFocus(); }}>
-      <div className={styles.referenceDialogHeader}><Dialog.Title>{title ?? `Справочные линии · ${group?.representative.elementSymbol} ${group?.representative.ionizationLabel}`}</Dialog.Title><Dialog.Close asChild><Button size="icon" aria-label="Закрыть справочную запись"><X size={18} /></Button></Dialog.Close></div>
+    <DialogSurface className={styles.referenceDialog} aria-describedby={undefined} onCloseAutoFocus={(event) => { event.preventDefault(); restoreFocus(); }}>
+      <DialogHeader className={styles.referenceDialogHeader} title={title ?? `Справочные линии · ${group?.representative.elementSymbol} ${group?.representative.ionizationLabel}`} closeLabel="Закрыть справочную запись" />
       {ids ? <ReferenceRecords lineIds={ids} /> : null}
-    </Dialog.Content></Dialog.Portal>
+    </DialogSurface>
   </Dialog.Root>;
 }
 

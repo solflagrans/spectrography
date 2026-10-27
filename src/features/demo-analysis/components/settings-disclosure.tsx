@@ -1,5 +1,6 @@
 "use client";
 
+import { Disclosure } from "@/components/ui/disclosure";
 import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import type { AnalysisCalculationStatus } from "../model/analysis-workspace-context";
@@ -29,10 +30,9 @@ export function SettingsDisclosure({ title, value, children, status = "idle", er
     }
   }, [error, invalid, status]);
 
-  return <details ref={details} className={styles.settingsDisclosure} data-disclosure-kind={readOnly ? "result" : "parameter"}
+  return <Disclosure title={<span className={styles.disclosureSummary}><span>{title}</span>{value ? <span className={styles.disclosureValue}>{value}</span> : null}</span>} contentClassName={styles.disclosureContent} ref={details} className={styles.settingsDisclosure} data-disclosure-kind={readOnly ? "result" : "parameter"}
     onChangeCapture={() => { edited.current = true; }}
     onToggle={(event) => { if (blocked.current && !event.currentTarget.open) event.currentTarget.open = true; }}>
-    <summary><span className={styles.disclosureSummary}><span>{title}</span>{value ? <span className={styles.disclosureValue}>{value}</span> : null}</span></summary>
-    <div className={styles.disclosureContent}>{children}</div>
-  </details>;
+    {children}
+  </Disclosure>;
 }
