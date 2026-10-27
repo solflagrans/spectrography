@@ -1,4 +1,6 @@
 "use client";
+import { DEFAULT_COMPOSITION_SETTINGS, resolveCompositionSettings, type CompositionSettings } from "@/domain/spectrum/composition-settings";
+
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
@@ -58,6 +60,7 @@ interface AnalysisWorkspaceContextValue {
   readonly openDemoAnalysis: () => void;
   readonly importSpectrumFile: (file: SpectrumFileLike) => Promise<void>;
   readonly updateProcessingParameters: (patch: Partial<SpectrumProcessingParameters>) => void;
+  readonly updateCompositionSettings: (patch: Partial<CompositionSettings>) => void;
   readonly updatePeakSearchParameters: (patch: Partial<PeakSearchParameters>) => void;
   readonly updateSpectrumType: (spectrumType: NewAnalysisSpectrumType) => void;
   readonly updateWavelengthCalibrationParameters: (patch: Partial<WavelengthCalibrationParameters>) => void;
@@ -189,12 +192,14 @@ export function AnalysisWorkspaceProvider({
     setParameters(DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS);
     setParameterError(null);
     uiStore.setState({
+      peakInspectorTab: "parameters",
+      peakInspectorOpen: false,
       selectedPeakId: null,
       selectedHypothesisId: null,
       identificationTab: "hypotheses",
       selectedIdentificationChannelId: null,
       hypothesisSelectionNotice: false,
-      analysisView: "composition",
+      analysisView: "peaks",
     });
     setSelectedSpectrumType(normalizeSpectrumType(source.spectrumType));
     setCalculationStatus("calculating");
@@ -274,6 +279,21 @@ export function AnalysisWorkspaceProvider({
     [calculate],
   );
 
+  const updateCompositionSettings = useCallback((patch: Partial<CompositionSettings>) => {
+    const current = parametersRef.current;
+    let composition: CompositionSettings;
+    try {
+      composition = resolveCompositionSettings({ ...(current.composition ?? DEFAULT_COMPOSITION_SETTINGS), ...patch });
+    } catch {
+      setParameterError("Проверьте параметры состава: от 3 до 10 атомных групп, от 0 до 5 сильных групп, от 2 до 5 областей полос; качество атомных подтверждений от 0,4 до 0,75, формы полос от 0,36 до 0,75.");
+      return;
+    }
+    const next = { ...current, composition };
+    parametersRef.current = next;
+    setParameters(next);
+    calculate(next);
+  }, [calculate]);
+
   const updatePeakSearchParameters = useCallback(
     (patch: Partial<PeakSearchParameters>) => {
       const current = parametersRef.current;
@@ -329,6 +349,7 @@ export function AnalysisWorkspaceProvider({
   const selectPeak = useCallback((peakId: string | null) => {
     uiStore.setState({
       selectedPeakId: peakId,
+      peakInspectorOpen: peakId !== null,
     });
   }, [uiStore]);
 
@@ -395,6 +416,7 @@ export function AnalysisWorkspaceProvider({
       openDemoAnalysis,
       importSpectrumFile,
       updateProcessingParameters,
+      updateCompositionSettings,
       updatePeakSearchParameters,
       updateSpectrumType,
       updateWavelengthCalibrationParameters,
@@ -425,6 +447,7 @@ export function AnalysisWorkspaceProvider({
       setIdentificationTab,
       selectIdentificationChannel,
       setAnalysisView,
+      updateCompositionSettings,
       updatePeakSearchParameters,
       updateSpectrumType,
       updateWavelengthCalibrationParameters,
@@ -464,4 +487,15 @@ export function useAnalysisWorkspaceUi<T>(selector: (state: AnalysisWorkspaceUiS
   const selected = useStore(uiStore ?? missingWorkspaceUiStore, selector);
   if (!uiStore) throw new Error("useAnalysisWorkspaceUi должен использоваться внутри AnalysisWorkspaceProvider.");
   return selected;
+}
+
+export function usePeakInspectorUi() {
+  const store = useContext(AnalysisWorkspaceUiContext);
+  if (!store) throw new Error("Peak inspector requires a workspace provider.");
+  const tab = useStore(store, (state) => state.peakInspectorTab);
+  const open = useStore(store, (state) => state.peakInspectorOpen);
+  return { tab, open,
+    setTab: (peakInspectorTab: AnalysisWorkspaceUiState["peakInspectorTab"]) => store.setState({ peakInspectorTab }),
+    setOpen: (peakInspectorOpen: boolean) => store.setState({ peakInspectorOpen }),
+  };
 }

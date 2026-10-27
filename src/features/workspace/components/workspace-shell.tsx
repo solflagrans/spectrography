@@ -9,6 +9,7 @@ import {
   AnalysisSidePanel,
   ProcessingSettingsPanel,
 } from "@/features/demo-analysis/components/analysis-side-panels";
+import { MobilePeakInspector, useNarrowViewport } from "@/features/demo-analysis/components/peak-inspector-surface";
 import { useAnalysisWorkspace } from "@/features/demo-analysis/model/analysis-workspace-context";
 import { formatDecimal } from "@/features/workspace/model/display-format";
 
@@ -19,6 +20,9 @@ import styles from "./workspace-shell.module.css";
 export function WorkspaceShell({ children }: Readonly<{ children: ReactNode }>) {
   const { analysis, analysisView } = useAnalysisWorkspace();
   const pathname = usePathname();
+  const narrow = useNarrowViewport();
+  const peakWorkspace = pathname.startsWith("/analysis") && analysisView === "peaks" && Boolean(analysis);
+  const mobileInspector = peakWorkspace && narrow;
   const sidePanel = analysis
     ? pathname.startsWith("/processing")
       ? <ProcessingSettingsPanel />
@@ -31,11 +35,11 @@ export function WorkspaceShell({ children }: Readonly<{ children: ReactNode }>) 
     <InfoTooltipProvider>
       <div className={styles.shell}>
         <header className={styles.topBar}>
-          <div className={styles.logo} aria-label="Интерпретатор спектра">
+          <div className={styles.logo} aria-label="Анализ спектра">
             <span className={styles.logoMark} aria-hidden="true">
               <Activity size={17} strokeWidth={1.8} />
             </span>
-            <span className={styles.productName}>Интерпретатор спектра</span>
+            <span className={styles.productName}>Анализ спектра</span>
           </div>
 
           <WorkspaceNavigation />
@@ -47,9 +51,9 @@ export function WorkspaceShell({ children }: Readonly<{ children: ReactNode }>) 
           ) : null}
         </header>
 
-        <div className={clsx(styles.workspace, sidePanel && styles.workspaceWithPanel)}>
-          {sidePanel ? (
-            <aside className={clsx(styles.leftPanel, pathname.startsWith("/analysis") && analysisView === "composition" && styles.analysisLeftPanel)} aria-label="Панель текущего раздела">
+        <div className={clsx(styles.workspace, sidePanel && !mobileInspector && styles.workspaceWithPanel, sidePanel && pathname.startsWith("/analysis") && styles.analysisWorkspace, sidePanel && pathname.startsWith("/processing") && styles.processingWorkspace)}>
+          {sidePanel && !mobileInspector ? (
+            <aside className={clsx(styles.leftPanel, pathname.startsWith("/processing") && styles.processingPanel, pathname.startsWith("/analysis") && styles.rightPanel, pathname.startsWith("/analysis") && analysisView === "composition" && styles.analysisLeftPanel)} aria-label="Панель текущего раздела">
               {sidePanel}
             </aside>
           ) : null}
@@ -57,6 +61,7 @@ export function WorkspaceShell({ children }: Readonly<{ children: ReactNode }>) 
           <main className={styles.canvas} aria-label="Рабочая область">
             {children}
           </main>
+          {mobileInspector ? <MobilePeakInspector /> : null}
         </div>
       </div>
     </InfoTooltipProvider>

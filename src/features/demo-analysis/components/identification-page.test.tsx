@@ -2,6 +2,7 @@
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ComponentProps } from "react";
 
 import {
   createWorkingAnalysis,
@@ -11,6 +12,11 @@ import { InfoTooltipProvider } from "@/features/workspace/components/info-toolti
 import { demoSpectra } from "@/fixtures/demo-spectra";
 
 import { IdentificationAnalysisPage, PeaksAnalysisPage, ProcessingAnalysisPage } from "./analysis-pages";
+
+vi.mock("@/components/ui/select", () => ({
+  Select: ({ onValueChange, ...props }: ComponentProps<"select"> & { onValueChange: (value: string) => void }) => <select {...props} onChange={(event) => onValueChange(event.target.value)} />,
+  SelectItem: (props: ComponentProps<"option">) => <option {...props} />,
+}));
 
 const mocks = vi.hoisted(() => ({
   push: vi.fn(),
@@ -23,6 +29,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }));
 vi.mock("@/features/demo-analysis/model/analysis-workspace-context", () => ({
   useAnalysisWorkspace: () => mocks.workspace(),
+  usePeakInspectorUi: () => ({ tab: "parameters", open: false, setTab: vi.fn(), setOpen: vi.fn() }),
 }));
 vi.mock("./lazy-spectrum-chart", () => ({
   SpectrumChart: (props: { sourceKey: string; peaks?: readonly unknown[]; referenceLines?: readonly unknown[]; missingReferenceLines?: readonly unknown[] }) => (
@@ -79,10 +86,7 @@ describe("multi-channel identification detail", () => {
     expect(chart.getAttribute("data-source-key")).toBe("multi-channel-demo:channel-a");
     expect(Number(chart.getAttribute("data-reference-lines"))).toBeGreaterThan(0);
 
-    const evidenceDetails = screen.getByText("Доказательства и показатели").closest("details")!;
-    evidenceDetails.open = true;
-    fireEvent(evidenceDetails, new Event("toggle"));
-    fireEvent.click(evidenceDetails.querySelector('tr[tabindex="0"]')!);
+    fireEvent.click(document.querySelector('tr[data-evidence-row][tabindex="0"]')!);
     expect(mocks.selectChannel).toHaveBeenLastCalledWith("channel-a");
     expect(mocks.selectPeak).toHaveBeenCalledWith(expect.stringContaining("peak-channel-a-point-"));
     expect(mocks.setAnalysisView).toHaveBeenCalledWith("peaks");

@@ -1,3 +1,4 @@
+import { resolveCompositionSettings, isElementEnabled, type CompositionSettings } from "./composition-settings";
 import type { SpectralLine } from "@/domain/spectral-library/types";
 
 import { selectCharacteristicSpectralGroups } from "./characteristic-lines";
@@ -35,7 +36,9 @@ export interface IdentificationResult {
 export function buildElementHypotheses(
   channels: readonly ChannelPreparationResult[],
   library: readonly SpectralLine[],
+  composition?: CompositionSettings,
 ): IdentificationResult {
+  const settings = resolveCompositionSettings(composition);
   const usableChannels = channels.filter((channel) => channel.usable);
   if (!usableChannels.length) return { hypotheses: [], rejectedHypotheses: [] };
   const allPeaks = usableChannels.flatMap((channel) => channel.peaks);
@@ -65,6 +68,7 @@ export function buildElementHypotheses(
   const rejected: RejectedElementHypothesis[] = [];
 
   for (const symbol of elementSymbols) {
+    if (!isElementEnabled(symbol, settings)) continue;
     const assignments = usableChannels.flatMap((channel) => assignElementGroupCandidates(
       channel.peaks,
       symbol,
@@ -79,6 +83,7 @@ export function buildElementHypotheses(
       characteristicByLineId,
       channelById,
       groupingResolutionNm,
+      settings.minimumQuality,
     );
     const elementCollections = characteristicCollections.filter((collection) => collection.elementSymbol === symbol);
     const availableCharacteristicGroups = elementCollections.flatMap((collection) => collection.groups);
@@ -230,11 +235,12 @@ export function buildElementHypotheses(
     if (availableCharacteristicGroups.length < 2) reasons.push("insufficient-characteristic-lines");
     if (!reliableKeyEvidence.length && availableCharacteristicGroups.length) reasons.push("missing-key-characteristic-lines");
     if (!randomAgreement.distinguishableFromRandom) reasons.push("random-like-agreement");
-    if (reliableCharacteristicEvidence.length < IDENTIFICATION_QUALITY_PROFILE.atomicEvidence.minimumReliableGroups) {
+    if (reliableCharacteristicEvidence.length < settings.minimumGroups) {
       reasons.push("insufficient-reliable-groups");
     }
     if (
-      strongCharacteristicEvidence.length === 0
+      settings.minimumQuality >= 0.5
+      && strongCharacteristicEvidence.length === 0
       && reliableCharacteristicEvidence.length
         < IDENTIFICATION_QUALITY_PROFILE.atomicEvidence.minimumReliableGroupsWithoutStrongEvidence
     ) {
@@ -243,11 +249,13 @@ export function buildElementHypotheses(
     if (highSpecificityCharacteristicEvidence.length < IDENTIFICATION_QUALITY_PROFILE.atomicEvidence.minimumHighSpecificityGroups) {
       reasons.push("ambiguous-evidence");
     }
+    if (strongCharacteristicEvidence.length < settings.minimumStrongGroups) reasons.push("weak-evidence-dominated");
     if (!wavelengthCoherence.coherent) reasons.push("incoherent-wavelength-shift");
     const reliable = reasons.length === 0;
     const hypothesis: ElementInterpretation = {
       ...hypothesisBase,
       reliability: reliable ? "reliable" : "tentative",
+      admission: settings.minimumQuality < 0.5 && (evidence.some((item) => item.strength !== "weak" && item.quality < 0.5) || (strongCharacteristicEvidence.length === 0 && reliableCharacteristicEvidence.length < 5)) ? "sensitive" : "standard",
       explanation: reliable
         ? `${strongCharacteristicEvidence.length} сильных и ${reliableCharacteristicEvidence.length} качественных характерных спектральных групп; ${reliableKeyEvidence.length} из них ключевые.`
         : `${reliableCharacteristicEvidence.length} качественных характерных спектральных групп; критерии включения в состав не выполнены.`,
@@ -378,6 +386,7 @@ function aggregateGroupEvidence(
   characteristicByLineId: ReadonlyMap<string, CharacteristicSpectralGroupSummary>,
   channelById: ReadonlyMap<string, ChannelPreparationResult>,
   resolutionNm: number,
+  minimumQuality: number,
 ): readonly AnalysisEvidenceLine[] {
   const groups = new Map<string, AssignedGroupCandidate[]>();
   for (const assignment of assignments) groups.set(assignment.group.id, [...(groups.get(assignment.group.id) ?? []), assignment]);
@@ -412,11 +421,11 @@ function aggregateGroupEvidence(
     const quality = Math.min(1, Math.max(...observationQualities, 0) + Math.min(0.15, (channelSupportCount - 1) * 0.08));
     const specificity = Math.max(...observations.map((observation) => observation.specificity), 0);
     const normalizedDelta = Math.min(...items.map((item) => item.candidate.normalizedDelta));
-    const strength: EvidenceStrength = quality >= IDENTIFICATION_QUALITY_PROFILE.atomicEvidence.minimumStrongQuality
+    const strength: EvidenceStrength = quality >= Math.max(minimumQuality, IDENTIFICATION_QUALITY_PROFILE.atomicEvidence.minimumStrongQuality)
         && normalizedDelta <= 0.67
         && specificity >= IDENTIFICATION_QUALITY_PROFILE.atomicEvidence.minimumSpecificityForStrong
       ? "strong"
-      : quality >= IDENTIFICATION_QUALITY_PROFILE.atomicEvidence.minimumModerateQuality
+      : quality >= minimumQuality
           && normalizedDelta <= 0.85
           && specificity >= IDENTIFICATION_QUALITY_PROFILE.atomicEvidence.minimumSpecificityForModerate
         ? "moderate"

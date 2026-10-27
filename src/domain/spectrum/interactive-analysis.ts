@@ -1,8 +1,10 @@
+import { DEFAULT_COMPOSITION_SETTINGS, resolveCompositionSettings, isElementEnabled } from "./composition-settings";
 import type { SpectralLine } from "@/domain/spectral-library/types";
 import { createSpectralLibraryWavelengthIndex, type SpectralLibraryWavelengthIndex } from "@/domain/spectral-library/wavelength-index";
 import { identifyMolecularSystems } from "@/domain/molecular-spectrum/identification";
 import type { MolecularSystemDefinition } from "@/domain/molecular-spectrum/types";
 
+import { restrictAnalysisRange } from "./analysis-range";
 import { segmentSpectrumChannel } from "./channel-segmentation";
 import { validateDataset } from "./dataset";
 import { buildElementHypotheses } from "./identification";
@@ -29,6 +31,7 @@ import type {
 } from "./types";
 
 export const DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS: InteractiveAnalysisParameters = {
+  composition: DEFAULT_COMPOSITION_SETTINGS,
   processing: {
     smoothingWindow: 5,
     baselineSmoothness: 100_000,
@@ -63,7 +66,7 @@ export function runInteractiveSpectrumAnalysis(
     : [{ id: "channel-1", name: "Канал 1", dataset: input }];
   validateChannels(sourceChannelInputs);
   sourceChannelInputs.forEach((channel) => validateDataset(channel.dataset));
-  const channelInputs = sourceChannelInputs.flatMap(segmentSpectrumChannel);
+  const channelInputs = sourceChannelInputs.flatMap(segmentSpectrumChannel).flatMap((channel) => restrictAnalysisRange(channel, (channel.parameters ?? parameters).processing));
   validateChannels(channelInputs);
   const libraryIndex = Array.isArray(library)
     ? createSpectralLibraryWavelengthIndex(library)
@@ -197,9 +200,9 @@ export function runInteractiveSpectrumAnalysis(
     };
   });
   const suitability = combineSuitability(channels);
-  const identification = buildElementHypotheses(channels, libraryIndex.lines);
+  const identification = buildElementHypotheses(channels, libraryIndex.lines, parameters.composition);
   const molecularIdentification = spectrumType === "plasma-emission"
-    ? identifyMolecularSystems({ channels, systems: molecularSystems })
+    ? identifyMolecularSystems({ channels, systems: isElementEnabled("N", resolveCompositionSettings(parameters.composition)) ? molecularSystems : [], composition: parameters.composition })
     : { hypotheses: [], rejectedHypotheses: [], skippedReason: "spectrum-type-not-supported" as const };
   const peaks = channels.flatMap((channel) => channel.peaks);
   const unmatchedPeaks = peaks.filter((peak) => peak.candidates.length === 0);
@@ -225,6 +228,9 @@ export function runInteractiveSpectrumAnalysis(
 }
 
 export function validateInteractiveAnalysisParameters(parameters: InteractiveAnalysisParameters): void {
+  const range = parameters.processing.analysisRange;
+  if (range && (!Number.isFinite(range.minimum) || !Number.isFinite(range.maximum) || range.minimum >= range.maximum)) throw new Error("Начало диапазона анализа должно быть меньше конца; границы должны быть конечными числами.");
+  resolveCompositionSettings(parameters.composition);
   validateProcessingParameters(parameters.processing);
   validatePeakSearchParameters(parameters.peakSearch);
   if (typeof parameters.wavelengthCalibration.allowAutomaticCorrection !== "boolean") {

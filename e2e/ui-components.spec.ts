@@ -1,0 +1,32 @@
+import { expect, test } from "@playwright/test";
+
+test("shared controls preserve keyboard editing and dialog focus", async ({ page }) => {
+  await page.goto("/data");
+  await page.getByRole("button", { name: "Открыть образец NASA PDS" }).click();
+  await expect(page.getByRole("combobox", { name: "Тип спектра" })).toBeVisible();
+  await page.getByRole("link", { name: "Обработка", exact: true }).click();
+  const number = page.getByRole("spinbutton", { name: "Сглаживание, точное значение" });
+  await expect(number).toHaveValue("5");
+  await number.fill("9"); await number.press("Escape");
+  await expect(number).toHaveValue("5");
+  await page.getByRole("button", { name: "Увеличить: Сглаживание, точное значение" }).click();
+  await expect(number).toHaveValue("7");
+  const toggle = page.getByRole("switch", { name: "Автоматически уточнять шкалу" });
+  await expect(toggle).toBeChecked(); await toggle.press("Space"); await expect(toggle).not.toBeChecked();
+  await toggle.press("Space"); await expect(toggle).toBeChecked();
+  await page.getByRole("tab", { name: "Состав", exact: true }).click();
+  await page.getByRole("combobox", { name: "Область поиска", exact: true }).click();
+  await page.getByRole("option", { name: "Исключить выбранные", exact: true }).click();
+  await page.getByRole("searchbox", { name: "Найти элемент" }).fill("Железо");
+  const checkbox = page.getByRole("checkbox", { name: /Fe.*Железо/ });
+  await expect(checkbox).not.toBeChecked(); await checkbox.press("Space"); await expect(checkbox).toBeChecked();
+  await checkbox.press("Space"); await expect(checkbox).not.toBeChecked();
+  await page.getByRole("tab", { name: "Подготовка", exact: true }).click();
+  await page.getByRole("button", { name: "Диапазон…", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Видимый диапазон" });
+  await expect(dialog).toBeVisible();
+  await page.getByLabel("От, нм", { exact: true }).focus();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Диапазон…", exact: true })).toBeFocused();
+});

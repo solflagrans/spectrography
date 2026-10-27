@@ -98,21 +98,6 @@
   border-radius: var(--radius-md);
 }
 
-.primaryButton,
-.secondaryButton {
-  display: inline-flex;
-  min-height: 2.5rem;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-xs);
-  margin-top: var(--spacing-xl);
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-body);
-  font-weight: 600;
-  line-height: var(--line-height-body);
-  cursor: pointer;
-}
 
 .spectrumTypeField {
   display: grid;
@@ -120,16 +105,6 @@
   gap: var(--spacing-xs);
   color: var(--color-text-primary);
   font-weight: 600;
-}
-
-.spectrumTypeField select {
-  min-height: 2.5rem;
-  padding: 0 var(--spacing-sm);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-sm);
-  background: var(--color-background-surface);
-  color: var(--color-text-primary);
-  font: inherit;
 }
 
 .spectrumTypeField small {
@@ -173,29 +148,6 @@
   border-radius: var(--radius-sm);
 }
 
-.primaryButton {
-  border: 1px solid var(--color-action-primary);
-  background: var(--color-action-primary);
-  color: var(--color-text-on-dark);
-}
-
-.primaryButton:hover {
-  border-color: var(--color-action-primary-hover);
-  background: var(--color-action-primary-hover);
-}
-
-.secondaryButton {
-  border: 1px solid var(--color-border-default);
-  background: var(--color-background-surface);
-  color: var(--color-text-primary);
-}
-
-.primaryButton:focus-visible,
-.secondaryButton:focus-visible {
-  outline: 2px solid var(--color-action-primary);
-  outline-offset: 2px;
-}
-
 .transientNote {
   margin-top: var(--spacing-sm);
   color: var(--color-text-secondary);
@@ -216,28 +168,6 @@
 
 .compactImport {
   min-width: 0;
-}
-
-.replaceFileButton {
-  min-height: 2.25rem;
-  padding: var(--spacing-xs) var(--spacing-md);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-sm);
-  background: var(--color-background-surface);
-  color: var(--color-text-primary);
-  font: inherit;
-  font-size: var(--font-size-navigation);
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.replaceFileButton:hover {
-  border-color: color-mix(in srgb, var(--color-action-primary) 48%, var(--color-border-default));
-}
-
-.replaceFileButton:focus-visible {
-  outline: 2px solid var(--color-action-primary);
-  outline-offset: 2px;
 }
 
 .importPanelCompact {
@@ -307,28 +237,18 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
-
 .fileButton,
 .demoImportAction button {
   display: inline-flex;
-  min-height: 2.25rem;
   align-items: center;
   justify-content: center;
   gap: var(--spacing-xs);
-  border-radius: var(--radius-sm);
-  font: inherit;
-  font-size: var(--font-size-navigation);
-  font-weight: 600;
-  cursor: pointer;
 }
 
 .fileButton {
   flex: 0 0 auto;
-  padding: var(--spacing-xs) var(--spacing-md);
-  border: 1px solid var(--color-action-primary);
-  background: var(--color-action-primary);
-  color: var(--color-text-on-dark);
 }
+
 
 .demoImportAction {
   display: flex;
@@ -339,25 +259,6 @@
   border-radius: var(--radius-md);
   background: var(--color-background-surface);
   color: var(--color-text-secondary);
-}
-
-.demoImportAction button {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--color-text-primary);
-}
-
-.fileButton:disabled,
-.demoImportAction button:disabled {
-  cursor: wait;
-  opacity: 0.58;
-}
-
-.fileButton:focus-visible,
-.demoImportAction button:focus-visible {
-  outline: 2px solid var(--color-action-primary);
-  outline-offset: 2px;
 }
 
 .importError {
@@ -451,49 +352,17 @@
   flex-wrap: wrap;
   gap: var(--spacing-2xs);
 }
-
 .layerToggle,
 .zoomResetButton {
   display: inline-flex;
-  min-height: 1.875rem;
   align-items: center;
   justify-content: center;
   gap: 0.375rem;
-  padding: var(--spacing-2xs) var(--spacing-xs);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-sm);
-  background: var(--color-background-surface);
-  color: var(--color-text-secondary);
-  font: inherit;
-  font-size: var(--font-size-label);
-  font-weight: 600;
-  line-height: var(--line-height-label);
   white-space: nowrap;
-  cursor: pointer;
-  transition:
-    border-color var(--transition-fast),
-    background-color var(--transition-fast),
-    color var(--transition-fast);
 }
 
-.layerToggle:hover,
-.zoomResetButton:hover {
-  border-color: color-mix(in srgb, var(--color-action-primary) 48%, var(--color-border-default));
-  color: var(--color-text-primary);
-}
 
-.layerToggle:focus-visible,
-.zoomResetButton:focus-visible {
-  outline: 2px solid var(--color-action-primary);
-  outline-offset: 2px;
-}
 
-.layerToggleActive {
-  border-color: color-mix(in srgb, var(--color-action-primary) 55%, var(--color-border-default));
-  background: color-mix(in srgb, var(--color-action-primary) 8%, var(--color-background-surface));
-  color: var(--color-text-primary);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-action-primary) 8%, transparent);
-}
 
 .layerSwatch {
   display: inline-block;
@@ -549,10 +418,10 @@
   border: 1px solid color-mix(in srgb, var(--color-data-series-1) 42%, transparent);
   background: color-mix(in srgb, var(--color-data-series-1) 14%, transparent);
 }
-
 .zoomResetButton {
   flex: 0 0 auto;
 }
+
 
 .chart,
 .chartCompact,
@@ -605,30 +474,14 @@
   border-radius: var(--radius-sm);
   background: var(--color-background-canvas);
 }
-
 .sidePanelTabs button {
   min-width: 0;
-  padding: var(--spacing-xs);
-  border: 0;
-  border-radius: var(--radius-xs);
-  background: transparent;
-  color: var(--color-text-secondary);
-  font: inherit;
-  font-size: var(--font-size-label);
-  font-weight: 600;
-  cursor: pointer;
 }
 
 .sidePanelTabs button[aria-selected="true"] {
-  background: var(--color-background-surface);
   box-shadow: var(--shadow-surface);
-  color: var(--color-text-primary);
 }
 
-.sidePanelTabs button:focus-visible {
-  outline: 2px solid var(--color-action-primary);
-  outline-offset: 1px;
-}
 
 .sidePanelHeader {
   display: flex;
@@ -647,36 +500,6 @@
   line-height: var(--line-height-body);
 }
 
-.iconButton {
-  display: grid;
-  width: 2rem;
-  height: 2rem;
-  flex: 0 0 auto;
-  place-items: center;
-  padding: 0;
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-sm);
-  background: var(--color-background-surface);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-}
-
-.iconButton:hover {
-  border-color: var(--color-action-primary);
-  color: var(--color-action-primary);
-}
-
-.iconButton:focus-visible {
-  outline: 2px solid var(--color-action-primary);
-  outline-offset: 2px;
-}
-
-.iconButton:disabled {
-  border-color: transparent;
-  background: transparent;
-  color: var(--color-border-default);
-  cursor: default;
-}
 
 .sideParameterGroup {
   display: flex;
@@ -740,10 +563,8 @@
   font-size: var(--font-size-label);
   font-weight: 600;
 }
-
-.parameterSelect,
 .parameterControl .numberInputWrap,
-.valueRangeFields input {
+.valueRangeFields input:not([data-ui]) {
   min-height: 2.25rem;
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-sm);
@@ -753,57 +574,26 @@
 
 .parameterSelect {
   width: 100%;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  font: inherit;
 }
+
 
 .toggleParameter {
   min-height: 2.5rem;
 }
 
-.switchInput {
-  position: relative;
-  width: 2.25rem;
-  height: 1.25rem;
-  flex: 0 0 auto;
-  margin: 0;
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-full);
-  appearance: none;
-  background: var(--color-background-elevated);
-  cursor: pointer;
-  transition: background-color var(--transition-fast), border-color var(--transition-fast);
-}
 
-.switchInput::after {
-  position: absolute;
-  top: 0.125rem;
-  left: 0.125rem;
-  width: 0.875rem;
-  height: 0.875rem;
-  border-radius: 50%;
-  background: var(--color-background-surface);
-  box-shadow: 0 1px 2px rgb(22 31 43 / 24%);
-  content: "";
-  transition: transform var(--transition-fast);
-}
 
-.switchInput:checked {
-  border-color: var(--color-action-primary);
-  background: var(--color-action-primary);
-}
 
-.switchInput:checked::after {
-  transform: translateX(1rem);
-}
 
-.switchInput:focus-visible,
-.parameterSelect:focus-visible,
+
+
+
 .valueRangeFields input:focus-visible,
 .numberInputWrap input:focus-visible {
   outline: 2px solid var(--color-action-primary);
   outline-offset: 2px;
 }
+
 
 .valueRangeParameter {
   min-width: 0;
@@ -831,7 +621,7 @@
   font-size: var(--font-size-label);
 }
 
-.valueRangeFields input {
+.valueRangeFields input:not([data-ui]) {
   min-width: 0;
   width: 100%;
   padding: var(--spacing-xs);
@@ -1126,25 +916,12 @@
   outline: 2px solid var(--color-action-primary);
   outline-offset: 2px;
 }
-
 .candidateHypothesisLink {
   min-width: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--color-action-primary);
-  font: inherit;
-  font-size: var(--font-size-navigation);
-  font-weight: 650;
   text-align: left;
   overflow-wrap: anywhere;
-  cursor: pointer;
 }
 
-.candidateHypothesisLink:focus-visible {
-  outline: 2px solid var(--color-action-primary);
-  outline-offset: 2px;
-}
 
 .candidateTechnicalDetails {
   margin-top: var(--spacing-xs);
@@ -1194,25 +971,11 @@
   color: var(--color-text-secondary);
   font-size: var(--font-size-label);
 }
-
 .candidateToggle {
   width: 100%;
   margin-top: var(--spacing-md);
-  padding: var(--spacing-sm);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-sm);
-  background: var(--color-background-surface);
-  color: var(--color-action-primary);
-  font: inherit;
-  font-size: var(--font-size-label);
-  font-weight: 600;
-  cursor: pointer;
 }
 
-.candidateToggle:focus-visible {
-  outline: 2px solid var(--color-action-primary);
-  outline-offset: 2px;
-}
 
 .tableHeaderExplanation {
   display: block;
@@ -1297,55 +1060,24 @@
   font-size: var(--font-size-label);
 }
 
-.hypothesisSort select,
-.channelPicker select {
-  min-height: 2.25rem;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-sm);
-  background: var(--color-background-surface);
-  color: var(--color-text-primary);
-  font: inherit;
-  font-size: var(--font-size-navigation);
-}
-
 .hypothesisMasterList {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
 }
-
 .hypothesisMasterItem {
   display: flex;
   width: 100%;
   min-width: 0;
   flex-direction: column;
   gap: var(--spacing-xs);
-  padding: var(--spacing-sm);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-sm);
-  background: var(--color-background-surface);
-  color: var(--color-text-primary);
-  font: inherit;
   text-align: left;
-  cursor: pointer;
-  transition: border-color var(--transition-fast), background-color var(--transition-fast);
-}
-
-.hypothesisMasterItem:hover {
-  border-color: color-mix(in srgb, var(--color-action-primary) 42%, var(--color-border-default));
 }
 
 .hypothesisMasterItem[aria-selected="true"] {
-  border-color: var(--color-action-primary);
-  background: color-mix(in srgb, var(--color-action-primary) 6%, white);
   box-shadow: inset 3px 0 var(--color-action-primary);
 }
 
-.hypothesisMasterItem:focus-visible {
-  outline: 2px solid var(--color-action-primary);
-  outline-offset: 2px;
-}
 
 .hypothesisMasterHeading {
   display: grid;
@@ -1497,32 +1229,12 @@
   font-size: var(--font-size-heading-medium);
   line-height: var(--line-height-heading-medium);
 }
-
-.resetButton {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-2xs);
-  padding: var(--spacing-xs);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-sm);
-  background: var(--color-background-surface);
-  color: var(--color-text-secondary);
-  font: inherit;
-  font-size: var(--font-size-label);
-  cursor: pointer;
-}
-
-.resetButton:hover {
-  border-color: var(--color-action-primary);
-  color: var(--color-action-primary);
-}
-
-.resetButton:focus-visible,
-.parameterGroup input:focus-visible,
-.parameterGroup select:focus-visible {
+.parameterGroup input:focus-visible {
   outline: 2px solid var(--color-action-primary);
   outline-offset: 2px;
 }
+
+
 
 .parameterGroup {
   display: flex;
@@ -1572,10 +1284,7 @@
   font-weight: 600;
 }
 
-.rangeInput {
-  width: 100%;
-  accent-color: var(--color-action-primary);
-}
+.rangeInput { width: 100%; }
 
 .selectField,
 .numberField {
@@ -1584,8 +1293,6 @@
   gap: var(--spacing-xs);
   color: var(--color-text-secondary);
 }
-
-.selectField select,
 .numberInputWrap {
   width: 100%;
   border: 1px solid var(--color-border-default);
@@ -1593,12 +1300,10 @@
   background: var(--color-background-canvas);
 }
 
-.selectField select {
-  min-height: 2.25rem;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  color: var(--color-text-primary);
-  font: inherit;
+.selectField [data-ui="select"] {
+  width: 100%;
 }
+
 
 .numberField + .numberField {
   margin-top: var(--spacing-xs);
@@ -1772,43 +1477,6 @@
   color: var(--color-text-secondary);
 }
 
-.tag {
-  display: inline-flex;
-  width: fit-content;
-  align-items: center;
-  padding: var(--spacing-2xs) var(--spacing-xs);
-  border-radius: var(--radius-full);
-  font-size: var(--font-size-label);
-  font-weight: 600;
-  line-height: var(--line-height-label);
-  white-space: nowrap;
-}
-
-.tag_neutral {
-  background: var(--color-background-elevated);
-  color: var(--color-text-secondary);
-}
-
-.tag_success {
-  background: color-mix(in srgb, var(--color-status-success) 11%, white);
-  color: var(--color-status-success);
-}
-
-.tag_warning {
-  background: color-mix(in srgb, var(--color-status-warning) 11%, white);
-  color: var(--color-status-warning);
-}
-
-.tag_danger {
-  background: color-mix(in srgb, var(--color-status-danger) 10%, white);
-  color: var(--color-status-danger);
-}
-
-.tag_info {
-  background: color-mix(in srgb, var(--color-data-series-2) 10%, white);
-  color: color-mix(in srgb, var(--color-data-series-2) 82%, black);
-}
-
 .tableScroll {
   max-width: 100%;
   min-width: 0;
@@ -1817,49 +1485,18 @@
   container-type: inline-size;
 }
 
-.table {
-  width: 100%;
-  min-width: 42rem;
-  border-collapse: collapse;
-  font-size: var(--font-size-navigation);
-}
+.table { composes: table from "../../../components/ui/surfaces.module.css"; min-width: 42rem; }
 
-.table th,
-.table td {
-  padding: var(--spacing-sm);
-  border-bottom: 1px solid var(--color-border-default);
-  text-align: left;
-  vertical-align: middle;
-}
 
-.table th {
-  position: sticky;
-  z-index: 1;
-  top: 0;
-  background: var(--color-background-canvas);
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-label);
-  letter-spacing: var(--letter-spacing-label);
-}
+
 
 .sortableHeader {
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-2xs);
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
   letter-spacing: inherit;
-  cursor: pointer;
 }
 
-.sortableHeader:focus-visible {
-  border-radius: var(--radius-xs);
-  outline: 2px solid var(--color-action-primary);
-  outline-offset: 2px;
-}
 
 .table tbody tr:last-child td {
   border-bottom: 0;
@@ -2017,34 +1654,10 @@
   color: var(--color-text-secondary);
 }
 
-.workflowNext .primaryButton {
-  flex: 0 0 auto;
-  margin: 0;
-}
-
-.analysisModeTabs button {
-  min-height: 2.25rem;
-  padding: var(--spacing-xs) var(--spacing-md);
-  border: 0;
-  border-radius: var(--radius-xs);
-  background: transparent;
-  color: var(--color-text-secondary);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-
 .analysisModeTabs button[aria-selected="true"] {
-  background: var(--color-background-surface);
   box-shadow: inset 0 -2px var(--color-action-primary);
-  color: var(--color-text-primary);
 }
 
-.analysisModeTabs button:focus-visible,
-.compositionChoices button:focus-visible {
-  outline: 2px solid var(--color-action-primary);
-  outline-offset: 2px;
-}
 
 .analysisCurrent,
 .analysisUpdating {
@@ -2119,27 +1732,18 @@
   gap: var(--spacing-xs);
   margin-top: var(--spacing-md);
 }
-
 .compositionChoices button {
   display: grid;
   min-width: 0;
   grid-template-columns: auto minmax(0, 1fr);
   gap: var(--spacing-2xs) var(--spacing-xs);
-  padding: var(--spacing-sm);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-sm);
-  background: var(--color-background-canvas);
-  color: var(--color-text-primary);
-  font: inherit;
   text-align: left;
-  cursor: pointer;
 }
 
 .compositionChoices button[aria-pressed="true"] {
-  border-color: var(--color-action-primary);
-  background: color-mix(in srgb, var(--color-action-primary) 7%, white);
   box-shadow: inset 3px 0 var(--color-action-primary);
 }
+
 
 .compositionChoices strong {
   grid-row: 1 / 3;
@@ -2581,34 +2185,12 @@
   gap: var(--spacing-xs);
   margin-top: var(--spacing-md);
 }
-
-.channelObservationList button,
-.observationStack button,
-.tableAction {
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-sm);
-  background: var(--color-background-surface);
-  color: var(--color-text-primary);
-  font: inherit;
-  font-size: var(--font-size-label);
-  cursor: pointer;
-}
-
 .channelObservationList button {
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-sm);
 }
 
-.channelObservationList button span {
-  color: var(--color-text-secondary);
-}
-
-.channelObservationList button[aria-pressed="true"] {
-  border-color: var(--color-action-primary);
-  background: color-mix(in srgb, var(--color-action-primary) 6%, white);
-}
 
 .evidenceTable {
   width: 100%;
@@ -2742,25 +2324,6 @@
   align-items: flex-end;
 }
 
-.observationStack button,
-.tableAction {
-  padding: var(--spacing-2xs) var(--spacing-xs);
-  color: var(--color-action-primary);
-}
-
-.observationStack button:hover,
-.tableAction:hover {
-  border-color: var(--color-action-primary);
-}
-
-.observationStack button:focus-visible,
-.tableAction:focus-visible,
-.channelObservationList button:focus-visible,
-.hypothesisSort select:focus-visible,
-.channelPicker select:focus-visible {
-  outline: 2px solid var(--color-action-primary);
-  outline-offset: 2px;
-}
 
 .missingLineList {
   display: flex;
@@ -2856,10 +2419,10 @@
     color: var(--color-text-secondary);
     font-size: var(--font-size-label);
   }
+.mobileHypothesisSelect [data-ui="select"] {
+  width: 100%;
+}
 
-  .mobileHypothesisSelect select {
-    width: 100%;
-  }
 
   .card {
     padding: var(--spacing-md);
@@ -2869,10 +2432,10 @@
     align-items: stretch;
     flex-direction: column;
   }
+.fileButton {
+  width: 100%;
+}
 
-  .fileButton {
-    width: 100%;
-  }
 
   .chart {
     height: 15rem;
@@ -2910,10 +2473,10 @@
   .analysisModeTabs {
     width: 100%;
   }
+.analysisModeTabs button {
+  flex: 1;
+}
 
-  .analysisModeTabs button {
-    flex: 1;
-  }
 
   .qualityImpact,
   .workflowNext,
@@ -2922,9 +2485,6 @@
     flex-direction: column;
   }
 
-  .workflowNext .primaryButton {
-    width: 100%;
-  }
 
   .missingLineList > div {
     grid-template-columns: 1fr;
@@ -2990,9 +2550,6 @@
     padding: var(--spacing-lg);
   }
 
-  .primaryButton {
-    width: 100%;
-  }
 
   .chart,
   .chartCompact,
@@ -3004,10 +2561,10 @@
     align-items: stretch;
     flex-direction: column;
   }
+.zoomResetButton {
+  align-self: flex-end;
+}
 
-  .zoomResetButton {
-    align-self: flex-end;
-  }
 
   .hypothesisCard header,
   .traceCard header,
@@ -3021,18 +2578,616 @@
   }
 }
 
-.settingsNavigation {
+/* Processing panel: one spacing and control scale for all three tabs. */
+.processingSettings { container-type: inline-size; font-size: 14px; line-height: 20px; }
+.settingsNavigation { margin-bottom: 20px; }
+.settingsTabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; padding: 3px; background: var(--color-background-elevated); border-radius: var(--radius-sm); }
+.settingsTabs button {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.settingsTabs svg { display: none; }
+.settingsTabs button[aria-selected="true"] {
+  box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
+}
+
+.processingSettings .sidePanelHeader { min-height: 24px; padding: 0; margin-bottom: 20px; }
+.processingSettings .sidePanelHeader h2 { font-size: var(--font-size-heading-medium); line-height: 20px; }
+.processingSettings .sideParameterGroup { gap: 0; padding: 0; border: 0; }
+.processingSettings .sideParameterGroup + .sideParameterGroup { margin-top: 20px; }
+.processingSettings .sideParameterGroup h3 { margin: 0 0 12px; font-size: 14px; line-height: 20px; letter-spacing: normal; text-transform: none; color: var(--color-text-primary); font-weight: 650; }
+.processingSettings .parameterStack { gap: 12px; }
+.processingSettings .parameterControl { gap: 8px; }
+.processingSettings .parameterLabelRow { gap: 4px; align-items: center; }
+.processingSettings .parameterLabelRow label { overflow-wrap: normal; color: var(--color-text-secondary); }
+
+
+.processingSettings .parameterHeading { gap: 12px; align-items: center; }
+.processingSettings input[type="number"]:not([data-ui]),
+.processingSettings input[type="search"]:not([data-ui]) {
+  box-sizing: border-box; height: 36px; min-height: 36px; min-width: 0; width: 100%; margin: 0;
+  padding: 6px 8px; border: 1px solid var(--color-border-default); border-radius: var(--radius-sm);
+  background: var(--color-background-canvas); color: var(--color-text-primary); font: inherit; line-height: 20px;
+}
+
+.processingSettings [data-ui="select"] {
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  margin: 0;
+}
+
+.processingSettings input[type="number"] { font-variant-numeric: tabular-nums; }
+.processingSettings input:focus-visible { outline: 2px solid var(--color-action-primary); outline-offset: 2px; }
+.compactNumber { display: block; flex: 0 0 96px; min-width: 0; }
+.sliderRow { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.sliderRow output { flex-shrink: 0; font-size: 12px; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+.processingSettings .rangeInput { display: block; flex: 1; min-width: 0; height: 20px; margin: 0; padding: 0; }
+.processingSettings .numberParameter { grid-template-columns: minmax(0, 1fr) 126px; align-items: center; gap: 12px; }
+.processingSettings .numberInputWrap { min-height: 36px; padding: 0; gap: 4px; border: 0; background: transparent; }
+.processingSettings .numberInputWrap > span:not([data-ui]) { max-width: 62px; font-size: 12px; white-space: normal; line-height: 16px; }
+.processingSettings .toggleParameter { min-height: 36px; gap: 12px; }
+.processingSettings .valueRangeParameter { font-family: inherit; font-size: 14px; font-weight: 400; }
+.processingSettings .valueRangeParameter legend { width: 100%; margin-bottom: 8px; }
+.rangeLegend { display: flex; align-items: center; gap: 4px; }
+.processingSettings .valueRangeFields { grid-template-columns: auto minmax(0, 1fr) auto auto minmax(0, 1fr) auto; gap: 6px; }
+.settingHint { margin: 0; color: var(--color-text-secondary); font-size: 12px; line-height: 18px; }
+.processingSettings .parameterControl > .settingHint { text-align: right; }
+.settingsDisclosure { min-width: 0; border: 0; padding: 0; }
+.settingsDisclosure > summary { display: flex; align-items: flex-start; gap: 8px; list-style: none; min-height: 36px; padding: 8px 0; box-sizing: border-box; cursor: pointer; color: var(--color-text-secondary); font-size: 14px; line-height: 20px; font-weight: 500; }
+.settingsDisclosure > summary::-webkit-details-marker { display: none; }
+.settingsDisclosure > summary::before { content: ""; width: 6px; height: 6px; flex: 0 0 6px; margin-top: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); }
+.settingsDisclosure[open] > summary::before { transform: rotate(45deg); margin-top: 4px; }
+.settingsDisclosure > summary:focus-visible { outline: 2px solid var(--color-action-primary); outline-offset: 2px; border-radius: var(--radius-sm); }
+.settingsDisclosure[open] > summary { margin-bottom: 4px; }
+.disclosureSummary { display: flex; flex: 1; flex-wrap: wrap; min-width: 0; align-items: baseline; column-gap: 8px; row-gap: 2px; }
+.disclosureSummary > span:first-child { flex: 1 1 auto; }
+.disclosureValue { margin-left: auto; max-width: 100%; color: var(--color-text-secondary); font-size: 12px; line-height: 18px; font-weight: 400; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.settingsDisclosure[data-disclosure-kind="result"] > summary { font-weight: 400; }
+.disclosureContent { display: grid; gap: 12px; min-width: 0; padding-left: 14px; }
+.compactNumber:has(.compactUnit) { display: flex; flex-basis: 132px; align-items: center; gap: 6px; }
+.processingSettings .compactNumber:has(.compactUnit) [data-ui="number-field"] { flex: 1; width: 0; min-width: 0; }
+.compactUnit { color: var(--color-text-secondary); font-size: 12px; }
+.calibrationChannels { display: grid; gap: 12px; margin: 0; font-size: 12px; line-height: 18px; }
+.calibrationChannels dt { color: var(--color-text-secondary); }
+.calibrationChannels dd { margin: 0; }
+.processingSettings .sidePanelEmpty { margin: 0; font-size: 12px; line-height: 18px; }
+@media (pointer: coarse) {
+.settingsDisclosure > summary { min-height: 44px; }
+.processingSettings input[type="number"]:not([data-ui]),
+.processingSettings input[type="search"],
+.processingSettings .toggleParameter { min-height: 44px; }
+
+  .processingSettings .rangeInput { height: 28px; }
+}
+.inspectorWelcome {
   display: grid;
-  gap: 0.75rem;
-  padding: 1.25rem;
-  border-bottom: 1px solid var(--color-border-default);
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding-block: 20px;
+  color: var(--color-text-secondary);
 }
-.settingsNavigation a, .settingsLink {
-  color: inherit;
-  text-underline-offset: 0.2em;
+.inspectorWelcomeIcon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: var(--spacing-lg);
+  border: 1px solid var(--color-border-default);
+  border-radius: 16px;
+  background: var(--color-background-elevated);
+  color: var(--color-action-primary);
 }
-.settingsLink { font-size: 0.875rem; }
-.settingsSection { scroll-margin-top: 1rem; }
-.settingsSection + .settingsSection {
-  border-top: 1px solid var(--color-border-default);
+.inspectorWelcome h2 { margin: 0; font-size: 18px; line-height: 24px; color: var(--color-text-primary); }
+.inspectorWelcome p { grid-column: 2; margin: 0; font-size: 14px; line-height: 20px; }
+.inspectorWelcomeDetails { display: grid; gap: 20px; padding-top: 24px; border-top: 1px solid var(--color-border-default); }
+.inspectorWelcomeDetails > span { display: flex; align-items: flex-start; gap: 12px; }
+.inspectorWelcomeDetails svg { flex-shrink: 0; margin-top: 2px; color: var(--color-action-primary); }
+.inspectorWelcomeDetails strong { display: block; font-size: var(--font-size-label); color: var(--color-text-primary); font-weight: 600; }
+.inspectorWelcomeDetails small { display: block; margin-top: 5px; line-height: 1.5; }
+
+.elementChoices { display: grid; gap: 8px; max-height: 180px; overflow: auto; padding: 4px; }
+.elementChoices label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.875rem; }
+.elementChoices strong { min-width: 24px; }
+.compositionSearch { display: grid; gap: 8px; font-size: 0.875rem; }
+.compositionSearch input { min-width: 0; width: 100%; padding: 8px; border: 1px solid var(--color-border-default); border-radius: var(--radius-sm); background: var(--color-background-surface); color: inherit; }
+.compositionSummary { color: var(--color-text-secondary); font-size: 0.875rem; overflow-wrap: anywhere; }
+
+
+.mobileCompositionDiagnostics { display: none; }
+@media (max-width: 51.25rem) { .mobileCompositionDiagnostics { display: block; margin-top: 12px; } }
+
+.hypothesisSelect { display: flex; align-items: center; gap: var(--spacing-sm); flex-wrap: wrap; }
+
+.peakTableScroll { max-height: 23rem; overflow: auto; }
+.peakTableScroll thead { position: sticky; top: 0; z-index: 1; background: var(--color-background-surface); }
+.hypothesisSelect [data-ui="select"] {
+  max-width: 100%;
 }
+
+.hypothesisSelect [data-ui="select"] {
+  max-width: 100%;
+}
+
+
+.processingChartSelectors { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; min-width: 0; }
+
+/* Analysis inspector: independent surface and compact measurement-first content. */
+.visuallyHidden { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.peakInspectorHeader { position: sticky; top: 0; z-index: 3; padding: 20px 0 12px; background: var(--color-background-surface); }
+.peakInspectorTitle { display: flex; gap: 8px; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+.peakInspectorTitle h2 { margin: 0; font-size: 18px; line-height: 24px; font-variant-numeric: tabular-nums; }
+.peakInspectorTitle small { display: block; margin-top: 4px; font-size: 12px; line-height: 18px; color: var(--color-text-secondary); }
+.peakInspectorTitle nav { display: flex; flex-shrink: 0; gap: 4px; }
+.peakInspectorHeader .settingsTabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.inspectorTabContent { display: grid; gap: 12px; padding-top: 8px; font-size: 14px; line-height: 20px; }
+.inspectorMetrics { display: grid; gap: 10px; margin: 0; }
+.inspectorMetrics > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-width: 0; }
+.inspectorMetrics dt { font-size: 12px; line-height: 18px; color: var(--color-text-secondary); }
+.inspectorMetrics dd { flex-shrink: 0; max-width: 55%; margin: 0; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.inspectorTabContent .candidateGroupSection { gap: 4px; margin-top: 16px; }
+.inspectorTabContent .candidateGroupSection > h4 { margin: 0 0 4px; font-size: 13px; line-height: 20px; text-transform: none; }
+.inspectorTabContent .candidateList { gap: 0; }
+.inspectorTabContent .candidateList > li { padding: 0; background: none; border: 0; border-bottom: 1px solid var(--color-border-default); border-radius: 0; }
+.candidateRow > summary { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; padding: 10px 0; list-style: none; cursor: pointer; font-size: 13px; line-height: 20px; }
+.candidateRow > summary::-webkit-details-marker { display: none; }
+.candidateRow > summary > span { flex: 1 1 165px; }
+.candidateRow > summary code { margin-left: auto; font-size: 12px; white-space: nowrap; }
+.candidateRow[open] > summary { color: var(--color-action-primary); }
+.candidateRow > :not(summary) { margin-bottom: 10px; }
+.candidateRow > .candidateHypothesisLink {
+  display: block;
+  margin-top: 0;
+}
+
+.candidateRow > summary:focus-visible { outline: 2px solid var(--color-action-primary); outline-offset: 2px; }
+.inspectorTabContent .candidateToggle {
+  width: 100%;
+  display: block;
+  text-align: left;
+  margin-top: 8px;
+}
+
+.inspectorTabContent .candidateToggle::before {
+  content: "›";
+  display: inline-block;
+  width: 14px;
+}
+
+.inspectorTabContent .candidateToggle[aria-expanded="true"]::before {
+  content: "⌄";
+}
+
+.referenceRecordButton,
+.assignmentLink {
+  text-align: left;
+}
+
+.referenceDialog { min-width: 0; }
+.referenceDialogHeader { min-width: 0; }
+
+.referenceRecords { padding: 20px; display: grid; gap: 20px; min-width: 0; }
+.referenceRecords h3 { margin: 0 0 12px; font-size: 15px; }
+.referenceRecords h4 { margin: 12px 0 8px; }
+.referenceRecords dl { display: grid; gap: 8px; margin: 0; }
+.referenceRecords dl > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; font-size: 13px; line-height: 20px; }
+.referenceRecords dt { color: var(--color-text-secondary); }
+.referenceRecords dd { margin: 0; overflow-wrap: anywhere; }
+.referenceRecords article + article { border-top: 1px solid var(--color-border-default); padding-top: 20px; }
+.inspectorDrawer { min-width: 0; }
+.drawerClose {
+  position: sticky;
+  top: 8px;
+  float: right;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  margin: 4px -8px 0 0;
+}
+
+.inspectorDrawer .peakInspectorHeader { padding-top: 52px; }
+.mobileInspectorTrigger {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 10;
+  box-shadow: 0 2px 12px rgb(0 0 0 / 12%);
+}
+
+.peakTableScroll tbody td { padding-block: 4px; height: 40px; }
+.tableUnits { margin: 0 0 8px; font-size: 12px; color: var(--color-text-secondary); }
+.compactInterpretation { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; font-size: 13px; line-height: 20px; padding: 6px 12px; border: 1px solid var(--color-border-default); border-radius: var(--radius-sm); background: var(--color-background-surface); }
+@media (pointer: coarse) {
+.candidateRow > summary { min-height: 44px; }
+ }
+
+.compactInterpretation .settingHint { display: block; }
+
+.peakPage .chartCompact { height: clamp(12rem, 28vh, 18rem); }
+.peakTableScroll .table { min-width: 34rem; font-size: 13px; }
+.peakTableScroll .table th, .peakTableScroll .table td { padding-inline: 8px; }
+
+.candidateMedium { display: block; color: var(--color-text-secondary); font-size: 11px; line-height: 16px; }
+.candidateRow > summary::before { content: ""; width: 5px; height: 5px; flex: 0 0 5px; margin-top: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); }
+.candidateRow[open] > summary::before { transform: rotate(45deg); }
+
+.analysisConclusionCopy { display: grid; gap: 12px; }
+.analysisConclusionCopy > h2, .analysisConclusionCopy > p { margin: 0; }
+.analysisConclusionCopy > .identificationDisclosure { margin: 0; background: var(--color-background-surface); }
+.molecularCheck { padding: 12px 16px; border-top: 1px solid var(--color-border-default); }
+.molecularCheck > summary { font-size: 13px; line-height: 20px; cursor: pointer; font-weight: 500; }
+.molecularCheck > p { margin: 12px 0 8px; font-size: 13px; line-height: 20px; }
+.molecularCheck > ul { margin: 0; padding-left: 20px; font-size: 13px; line-height: 20px; color: var(--color-text-secondary); }
+.molecularCheck li + li { margin-top: 4px; }
+.inspectorMetrics dt { font-size: 13px; line-height: 20px; }
+.inspectorTabContent .settingsDisclosure > summary { font-size: 13px; line-height: 20px; font-weight: 400; }
+
+@media (min-width: 821px) and (max-width: 1120px) {
+  .evidenceTable { table-layout: fixed; font-size: 12px; }
+  .evidenceTable th, .evidenceTable td { padding: 8px 6px; overflow-wrap: anywhere; }
+.evidenceTable code { white-space: normal; overflow-wrap: anywhere; }
+
+.evidenceTable button {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+  .evidenceTable .titleWithTooltip { flex-wrap: wrap; }
+}
+
+
+
+
+
+
+@media (pointer: coarse) {
+
+ }
+
+.unavailableAction { margin-top: var(--spacing-xl); }
+
+.cardHeader { flex-wrap: wrap; }
+.cardHeader > h2 { min-width: 0; }
+.channelPicker { min-width: 0; max-width: 100%; width: min(100%, 340px); }
+.channelPicker > span { flex-shrink: 0; }
+.processingChartSelectors { max-width: 100%; flex: 0 1 340px; }
+
+/* Interpretation: one selected result, direct evidence, secondary diagnostics. */
+.compositionPage .analysisCurrent { gap: 16px; }
+.compositionPage .card { padding: 16px; }
+.compositionPage .cardHeader { margin-bottom: 12px; }
+.compositionPage .cardHeader h2, .resultOverview h2 { font-size: 18px; line-height: 24px; }
+.compositionPage .chartCompact { height: clamp(12rem, 26vh, 16rem); }
+.compositionStrip { display: grid; gap: 8px; padding: 0 0 12px; border-bottom: 1px solid var(--color-border-default); font-size: 13px; line-height: 20px; }
+.compositionStrip > p { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin: 0; }
+.compositionStrip > p > span { color: var(--color-text-secondary); }
+.mobileResultSelect { display: none; }
+.resultOverview { display: grid; gap: 6px; padding: 0; }
+.resultOverviewTitle { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.resultOverview h2, .resultOverview p { margin: 0; }
+.resultOverview h2 span { color: var(--color-text-secondary); font-weight: 500; }
+.resultOverview > p { font-size: 13px; line-height: 20px; color: var(--color-text-secondary); }
+.resultRejection { display: grid; gap: 4px; font-size: 13px; line-height: 20px; }
+.resultRejection > p { color: var(--color-status-warning); }
+.resultRejection summary, .resultSort summary { cursor: pointer; color: var(--color-text-secondary); font-size: 13px; line-height: 20px; }
+.resultRejection ul { margin: 6px 0 0; padding-left: 20px; }
+.resultChoice { width: 100%; display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 4px; padding: 10px 12px; text-align: left; white-space: normal; }
+.resultChoiceTitle { display: flex; gap: 8px; align-items: baseline; min-width: 0; }
+.resultChoiceTitle strong { flex-shrink: 0; font-size: 14px; line-height: 20px; }
+.resultChoiceTitle > span { min-width: 0; overflow-wrap: anywhere; color: var(--color-text-primary); }
+.resultChoiceSummary, .resultChoiceNote { font-size: 12px; line-height: 18px; color: var(--color-text-secondary); font-weight: 400; }
+.resultChoiceReason { color: var(--color-status-warning); font-size: 12px; line-height: 18px; font-weight: 400; }
+.resultChoice[aria-selected="true"] { box-shadow: inset 3px 0 var(--color-action-primary); }
+.identificationMaster .hypothesisMasterList { gap: 6px; }
+.identificationMaster > .identificationDisclosure { background: transparent; border: 0; }
+.identificationMaster > .identificationDisclosure > summary { padding: 10px 0; font-size: 13px; }
+.identificationMaster > .identificationDisclosure[open] > summary { border: 0; }
+.identificationMaster > .identificationDisclosure > :not(summary) { margin: 8px 0; }
+.resultSort { padding: 0 0 4px; }
+.resultSort > label { margin-top: 8px; }
+.evidenceToolbar { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.evidenceTableScroll { max-height: 25rem; overflow: auto; }
+.evidenceTableScroll thead { position: sticky; top: 0; z-index: 2; background: var(--color-background-canvas); }
+.compositionPage .evidenceTable th, .compositionPage .evidenceTable td { padding: 6px 8px; font-size: 13px; }
+.evidenceIdentity { display: flex; align-items: center; gap: 6px; }
+.evidenceIdentity > div { display: grid; gap: 2px; min-width: 0; }
+.evidenceIdentity strong { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 12px; line-height: 18px; }
+.evidenceIdentity code { font-size: 12px; line-height: 18px; overflow-wrap: anywhere; }
+.evidenceKey { color: var(--color-action-primary); font-size: 11px; font-weight: 500; }
+.evidenceExpandedRow { background: var(--color-background-canvas); }
+.evidenceExpandedRow .rowDetailsGrid { margin: 4px 0 8px; font-size: 12px; line-height: 18px; }
+.evidenceExpandedRow dd { overflow-wrap: anywhere; }
+.interpretationDisclosure { border-top: 1px solid var(--color-border-default); padding-top: 12px; }
+.interpretationDisclosure > summary { cursor: pointer; font-size: 13px; line-height: 20px; font-weight: 500; padding: 4px 0; }
+.interpretationDisclosure > :not(summary) { margin: 12px 0 0; }
+.missingEvidenceSections { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 16px; }
+.missingEvidenceSections h3, .resultChecks h3, .calculationSection h3 { margin: 0 0 8px; font-size: 14px; line-height: 20px; }
+.missingEvidenceList { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.missingEvidenceList li { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; line-height: 18px; }
+.missingEvidenceList li > span { color: var(--color-text-secondary); }
+.resultChecks dl { padding-bottom: 4px; }
+.resultChecks dl { display: grid; gap: 8px; margin: 0; }
+.resultChecks dl > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; font-size: 13px; line-height: 20px; }
+.resultChecks dt { color: var(--color-text-secondary); }
+.resultChecks dd { margin: 0; }
+.resultChecks dd[data-passed="false"] { color: var(--color-status-warning); }
+.calculationSection + .calculationSection { padding-top: 16px; }
+.calculationSection .definitionList { font-size: 13px; }
+.molecularEvidenceTable { width: 100%; min-width: 0; font-size: 13px; }
+@media (max-width: 820px) {
+  .mobileResultSelect { display: grid; gap: 6px; color: var(--color-text-secondary); }
+  .compositionPage .chartCompact { height: 14rem; }
+  .compositionPage .evidenceTable td { text-align: left; }
+  .evidenceTableScroll { max-height: none; }
+}
+@media (max-width: 820px) {
+  .compositionPage .evidenceExpandedRow td { display: block; }
+  .compositionPage .evidenceExpandedRow td::before { display: none; }
+  .molecularEvidenceTable td, .molecularEvidenceTable th { white-space: normal; overflow-wrap: anywhere; }
+}
+.evidenceScope { color: var(--color-text-secondary); font-size: 12px; line-height: 18px; }
+.resultChoice { border-color: var(--color-border-default); background: var(--color-background-surface); border-radius: var(--radius-md); }
+
+/* Align evidence headings with their values and keep technical details bounded. */
+.compositionPage .evidenceTable { table-layout: fixed; }
+.compositionPage .evidenceGroupColumn { width: 32%; }
+.compositionPage .evidencePeakColumn { width: 20%; }
+.compositionPage .evidenceDeltaColumn { width: 20%; }
+.compositionPage .evidenceSnrColumn { width: 12%; }
+.compositionPage .evidenceQualityColumn { width: 16%; }
+.compositionPage .evidenceTable th { vertical-align: middle; }
+.compositionPage .evidenceTable td { vertical-align: middle; }
+.compositionPage .evidenceTable th:first-child { padding-left: 38px; }
+.compositionPage .evidenceTable th:last-child, .compositionPage .evidenceTable td:last-child { text-align: left; }
+.compositionPage .evidenceTable .qualityCell { justify-items: start; }
+.evidenceDetails { padding: 8px 12px; display: grid; gap: 12px; }
+.evidenceDetailsMetrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 24px; margin: 0; text-align: left; }
+.evidenceDetailsMetrics > div { min-width: 0; }
+.evidenceDetailsMetrics dt { display: flex; align-items: center; gap: 4px; min-height: 24px; margin-bottom: 2px; color: var(--color-text-secondary); font-size: 12px; line-height: 18px; }
+.evidenceDetailsMetrics dd { margin: 0; overflow-wrap: anywhere; font-size: 13px; line-height: 20px; }
+.evidenceDetailsActions { display: flex; justify-content: flex-start; border-top: 1px solid var(--color-border-default); padding-top: 12px; }
+.calculationSection { display: grid; gap: 12px; }
+.calculationSection > h3 { margin: 0; }
+.calculationSection .definitionList { gap: 0; }
+.calculationSection .definitionList > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 16px; padding: 10px 0; }
+.calculationSection .definitionList > div:first-child { padding-top: 0; }
+.calculationSection .definitionList > div:last-child { padding-bottom: 0; }
+.spectrumChecks { display: grid; gap: 12px; padding: 4px 0 8px; }
+.spectrumChecks > h3 { margin: 0; }
+.spectrumChecks .molecularCheck { padding: 10px 12px; }
+@media (max-width: 1100px) {
+  .evidenceDetailsMetrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 820px) {
+  .compositionPage .evidenceTable th:first-child { padding-left: 8px; }
+  .evidenceDetails { padding: 8px 4px; }
+  .evidenceDetailsMetrics { grid-template-columns: 1fr; gap: 12px; }
+  .calculationSection .definitionList > div { grid-template-columns: minmax(0, 1fr) minmax(4rem, auto); }
+}
+
+.compositionPage .evidenceCard { padding-bottom: 8px; }
+.compositionPage .evidenceCard .cardHeader { margin-bottom: 8px; }
+.compactInterpretationCopy { min-width: 0; }
+.compactInterpretation > button { flex-shrink: 0; }
+.interpretationDisclosure > summary > .titleWithTooltip { display: inline-flex; vertical-align: middle; }
+
+.cardHeader { gap: 8px 16px; margin-bottom: 12px; }
+.cardHeading { display: grid; gap: 4px; min-width: 0; }
+.cardHeading h2 { font-size: 18px; line-height: 24px; }
+.cardHeading p { margin: 0; font-size: 12px; line-height: 18px; color: var(--color-text-secondary); }
+
+/* Shared spacing for spectrum cards in Data, Processing and Analysis. */
+.chartCard { padding: 16px; }
+.chartCard .cardHeader { min-height: 36px; margin-bottom: 12px; gap: 12px 16px; }
+.chartCard .chartWidget { gap: 12px; }
+.chartCard .chartToolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 12px; }
+.chartCard .layerToggles { gap: 4px; }
+
+.chartCard .channelPicker { width: 260px; flex: 0 1 260px; }
+.chartCard .chartToolbarEnd { grid-template-columns: 1fr; justify-items: end; }
+.chartCard .zoomResetButton { align-self: start; }
+@media (max-width: 600px) {
+  .chartCard .cardHeader { align-items: stretch; flex-direction: column; }
+  .chartCard .channelPicker { width: 100%; flex: none; }
+  .chartCard .chartToolbar { display: flex; flex-wrap: wrap; }
+  .chartCard .zoomResetButton { margin-left: auto; }
+}
+
+/* Data uses one reading size and compact, aligned measurement rows. */
+.dataPage, .importDialog { --data-text-size: 13px; --data-line-height: 20px; }
+.dataPage .card { padding: 16px; }
+.dataPage .cardHeader { gap: 8px 12px; margin-bottom: 8px; }
+.dataPage .cardHeading h2 { font-size: 16px; line-height: 24px; }
+.dataPage .chartCard .cardHeader { min-height: 24px; margin-bottom: 12px; }
+.dataStats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 24px; margin: 0; padding: 8px 16px; border: 1px solid var(--color-border-default); border-radius: var(--radius-sm); background: var(--color-background-surface); }
+.dataStats > div { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; }
+.dataStats dt, .dataStats dd { margin: 0; font-size: var(--data-text-size); line-height: var(--data-line-height); }
+.dataStats dt { color: var(--color-text-secondary); }
+.dataStats dd { font-variant-numeric: tabular-nums; }
+.dataOverview { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 16px; }
+.dataOverview .definitionList, .importDialog .definitionList { gap: 0; font-size: var(--data-text-size); line-height: var(--data-line-height); }
+.dataOverview .definitionList > div, .importDialog .definitionList > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); align-items: baseline; gap: 12px; padding: 8px 0; }
+.dataOverview .definitionList dd, .importDialog .definitionList dd { font-family: inherit; font-size: inherit; line-height: inherit; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.dataTypeField { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); align-items: center; gap: 12px; margin-top: 4px; font-size: var(--data-text-size); line-height: var(--data-line-height); }
+.dataTypeField > span { color: var(--color-text-secondary); }
+.importDetailsTrigger { margin-top: 8px; margin-left: -8px; }
+.dataWarnings { margin: 0 0 8px; padding-left: 18px; font-size: var(--data-text-size); line-height: var(--data-line-height); }
+.dataWarnings li + li { margin-top: 4px; }
+.dataWarnings li[data-severity="critical"] { color: var(--color-status-danger); }
+.dataOverview .technicalDisclosure { border: 0; border-top: 1px solid var(--color-border-default); border-radius: 0; }
+.dataOverview .technicalDisclosure > summary { padding: 8px 0; font-size: var(--data-text-size); line-height: var(--data-line-height); font-weight: 500; }
+.dataOverview .technicalDisclosure[open] > summary { border-bottom: 0; }
+.dataOverview .technicalDisclosure > :not(summary) { margin: 4px 0 12px; }
+.dataOverview .technicalDisclosure > p { font-size: var(--data-text-size); line-height: var(--data-line-height); }
+.dataChannelTable { min-width: 36rem; font-size: var(--data-text-size); line-height: var(--data-line-height); }
+.dataChannelTable th, .dataChannelTable td { padding: 8px; font-size: inherit; line-height: inherit; vertical-align: top; }
+.dataChannelDetails h3 { margin: 0 0 4px; font-size: var(--data-text-size); line-height: var(--data-line-height); font-weight: 600; }
+.importDialog .referenceDialogHeader { padding: 12px 16px; align-items: center; gap: 12px; }
+.importDialog .referenceDialogHeader h2 { font-size: 16px; line-height: 24px; }
+.importDialog > .definitionList { margin: 0; padding: 8px 16px 16px; }
+.importDialog > .detailNote { margin: 0; padding: 0 16px 16px; font-size: var(--data-text-size); line-height: var(--data-line-height); }
+@media (max-width: 820px) {
+  .dataOverview { grid-template-columns: 1fr; }
+  .dataStats { grid-template-columns: 1fr; gap: 4px; }
+}
+@media (max-width: 480px) {
+  .dataTypeField { grid-template-columns: 1fr; gap: 4px; margin-top: 8px; }
+  .dataOverview .definitionList > div, .importDialog .definitionList > div { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); }
+}
+@media (pointer: coarse) { .dataOverview .technicalDisclosure > summary { min-height: 44px; padding-block: 12px; } }
+
+.dataChartSummary { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0; }
+.dataChartSummary > span { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; }
+.dataPage .measurementCard .cardHeader { align-items: flex-start; margin-bottom: 12px; }
+.measurementFile { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; font-size: 13px; line-height: 20px; overflow-wrap: anywhere; }
+.measurementFields { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; font-size: 13px; line-height: 20px; }
+.measurementFields > div, .measurementFields > label { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.measurementFields > div > span:first-child, .measurementFields > label > span { flex-shrink: 0; color: var(--color-text-secondary); }
+.measurementFields [data-ui="select"] { width: auto; max-width: 100%; flex: none; font-weight: 400; }
+.dataPage .dataChannelTable { min-width: 640px; font-size: 13px; line-height: 20px; }
+.dataPage .dataChannelTable th, .dataPage .dataChannelTable td { font-size: inherit; line-height: inherit; padding: 6px 12px; vertical-align: middle; }
+.dataPage .dataChannelTable th:first-child, .dataPage .dataChannelTable td:first-child { padding-left: 12px; }
+.dataPage .dataChannelTable td:nth-child(2) { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.dataPage .dataChannelTable th:last-child, .dataPage .dataChannelTable td:last-child { padding-right: 0; text-align: right; }
+.channelDialogNotes { padding: 0 16px 16px; font-size: 13px; line-height: 20px; }
+.channelDialogNotes h3 { font-size: inherit; margin: 0 0 8px; }
+.channelDialogNotes ul { padding-left: 18px; margin: 0; }
+@media (max-width: 600px) { .measurementFields { align-items: stretch; flex-direction: column; gap: 12px; } .measurementFields > label { flex-wrap: wrap; } }
+
+.excludedChannel { display: block; color: var(--color-status-danger); }
+
+.dataPage .dataChannelTable { width: calc(100% - 2px); }
+
+.dataPage .cardHeading p { font-size: 13px; line-height: 20px; }
+
+.dataPage .analysisCurrent { gap: 12px; }
+.dataPage .cardHeading { gap: 4px; }
+.dataPage .measurementFile > span:first-child { color: var(--color-text-primary); overflow-wrap: anywhere; }
+.dataPage .measurementFile .tag { padding: 1px 6px; font-size: 12px; line-height: 18px; font-weight: 500; }
+.dataPage .dataChannelTable { table-layout: fixed; }
+.dataPage .dataChannelTable th:nth-child(3), .dataPage .dataChannelTable th:nth-child(4),
+.dataPage .dataChannelTable td:nth-child(3), .dataPage .dataChannelTable td:nth-child(4) { text-align: right; font-variant-numeric: tabular-nums; }
+.dataNumericHeading { display: inline-flex; justify-content: flex-end; align-items: center; gap: 4px; }
+.dataPage .dataChannelTable th { font-weight: 500; }
+.dataPage .dataChannelTable tbody tr:hover { background: var(--color-background-elevated); }
+.dataPage .dataChannelTable td:last-child > button { padding-inline: 4px; }
+@media (max-width: 600px) { .dataPage .measurementCard .cardHeader { flex-direction: row; } .dataPage .measurementCard .cardHeader > .cardHeading { flex: 1; } }
+
+.dataChartSummary > span + span::before { content: ""; height: 12px; width: 1px; margin-inline: 12px; background: var(--color-border-default); }
+.dataChartSummary strong { color: var(--color-text-primary); font-size: inherit; font-weight: 500; font-variant-numeric: tabular-nums; }
+@media (max-width: 600px) {
+  .dataChartSummary { gap: 4px 16px; }
+  .dataChartSummary > span + span::before { display: none; }
+}
+
+.dataPage .measurementCard .cardHeading { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.dataPage .measurementCard .cardHeader { align-items: center; margin-bottom: 8px; }
+.dataPage .measurementCard .cardHeading h2 { flex-shrink: 0; }
+.dataPage .measurementCard .cardHeading p { min-width: 0; }
+.dataPage .dataChannelTable { min-width: 920px; }
+@media (max-width: 600px) {
+  .dataPage .measurementCard .cardHeading { display: grid; gap: 4px; }
+  .dataPage .measurementCard .cardHeader { align-items: flex-start; }
+}
+
+.channelDialogBody { display: grid; gap: 12px; padding: 12px 16px 16px; font-size: 13px; line-height: 20px; }
+.channelDialogSummary { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 16px; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+.channelDialogSummary [data-usable="false"] { color: var(--color-status-danger); }
+.channelDialogSection h3 { margin: 0 0 8px; font-size: 13px; line-height: 20px; font-weight: 600; }
+.channelDialogSection .definitionList > div { padding-block: 6px; }
+.channelCalibration { display: flex; justify-content: space-between; gap: 16px; }
+.channelCalibration > span { color: var(--color-text-secondary); }
+.channelCalibration strong { font-weight: 500; }
+.channelCalibrationReason { margin: 4px 0 0; color: var(--color-text-secondary); }
+.channelDiagnostics { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.channelDiagnostics > li { display: grid; grid-template-columns: 16px minmax(0, 1fr); align-items: start; gap: 8px; padding: 6px 10px; border: 1px solid var(--color-border-default); border-radius: 6px; background: var(--color-background-canvas); }
+.channelDiagnostics > li > svg { margin-top: 2px; color: var(--color-text-secondary); }
+.channelDiagnosticHeading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 12px; }
+.channelDiagnosticHeading strong { font-weight: 500; }
+.channelDiagnosticHeading > span { color: var(--color-text-secondary); font-size: 12px; line-height: 18px; }
+.channelDiagnostics p { margin: 2px 0 0; color: var(--color-text-secondary); }
+.channelDiagnostics > li[data-severity="warning"] { border-left: 3px solid var(--color-status-warning); padding-left: 8px; }
+.channelDiagnostics > li[data-severity="critical"] { border-left: 3px solid var(--color-status-danger); padding-left: 8px; }
+.channelDiagnostics > li[data-severity="warning"] > svg, .channelDiagnostics > li[data-severity="warning"] .channelDiagnosticHeading > span { color: var(--color-status-warning); }
+.channelDiagnostics > li[data-severity="critical"] > svg, .channelDiagnostics > li[data-severity="critical"] .channelDiagnosticHeading > span { color: var(--color-status-danger); }
+
+.channelCalibrationExplanation { margin: 0; color: var(--color-text-secondary); }
+.channelCalibrationExplanation strong { font-weight: 500; color: var(--color-text-primary); }
+
+.pageIntroduction { display: contents; }
+.analysisPageNavigation { position: sticky; top: -16px; z-index: 10; display: flex; flex-direction: column; align-items: stretch; gap: 12px; margin-top: -16px; padding-top: 16px; padding-bottom: 12px; background: var(--color-background-canvas); border-bottom: 1px solid var(--color-border-default); }
+.analysisPageNavigation .analysisModeTabs { flex-shrink: 0; }
+
+.chartNavigation { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px; }
+
+.chartRangeDialog { max-width: 420px; }
+.chartRangeForm { display: grid; gap: 12px; padding: 16px; font-size: 13px; }
+.chartRangeForm p { margin: 0; color: var(--color-text-secondary); }
+.chartRangeForm [role="alert"] { color: var(--color-status-warning); }
+.chartRangeForm > button { justify-self: end; }
+.chartRangeFields { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 12px; }
+.chartRangeFields label { display: grid; gap: 6px; color: var(--color-text-secondary); }
+.chartRangeFields input { width: 100%; min-width: 0; height: 34px; padding: 6px 8px; border: 1px solid var(--color-border-default); border-radius: 6px; background: var(--color-background-surface); color: var(--color-text-primary); font: inherit; font-variant-numeric: tabular-nums; }
+.chartRangeFields input:focus-visible { outline: 2px solid var(--color-action-primary); outline-offset: 2px; }
+
+/* Chart headers keep metadata, selectors and view tools in distinct aligned groups. */
+.chartWidget { container-type: inline-size; }
+.chartCard .chartToolbar { display: flex; align-items: center; gap: 8px 16px; }
+.chartCard .layerToggles { flex: 1 1 360px; }
+.chartNavigation { flex: 0 0 auto; }
+.processingChartSelectors { flex: 0 1 auto; align-items: center; gap: 8px; }
+.chartCard .processingChartSelectors .channelPicker { width: 240px; flex: 0 1 240px; }
+.chartCard .processingChartSelectors .channelPicker:has([aria-label="Гипотеза на графике"]) { width: 220px; flex-basis: 220px; }
+@container (max-width: 1050px) {
+  .graphToolButton span { display: none; }
+  .graphToolButton { width: 30px; min-width: 30px; padding-inline: 0; }
+}
+.dataPage .chartCard { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px 16px; }
+.dataPage .chartCard > .cardHeader { grid-column: 1; grid-row: 1; margin: 0; }
+.dataPage .chartCard > .chartWidget { display: contents; }
+.dataPage .chartCard .chartToolbar { grid-column: 2; grid-row: 1; justify-self: end; align-self: center; }
+.dataPage .chartCard .chart, .dataPage .chartCard .chartCompact, .dataPage .chartCard .chartFill { grid-column: 1 / -1; grid-row: 2; }
+.calibrationStatus { display: grid; grid-template-columns: minmax(0, 1fr) auto 16px; align-items: center; gap: 6px; min-width: 0; padding: 8px 0; font-size: 12px; line-height: 18px; color: var(--color-text-secondary); }
+.calibrationStatus strong { margin: 0; text-align: right; font: inherit; color: var(--color-text-primary); white-space: nowrap; }
+.calibrationChannelList { display: grid; gap: 8px; }
+.calibrationChannelItem { display: grid; grid-template-columns: minmax(0, 1fr) auto 16px; gap: 6px; padding: 10px; border: 1px solid var(--color-border-default); border-radius: 6px; font-size: 12px; line-height: 18px; }
+.calibrationRange { grid-column: 2; white-space: nowrap; text-align: right; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+.calibrationChannelItem .calibrationStatus { grid-column: 1 / -1; padding: 0; }
+@media (max-width: 700px) {
+  .dataPage .chartCard { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .dataPage .chartCard .chartToolbar { grid-column: 1; grid-row: 2; }
+  .dataPage .chartCard .chart, .dataPage .chartCard .chartCompact, .dataPage .chartCard .chartFill { grid-row: 3; }
+  .processingChartSelectors { width: 100%; }
+  .chartCard .processingChartSelectors .channelPicker { flex: 1 1 200px; }
+}
+
+.calibrationChannelItem > span:first-child { color: var(--color-text-primary); font-weight: 600; }
+.processingSettings .disclosureContent:has(> .calibrationChannelList) { padding-left: 0; }
+
+.interpretationDisclosure { composes: root from "../../../components/ui/disclosure.module.css"; }
+
+.technicalDisclosure { composes: root from "../../../components/ui/disclosure.module.css"; }
+
+.identificationDisclosure { composes: root from "../../../components/ui/disclosure.module.css"; }
+
+.molecularCheck { composes: root from "../../../components/ui/disclosure.module.css"; }
+
+.candidateRow { composes: root from "../../../components/ui/disclosure.module.css"; }
+
+
+
+.cardHeader h2, .compositionPage .cardHeader h2 { font-size: var(--font-size-heading-medium); line-height: 24px; }
+.processingSettings { font-size: var(--font-size-control); }
+.processingSettings .sideParameterGroup h3, .processingSettings .valueRangeParameter { font-size: var(--font-size-control); }
+.processingSettings [data-ui="number-field"] { flex: 1 1 auto; min-width: 0; }
+.processingSettings .rangeInput { height: 24px; }
+.settingsDisclosure > summary { min-height: 32px; font-size: var(--font-size-control); }
+.definitionList { gap: 0; font-size: var(--font-size-control); }
+.definitionList > div { padding: 8px 0; }
+.definitionList dd { font-family: inherit; font-size: inherit; }

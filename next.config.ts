@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   agentRules: false,
   reactStrictMode: true,
+  devIndicators: false,
   typedRoutes: true,
   async redirects() {
     return ["/identification", "/peaks", "/result"].map((source) => ({

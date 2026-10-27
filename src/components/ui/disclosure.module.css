@@ -1,0 +1,9 @@
+.root { min-width: 0; }
+.root > summary { display: flex; align-items: baseline; gap: 8px; min-height: 32px; padding: 6px 0; list-style: none; cursor: pointer; font-size: 13px; line-height: 20px; font-weight: 500; color: var(--color-text-secondary); }
+.root > summary::-webkit-details-marker { display: none; }
+.root > summary::before { content: ""; align-self: flex-start; flex: 0 0 6px; width: 6px; height: 6px; margin-top: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); }
+.root[open] > summary::before { transform: rotate(45deg); margin-top: 4px; }
+.root > summary:hover { color: var(--color-text-primary); }
+.root > summary:focus-visible { outline: 2px solid var(--color-action-primary); outline-offset: 2px; border-radius: var(--radius-sm); }
+.content { min-width: 0; padding-top: 8px; }
+@media (pointer: coarse) { .root > summary { min-height: 44px; align-items: center; } }

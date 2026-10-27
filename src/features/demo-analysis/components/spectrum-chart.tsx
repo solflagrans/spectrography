@@ -1,7 +1,13 @@
 "use client";
 
+import * as Dialog from "@radix-ui/react-dialog";
+import { Input } from "@/components/ui/input";
+import { DialogSurface, DialogHeader } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+
 import { LineChart, ScatterChart } from "echarts/charts";
 import {
+  ToolboxComponent,
   DataZoomInsideComponent,
   DataZoomSliderComponent,
   GridComponent,
@@ -11,7 +17,7 @@ import {
 } from "echarts/components";
 import { init, use as registerCharts } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, ScanLine } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { AnalyzedPeak, SpectrumDataset } from "@/domain/spectrum";
@@ -20,6 +26,7 @@ import styles from "./analysis-page.module.css";
 import {
   createSpectrumChartOption,
   FULL_SPECTRUM_ZOOM,
+  getWavelengthExtent,
   preserveZoomForSource,
   readZoomRange,
 } from "./spectrum-chart-option";
@@ -39,6 +46,7 @@ registerCharts([
   MarkAreaComponent,
   MarkLineComponent,
   TooltipComponent,
+  ToolboxComponent,
   DataZoomInsideComponent,
   DataZoomSliderComponent,
   CanvasRenderer,
@@ -47,14 +55,18 @@ registerCharts([
 const zoomRangesBySource = new Map<string, SpectrumZoomRange>();
 
 export interface SpectrumChartProps {
+  readonly preparedIntensityUnit?: SpectrumChartData["preparedIntensityUnit"];
+  readonly rawIntensityUnit?: SpectrumChartData["rawIntensityUnit"];
   readonly rawDataset?: SpectrumDataset;
   readonly baselineDataset?: SpectrumDataset;
   readonly preparedDataset?: SpectrumDataset;
   readonly label: string;
   readonly sourceKey: string;
+  readonly layerViewKey?: string;
   readonly defaultVisibleLayers: readonly SpectrumChartLayer[];
   readonly peaks?: readonly AnalyzedPeak[];
   readonly selectedPeakId?: string | null;
+  readonly hoveredPeakId?: string | null;
   readonly onPeakSelect?: (peakId: string) => void;
   readonly thresholdDataset?: SpectrumDataset;
   readonly referenceLines?: readonly SpectrumReferenceLine[];
@@ -78,13 +90,17 @@ const layerLabels: Record<SpectrumChartLayer, string> = {
 
 export function SpectrumChart({
   rawDataset,
+  rawIntensityUnit,
+  preparedIntensityUnit,
   baselineDataset,
   preparedDataset,
   label,
   sourceKey,
   defaultVisibleLayers,
+  layerViewKey = "default",
   peaks,
   selectedPeakId,
+  hoveredPeakId,
   onPeakSelect,
   thresholdDataset,
   referenceLines,
@@ -100,12 +116,21 @@ export function SpectrumChart({
   const zoomRange = useRef<SpectrumZoomRange>(zoomRangesBySource.get(sourceKey) ?? FULL_SPECTRUM_ZOOM);
   const activeSourceKey = useRef(sourceKey);
   const onPeakSelectRef = useRef(onPeakSelect);
-  const [visibleLayers, setVisibleLayers] = useState<ReadonlySet<SpectrumChartLayer>>(
-    () => new Set(defaultVisibleLayers),
-  );
+  const [selectingRange, setSelectingRange] = useState(() => isFullZoom(zoomRangesBySource.get(sourceKey) ?? FULL_SPECTRUM_ZOOM));
+  const [rangeDialogOpen, setRangeDialogOpen] = useState(false);
+  const [rangeMinimum, setRangeMinimum] = useState("");
+  const [rangeMaximum, setRangeMaximum] = useState("");
+  const [rangeError, setRangeError] = useState("");
+  const selectionActive = useRef(false);
+  const optionInputs = useRef<{ chartData: SpectrumChartData; visibleLayers: ReadonlySet<SpectrumChartLayer> }>({ chartData: {}, visibleLayers: new Set() });
+  const [layerSelections, setLayerSelections] = useState<Readonly<Record<string, ReadonlySet<SpectrumChartLayer>>>>({});
+  const selectionKey = `${sourceKey}:${layerViewKey}`;
+  const visibleLayers = useMemo(() => layerSelections[selectionKey] ?? new Set(defaultVisibleLayers), [defaultVisibleLayers, layerSelections, selectionKey]);
   const [isZoomed, setIsZoomed] = useState(() => !isFullZoom(zoomRangesBySource.get(sourceKey) ?? FULL_SPECTRUM_ZOOM));
   const chartData: SpectrumChartData = useMemo(() => ({
     rawDataset,
+    rawIntensityUnit,
+    preparedIntensityUnit,
     baselineDataset,
     preparedDataset,
     peaks,
@@ -114,7 +139,7 @@ export function SpectrumChart({
     referenceLines,
     missingReferenceLines,
     highlightedRegions,
-  }), [baselineDataset, highlightedRegions, missingReferenceLines, peaks, preparedDataset, rawDataset, referenceLines, selectedPeakId, thresholdDataset]);
+  }), [baselineDataset, highlightedRegions, missingReferenceLines, peaks, preparedDataset, preparedIntensityUnit, rawDataset, rawIntensityUnit, referenceLines, selectedPeakId, thresholdDataset]);
   const availableLayers = getAvailableLayers(chartData);
 
   useEffect(() => {
@@ -127,9 +152,18 @@ export function SpectrumChart({
     const chart = init(chartElement.current, undefined, { renderer: "canvas" });
     chartInstance.current = chart;
     const handleDataZoom = (event: unknown) => {
-      zoomRange.current = readZoomRange(event, zoomRange.current);
+      zoomRange.current = readZoomRange(event, zoomRange.current, getWavelengthExtent(optionInputs.current.chartData));
       zoomRangesBySource.set(activeSourceKey.current, zoomRange.current);
       setIsZoomed(!isFullZoom(zoomRange.current));
+      const { chartData, visibleLayers } = optionInputs.current;
+      const option = createSpectrumChartOption(chartData, visibleLayers, getChartPalette(), zoomRange.current, chartElement.current?.clientWidth);
+      const full = isFullZoom(zoomRange.current);
+      chart.setOption({ xAxis: option.xAxis, series: option.series, dataZoom: [{ id: "spectrum-inside-zoom", moveOnMouseMove: !full }] });
+      if (selectionActive.current !== full) {
+        selectionActive.current = full;
+        setSelectingRange(full);
+        chart.dispatchAction({ type: "takeGlobalCursor", key: "dataZoomSelect", dataZoomSelectActive: full });
+      }
     };
     const handleChartClick = (event: unknown) => {
       const peakId = getPeakIdFromChartEvent(event);
@@ -162,18 +196,30 @@ export function SpectrumChart({
     previousSourceKey.current = sourceKey;
     activeSourceKey.current = sourceKey;
     setIsZoomed(!isFullZoom(zoomRange.current));
+    optionInputs.current = { chartData, visibleLayers };
     chart.setOption(
-      createSpectrumChartOption(chartData, visibleLayers, getChartPalette(), zoomRange.current),
+      createSpectrumChartOption(chartData, visibleLayers, getChartPalette(), zoomRange.current, chartElement.current?.clientWidth),
       { replaceMerge: ["series", "yAxis", "dataZoom"] },
     );
+    selectionActive.current = isFullZoom(zoomRange.current);
+    setSelectingRange(selectionActive.current);
+    chart.dispatchAction({ type: "takeGlobalCursor", key: "dataZoomSelect", dataZoomSelectActive: selectionActive.current });
   }, [chartData, sourceKey, visibleLayers]);
 
+  useEffect(() => {
+    const chart = chartInstance.current;
+    if (!chart || !visibleLayers.has("peaks")) return;
+    chart.dispatchAction({ type: "downplay", seriesId: "detected-peaks" });
+    const index = peaks?.findIndex((peak) => peak.id === hoveredPeakId) ?? -1;
+    if (index >= 0) chart.dispatchAction({ type: "highlight", seriesId: "detected-peaks", dataIndex: index });
+  }, [hoveredPeakId, peaks, sourceKey, visibleLayers, chartData]);
+
   const toggleLayer = (layer: SpectrumChartLayer) => {
-    setVisibleLayers((current) => {
-      const next = new Set(current);
+    setLayerSelections((current) => {
+      const next = new Set(current[selectionKey] ?? defaultVisibleLayers);
       if (next.has(layer)) next.delete(layer);
       else next.add(layer);
-      return next;
+      return { ...current, [selectionKey]: next };
     });
   };
 
@@ -189,35 +235,89 @@ export function SpectrumChart({
   };
 
   return (
-    <div className={styles.chartWidget}>
+    <div className={styles.chartWidget} onKeyDown={(event) => {
+      if (event.key === "Escape" && selectionActive.current) {
+        selectionActive.current = false;
+        setSelectingRange(false);
+        chartInstance.current?.dispatchAction({ type: "takeGlobalCursor", key: "dataZoomSelect", dataZoomSelectActive: false });
+      }
+    }}>
       <div className={`${styles.chartToolbar} ${showLayerControls ? "" : styles.chartToolbarEnd}`}>
         {showLayerControls ? (
           <div className={styles.layerToggles} role="group" aria-label="Слои графика">
             {availableLayers.map((layer) => {
               const active = visibleLayers.has(layer);
               return (
-                <button
+                <Button size="compact"
                   key={layer}
                   type="button"
-                  className={`${styles.layerToggle} ${active ? styles.layerToggleActive : ""}`}
+                  className={styles.layerToggle}
                   aria-pressed={active}
                   onClick={() => toggleLayer(layer)}
                 >
                   <span className={`${styles.layerSwatch} ${styles[`layerSwatch_${layer}`]}`} aria-hidden="true" />
                   <span>{layerLabels[layer]}</span>
-                </button>
+                </Button>
               );
             })}
           </div>
         ) : null}
-        {isZoomed ? (
-          <button className={styles.zoomResetButton} type="button" onClick={resetZoom}>
+        <div className={styles.chartNavigation}>
+          <Dialog.Root open={rangeDialogOpen} onOpenChange={(open) => {
+            setRangeDialogOpen(open);
+            if (open) {
+              const [minimum, maximum] = getWavelengthExtent(chartData);
+              const span = maximum - minimum;
+              setRangeMinimum(String(Number((minimum + span * zoomRange.current.start / 100).toFixed(6))));
+              setRangeMaximum(String(Number((minimum + span * zoomRange.current.end / 100).toFixed(6))));
+              setRangeError("");
+            }
+          }}>
+            <Dialog.Trigger asChild><Button size="compact">Диапазон…</Button></Dialog.Trigger>
+            <DialogSurface className={`${styles.referenceDialog} ${styles.chartRangeDialog}`} aria-describedby={undefined}>
+                <DialogHeader className={styles.referenceDialogHeader} title="Видимый диапазон" closeLabel="Закрыть диапазон" />
+                <form className={styles.chartRangeForm} onSubmit={(event) => {
+                  event.preventDefault();
+                  const [minimum, maximum] = getWavelengthExtent(chartData);
+                  const parsedFrom = Number(rangeMinimum.replace(",", "."));
+                  const from = Math.abs(parsedFrom - minimum) < 1e-6 ? minimum : parsedFrom;
+                  const parsedTo = Number(rangeMaximum.replace(",", "."));
+                  const to = Math.abs(parsedTo - maximum) < 1e-6 ? maximum : parsedTo;
+                  if (!rangeMinimum.trim() || !rangeMaximum.trim() || !Number.isFinite(from) || !Number.isFinite(to) || from >= to || from < minimum || to > maximum) {
+                    setRangeError(`Укажите границы от ${minimum.toLocaleString("ru-RU")} до ${maximum.toLocaleString("ru-RU")} нм; начало должно быть меньше конца.`);
+                    return;
+                  }
+                  chartInstance.current?.dispatchAction({ type: "dataZoom", start: (from - minimum) / (maximum - minimum) * 100, end: (to - minimum) / (maximum - minimum) * 100 });
+                  setRangeDialogOpen(false);
+                }}>
+                  <p>Меняет только масштаб графика.</p>
+                  <div className={styles.chartRangeFields}>
+                    <label>От, нм<Input inputMode="decimal" value={rangeMinimum} onChange={(event) => setRangeMinimum(event.target.value)} /></label>
+                    <label>До, нм<Input inputMode="decimal" value={rangeMaximum} onChange={(event) => setRangeMaximum(event.target.value)} /></label>
+                  </div>
+                  {rangeError ? <p role="alert">{rangeError}</p> : null}
+                  <Button type="submit">Применить</Button>
+                </form>
+              </DialogSurface>
+          </Dialog.Root>
+          <Button size="compact" className={styles.graphToolButton} aria-label="Выделить участок" aria-pressed={selectingRange} onClick={() => {
+            selectionActive.current = !selectionActive.current;
+            setSelectingRange(selectionActive.current);
+            chartInstance.current?.setOption({ dataZoom: [{ id: "spectrum-inside-zoom", moveOnMouseMove: !selectionActive.current && !isFullZoom(zoomRange.current) }] });
+            chartInstance.current?.dispatchAction({ type: "takeGlobalCursor", key: "dataZoomSelect", dataZoomSelectActive: selectionActive.current });
+          }} title="ЛКМ: в полном масштабе выделяет участок, после увеличения перемещает спектр. Эта кнопка включает повторное выделение. Двойной щелчок сбрасывает масштаб.">
+            <ScanLine size={14} aria-hidden="true" /><span>Выделить участок</span>
+          </Button>
+        {showLayerControls || isZoomed ? (
+          <Button size="compact" className={`${styles.zoomResetButton} ${styles.graphToolButton}`} aria-label="Сбросить масштаб" title="Сбросить масштаб" type="button" disabled={!isZoomed} onClick={resetZoom}>
             <RotateCcw size={14} aria-hidden="true" />
             <span>Сбросить масштаб</span>
-          </button>
+          </Button>
         ) : null}
+        </div>
       </div>
       <div
+        onDoubleClick={resetZoom}
         ref={chartElement}
         className={fill ? styles.chartFill : compact ? styles.chartCompact : styles.chart}
         role="img"

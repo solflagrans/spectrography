@@ -1,14 +1,23 @@
 "use client";
 
-import Link from "next/link";
+import { formatCalibrationReason } from "../model/calibration-ui";
+import { Input, Checkbox, Switch, RangeInput } from "@/components/ui/input";
+import { NumberField as DeferredNumberInput } from "@/components/ui/number-field";
+import { FieldLabel } from "@/components/ui/field-label";
+import { Button } from "@/components/ui/button";
+import { Select, SelectItem } from "@/components/ui/select";
 
-import { CircleAlert, LoaderCircle, RotateCcw, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { COMPOSITION_MODE_LABELS, DEFAULT_COMPOSITION_SETTINGS, resolveCompositionSettings, type CompositionSettings } from "@/domain/spectrum/composition-settings";
+import { builtinSpectralLibraryElements } from "@/domain/spectral-library/builtin-library-summary";
+
+import { ChevronLeft, ChevronRight, CircleAlert, Crosshair, SlidersHorizontal, ScanLine, LoaderCircle, RotateCcw, Search } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import {
   useAnalysisWorkspace,
   useAnalysisWorkspaceCore,
+  usePeakInspectorUi,
 } from "@/features/demo-analysis/model/analysis-workspace-context";
 import { DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS } from "@/domain/spectrum";
 import { InfoTooltip } from "@/features/workspace/components/info-tooltip";
@@ -25,35 +34,125 @@ import {
   type CandidateRelationFilter,
 } from "@/features/demo-analysis/model/peak-candidates-ui";
 
+import { useProcessingSection } from "../model/processing-section";
 import styles from "./analysis-page.module.css";
+import { ReferenceRecordDialog } from "./reference-record-dialog";
+import { SettingsDisclosure } from "./settings-disclosure";
+import { ResultChoice } from "./result-choice";
+
+const processingSections = [
+  { id: "preparation-settings", label: "Подготовка", icon: SlidersHorizontal },
+  { id: "peak-settings", label: "Поиск пиков", icon: ScanLine },
+  { id: "composition-settings", label: "Состав", icon: Search },
+] as const;
+
+function CalibrationStatus({ channel }: Readonly<{ channel: NonNullable<ReturnType<typeof useAnalysisWorkspaceCore>["analysis"]>["channels"][number] }>) {
+  const calibration = channel.wavelengthCalibration;
+  const applied = calibration.status === "applied";
+  return <div className={styles.calibrationStatus}>
+    <span>Смещение шкалы</span>
+    <strong>{applied ? `${formatSignedDecimal(calibration.shiftNm, 3)} нм` : "Не применено"}</strong>
+    <InfoTooltip label="Коррекция шкалы длины волны" content={`${applied ? "Общее смещение длин волн применено" : "Общее смещение длин волн не применено"}: ${formatCalibrationReason(calibration.reason)}. Исходные измерения не изменяются.`} />
+  </div>;
+}
 
 export function ProcessingSettingsPanel() {
+  const section = useProcessingSection();
+  const selectSection = (index: number) => {
+    const next = processingSections[index];
+    window.history.pushState(null, "", `#${next.id}`);
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+    document.getElementById(`${next.id}-tab`)?.focus();
+  };
   return (
-    <div>
-      <nav className={styles.settingsNavigation} aria-label="Разделы настроек">
-        <strong>Настройки анализа</strong>
-        <a href="#preparation-settings">Подготовка спектра</a>
-        <a href="#peak-settings">Поиск пиков</a>
-        <Link href="/analysis">Вернуться к анализу</Link>
-      </nav>
-      <section id="preparation-settings" aria-label="Подготовка спектра" className={styles.settingsSection}>
-        <PreparationSettingsPanel />
-      </section>
-      <section id="peak-settings" aria-label="Поиск пиков" className={styles.settingsSection}>
-        <PeakSearchSettingsPanel />
-      </section>
+    <div className={styles.processingSettings}>
+      <div className={styles.settingsNavigation}>
+        <div className={styles.settingsTabs} role="tablist" aria-label="Разделы настроек">
+          {processingSections.map(({ id, label, icon: Icon }, index) => (
+            <Button variant="ghost"
+              key={id}
+              id={`${id}-tab`}
+              type="button"
+              role="tab"
+              aria-selected={section === id}
+              aria-controls={`${id}-panel`}
+              tabIndex={section === id ? 0 : -1}
+              onClick={() => selectSection(index)}
+              onKeyDown={(event) => {
+                if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+                event.preventDefault();
+                selectSection(event.key === "Home" ? 0 : event.key === "End" ? processingSections.length - 1 : (index + (event.key === "ArrowLeft" ? -1 : 1) + processingSections.length) % processingSections.length);
+              }}
+            >
+              <Icon size={16} aria-hidden="true" />{label}
+            </Button>
+          ))}
+        </div>
+      </div>
+      {processingSections.map(({ id }) => (
+        <section key={id} id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-tab`} hidden={section !== id}>
+          {section === id ? id === "peak-settings" ? <PeakSearchSettingsPanel /> : id === "composition-settings" ? <CompositionSettingsPanel /> : <PreparationSettingsPanel /> : null}
+        </section>
+      ))}
+    </div>
+  );
+}
+
+export function CompositionSettingsPanel() {
+  const { parameters, updateCompositionSettings, calculationStatus, parameterError } = useAnalysisWorkspace();
+  const settings = resolveCompositionSettings(parameters.composition);
+  const [query, setQuery] = useState("");
+  const elements = builtinSpectralLibraryElements.filter((item) => `${item.symbol} ${item.name}`.toLocaleLowerCase("ru-RU").includes(query.toLocaleLowerCase("ru-RU")));
+  const custom = (patch: Partial<CompositionSettings>) => updateCompositionSettings({ ...patch, mode: "custom" });
+  return (
+    <div className={styles.sidePanelContent}>
+      <SidePanelHeader title="Определение состава" onReset={() => updateCompositionSettings(DEFAULT_COMPOSITION_SETTINGS)} resetDisabled={JSON.stringify(settings) === JSON.stringify(DEFAULT_COMPOSITION_SETTINGS)} />
+      <ParameterSection title="Проверяемые элементы">
+        <SelectParameter id="element-mode" label="Область поиска" value={settings.elementMode} onChange={(value) => updateCompositionSettings({ elementMode: value as CompositionSettings["elementMode"] })} options={[{ value: "all", label: "Все элементы библиотеки" }, { value: "exclude", label: "Исключить выбранные" }, { value: "only", label: "Только выбранные" }]} />
+        {settings.elementMode !== "all" ? <>
+          <label className={styles.compositionSearch}>Найти элемент<Input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Название или символ" /></label>
+          <p className={styles.sidePanelEmpty}>Выбрано: {settings.elements.length}. Доступны элементы встроенной библиотеки. Азот включает N, N₂ и N₂⁺.</p>
+          <div className={styles.elementChoices}>
+            {elements.map((element) => <label key={element.symbol}>
+              <Checkbox checked={settings.elements.includes(element.symbol)} onChange={(event) => updateCompositionSettings({ elements: event.target.checked ? [...settings.elements, element.symbol].sort() : settings.elements.filter((item) => item !== element.symbol) })} />
+              <strong>{element.symbol}</strong><span>{element.name}</span>
+            </label>)}
+          </div>
+          {!elements.length ? <p>Элемент не найден в библиотеке.</p> : null}
+          {settings.elementMode === "only" && !settings.elements.length ? <p role="status">Выберите хотя бы один элемент. Пока определение состава отключено.</p> : null}
+        </> : null}
+      </ParameterSection>
+      <ParameterSection>
+        <SelectParameter id="composition-mode" label="Режим отбора" value={settings.mode} onChange={(value) => updateCompositionSettings({ mode: value as CompositionSettings["mode"] })} options={Object.entries(COMPOSITION_MODE_LABELS).map(([value, label]) => ({ value, label }))} />
+        <p className={styles.sidePanelEmpty}>{settings.mode === "sensitive" ? "Допускает менее выраженные подтверждения в составе. Такие результаты отмечены; остальные совпадения доступны для исследования." : settings.mode === "strict" ? "Требует больше независимых подтверждений и более высокого качества совпадений." : settings.mode === "custom" ? "Применены заданные вручную требования к подтверждениям." : "Атомные линии — от 3 независимых групп; молекулярные полосы — от 2 областей."}</p>
+        <SettingsDisclosure title="Требования к подтверждениям" value={COMPOSITION_MODE_LABELS[settings.mode]} status={calculationStatus} error={parameterError}>
+          <div className={styles.parameterStack}>
+            <NumberParameter id="composition-groups" label="Минимум атомных групп" help="Независимые группы линий, подтверждающие элемент. Несколько неразрешимых линий одного пика считаются одной группой. Увеличьте значение для более строгого отбора." unit="" value={settings.minimumGroups} min={3} max={10} step={1} onChange={(minimumGroups) => custom({ minimumGroups })} />
+            <RangeParameter id="composition-quality" label="Качество атомного подтверждения" help="Учитывает заметность сигнала, точность совпадения и неоднозначность. Большее значение исключает слабые подтверждения. Это индекс отбора, а не вероятность." value={settings.minimumQuality} min={0.4} max={0.75} step={0.01} output={formatDecimal(settings.minimumQuality, 2)} onChange={(minimumQuality) => custom({ minimumQuality })} />
+            <NumberParameter id="composition-strong" label="Минимум сильных групп" help="Сколько подтверждений должны быть особенно выраженными и однозначными. Ключевой признак и проверка случайных совпадений обязательны при любом значении." unit="" value={settings.minimumStrongGroups} min={0} max={5} step={1} onChange={(minimumStrongGroups) => custom({ minimumStrongGroups })} />
+            <NumberParameter id="composition-regions" label="Минимум областей полос" help="Для N₂ и N₂⁺ проверяется форма нескольких участков спектра. Атомные группы и молекулярные области не суммируются." unit="" value={settings.minimumMolecularRegions} min={2} max={5} step={1} onChange={(minimumMolecularRegions) => custom({ minimumMolecularRegions })} />
+            <RangeParameter id="composition-molecular-quality" label="Качество формы полос" help="Насколько хорошо наблюдаемая форма должна совпадать с молекулярной полосой. Большее значение делает отбор строже; сравнение со случайными совпадениями остаётся обязательным." value={settings.minimumMolecularQuality} min={0.36} max={0.75} step={0.01} output={formatDecimal(settings.minimumMolecularQuality, 2)} onChange={(minimumMolecularQuality) => custom({ minimumMolecularQuality })} />
+          </div>
+        </SettingsDisclosure>
+      </ParameterSection>
+      <CalculationFeedback status={calculationStatus} error={parameterError} />
     </div>
   );
 }
 
 function PreparationSettingsPanel() {
   const {
+    analysis,
     parameters,
+    calculationStatus,
+    parameterError,
     resetProcessingParameters,
     updateProcessingParameters,
     updateWavelengthCalibrationParameters,
   } = useAnalysisWorkspaceCore();
-  const canReset = parameters.processing.baselineSmoothness !== DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.processing.baselineSmoothness
+  const selectedChannelId = useAnalysisWorkspace().selectedIdentificationChannelId;
+  const selectedChannel = analysis?.channels.find((channel) => channel.id === selectedChannelId) ?? analysis?.channels[0];
+  const canReset = parameters.processing.analysisRange !== undefined || parameters.processing.baselineSmoothness !== DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.processing.baselineSmoothness
     || parameters.processing.noiseWindowNm !== DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.processing.noiseWindowNm
     || parameters.processing.smoothingWindow !== DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.processing.smoothingWindow
     || parameters.processing.normalization !== DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS.processing.normalization
@@ -62,19 +161,41 @@ function PreparationSettingsPanel() {
   return (
     <div className={styles.sidePanelContent} data-parameter-panel="processing">
       <SidePanelHeader title="Подготовка спектра" onReset={resetProcessingParameters} resetDisabled={!canReset} />
-      <ParameterSection title="Базовая линия и шум">
+      {analysis ? <ParameterSection title="Диапазон анализа">
+        <ToggleParameter id="restrict-analysis-range" label="Ограничить диапазон, нм" help="Обработка и интерпретация выполняются только внутри границ. Масштаб графика на диапазон анализа не влияет. Исходное измерение сохраняется целиком." checked={parameters.processing.analysisRange !== undefined} onChange={(checked) => updateProcessingParameters({ analysisRange: checked ? { ...analysis.wavelengthRange } : undefined })} />
+        {parameters.processing.analysisRange ? <ValueRangeParameter label="Границы анализа" unit="нм"
+          minimum={{ id: "analysis-range-min", value: parameters.processing.analysisRange.minimum, min: 0, max: parameters.processing.analysisRange.maximum, step: 0.001 }}
+          maximum={{ id: "analysis-range-max", value: parameters.processing.analysisRange.maximum, min: parameters.processing.analysisRange.minimum, max: 1000000, step: 0.001 }}
+          onMinimumChange={(minimum) => updateProcessingParameters({ analysisRange: { ...parameters.processing.analysisRange!, minimum } })}
+          onMaximumChange={(maximum) => updateProcessingParameters({ analysisRange: { ...parameters.processing.analysisRange!, maximum } })} /> : null}
+      </ParameterSection> : null}
+      <ParameterSection>
+        <RangeParameter
+          id="smoothing-window"
+          label="Сглаживание"
+          help="Убирает мелкие колебания сигнала. Большое окно сильнее сглаживает спектр, но может скрыть узкие пики или объединить близкие. Значение 1 отключает сглаживание."
+          value={parameters.processing.smoothingWindow}
+          min={1}
+          max={51}
+          step={2}
+          output={`${selectedChannel ? `≈${formatDecimal((parameters.processing.smoothingWindow - 1) * ((selectedChannel.wavelengthRange.maximum - selectedChannel.wavelengthRange.minimum) / Math.max(1, selectedChannel.preparedDataset.wavelengths.length - 1)), 3)} нм` : ""}`}
+          onChange={(value) => updateProcessingParameters({ smoothingWindow: value })}
+        />
+      </ParameterSection>
+      <ParameterSection title="Базовая линия">
         <LogRangeParameter
           id="baseline-smoothness"
           label="Гладкость базовой линии"
-          help="Определяет, насколько плавно меняется фон под пиками. Увеличьте значение для более ровного фона; уменьшите, если фон заметно изгибается."
+          help="Определяет, насколько плавно меняется фон под пиками. Увеличьте значение для более ровного фона; уменьшите, если фон заметно изгибается. Ползунок имеет логарифмическую шкалу."
           value={parameters.processing.baselineSmoothness}
           min={100}
           max={10_000_000}
           onChange={(value) => updateProcessingParameters({ baselineSmoothness: value })}
         />
+        <SettingsDisclosure title="Оценка шума" invalid={!(parameters.processing.noiseWindowNm > 0)} value={`окно ${formatSettingValue(parameters.processing.noiseWindowNm)} нм`} status={calculationStatus} error={parameterError}>
         <NumberParameter
           id="noise-window"
-          label="Окно оценки шума"
+          label="Окно"
           help="Размер участка, по которому оцениваются случайные колебания сигнала. Малое окно лучше учитывает местные изменения шума, большое даёт более устойчивую оценку."
           unit="нм"
           value={parameters.processing.noiseWindowNm}
@@ -83,31 +204,19 @@ function PreparationSettingsPanel() {
           step={0.1}
           onChange={(value) => updateProcessingParameters({ noiseWindowNm: value })}
         />
+        </SettingsDisclosure>
       </ParameterSection>
-      <ParameterSection title="Сглаживание">
-        <RangeParameter
-          id="smoothing-window"
-          label="Окно сглаживания"
-          help="Убирает мелкие колебания сигнала. Большое окно сильнее сглаживает спектр, но может скрыть узкие пики или объединить близкие. Значение 1 отключает сглаживание."
-          value={parameters.processing.smoothingWindow}
-          min={1}
-          max={51}
-          step={2}
-          output={`${parameters.processing.smoothingWindow} пт`}
-          onChange={(value) => updateProcessingParameters({ smoothingWindow: value })}
-        />
-      </ParameterSection>
-      <ParameterSection title="Нормализация">
+      <ParameterSection>
         <SelectParameter
           id="normalization-method"
-          label="Масштаб интенсивности"
+          label="Нормализация"
           help="Приводит наибольшую подготовленную интенсивность к 1, чтобы удобнее сравнивать форму спектра. Исходные измерения сохраняются без изменений."
           value={parameters.processing.normalization}
           onChange={(value) => updateProcessingParameters({ normalization: value === "none" ? "none" : "maximum" })}
           options={[{ value: "maximum", label: "К максимуму (0–1)" }, { value: "none", label: "Не нормировать" }]}
         />
       </ParameterSection>
-      <ParameterSection title="Шкала длин волн">
+      <ParameterSection title="Шкала длины волны">
         <ToggleParameter
           id="automatic-wavelength-calibration"
           label="Автоматически уточнять шкалу"
@@ -115,7 +224,16 @@ function PreparationSettingsPanel() {
           checked={parameters.wavelengthCalibration.allowAutomaticCorrection}
           onChange={(checked) => updateWavelengthCalibrationParameters({ allowAutomaticCorrection: checked })}
         />
+        {selectedChannel ? <CalibrationStatus channel={selectedChannel} /> : null}
+        {analysis && analysis.channels.length > 1 ? <SettingsDisclosure title="Другие участки и каналы" value={String(analysis.channels.length - 1)} readOnly>
+          <div className={styles.calibrationChannelList}>{analysis.channels.filter((channel) => channel.id !== selectedChannel?.id).map((channel) => <div className={styles.calibrationChannelItem} key={channel.id}>
+            <span>{channel.id.match(/-segment-(\d+)$/) ? `Участок ${channel.id.match(/-segment-(\d+)$/)![1]}` : channel.name}</span>
+            <span className={styles.calibrationRange}>{formatDecimal(channel.wavelengthRange.minimum, 2)}–{formatDecimal(channel.wavelengthRange.maximum, 2)} нм</span>
+            <CalibrationStatus channel={channel} />
+          </div>)}</div>
+        </SettingsDisclosure> : null}
       </ParameterSection>
+      <CalculationFeedback status={calculationStatus} error={parameterError} />
     </div>
   );
 }
@@ -137,10 +255,10 @@ export function PeakSearchSettingsPanel() {
   return (
     <div className={styles.sidePanelContent}>
       <SidePanelHeader title="Параметры пиков" onReset={resetPeakSearchParameters} resetDisabled={!canReset} />
-      <ParameterSection title="Поиск пиков">
+      <ParameterSection>
         <RangeParameter
           id="detection-threshold"
-          label="Минимальный SNR"
+          label="Минимальное отношение сигнал/шум"
           help="Насколько пик должен выделяться на фоне шума. Увеличьте значение, чтобы убрать сомнительные пики; уменьшите, чтобы искать более слабые."
           value={parameters.peakSearch.minimumSnr}
           min={0}
@@ -150,7 +268,7 @@ export function PeakSearchSettingsPanel() {
           onChange={(value) => updatePeakSearchParameters({ minimumSnr: value })}
         />
         <ValueRangeParameter
-          label="Ширина пика"
+          label="Ширина на половине выраженности"
           help="Оставляет пики в выбранном диапазоне ширины. Нижняя граница отсеивает слишком узкие всплески, верхняя — широкие подъёмы сигнала. Слишком узкий диапазон может исключить реальные линии."
           minimum={{ id: "minimum-width", value: parameters.peakSearch.minimumWidth, min: 0, max: 50, step: 0.01 }}
           maximum={{ id: "maximum-width", value: parameters.peakSearch.maximumWidth, min: 0.01, max: 100, step: 0.1 }}
@@ -158,14 +276,15 @@ export function PeakSearchSettingsPanel() {
           onMinimumChange={(value) => updatePeakSearchParameters({ minimumWidth: value })}
           onMaximumChange={(value) => updatePeakSearchParameters({ maximumWidth: value })}
         />
+        <SettingsDisclosure title="Выраженность и расстояние" invalid={parameters.peakSearch.prominence < 0 || !(parameters.peakSearch.minimumDistance > 0)} value={`${formatSettingValue(parameters.peakSearch.prominence)} ${parameters.processing.normalization === "maximum" ? "доли макс." : "ед. сигнала"} · ${formatSettingValue(parameters.peakSearch.minimumDistance)} нм`} status={calculationStatus} error={parameterError}>
         <NumberParameter
           id="minimum-prominence"
           label="Минимальная выраженность"
           help="Насколько вершина должна возвышаться над соседними впадинами. Увеличьте значение, чтобы отсеять небольшие колебания; уменьшите, чтобы сохранить менее выраженные пики."
-          unit="отн. ед."
+          unit={parameters.processing.normalization === "maximum" ? "доля максимума" : "ед. сигнала"}
           value={parameters.peakSearch.prominence}
           min={0}
-          max={1}
+          max={Number.MAX_VALUE}
           step={0.01}
           onChange={(value) => updatePeakSearchParameters({ prominence: value })}
         />
@@ -180,6 +299,7 @@ export function PeakSearchSettingsPanel() {
           step={0.1}
           onChange={(value) => updatePeakSearchParameters({ minimumDistance: value })}
         />
+        </SettingsDisclosure>
       </ParameterSection>
       <CalculationFeedback status={calculationStatus} error={parameterError} />
     </div>
@@ -187,12 +307,12 @@ export function PeakSearchSettingsPanel() {
 }
 
 export function PeakSettingsPanel() {
-  const { analysis, selectedPeakId } = useAnalysisWorkspace();
+  const { analysis, selectedPeakId, calculationStatus } = useAnalysisWorkspace();
   const selectedPeak = analysis?.peaks.find((peak) => peak.id === selectedPeakId) ?? null;
   return (
     <div className={styles.sidePanelContent}>
       <section className={styles.selectedPeakPanel} aria-label="Инспектор пика">
-        <SelectedPeakContent analysis={analysis} selectedPeak={selectedPeak} />
+        {calculationStatus === "calculating" ? <PanelEmptyState>Обновляем анализ…</PanelEmptyState> : <SelectedPeakContent analysis={analysis} selectedPeak={selectedPeak} />}
       </section>
     </div>
   );
@@ -203,58 +323,55 @@ export function AnalysisSidePanel() {
   return analysisView === "composition" ? <IdentificationLinesPanel /> : <PeakSettingsPanel />;
 }
 
-function SelectedPeakContent({
-  analysis,
-  selectedPeak,
-}: Readonly<{
+function SelectedPeakContent({ analysis, selectedPeak }: Readonly<{
   analysis: ReturnType<typeof useAnalysisWorkspace>["analysis"];
   selectedPeak: NonNullable<ReturnType<typeof useAnalysisWorkspace>["analysis"]>["peaks"][number] | null;
 }>) {
-  if (!analysis?.peaks.length) {
-    return <PanelEmptyState>При текущих параметрах пики не найдены.</PanelEmptyState>;
-  }
-  if (!selectedPeak) {
-    return <PanelEmptyState>Выберите пик на графике или в таблице, чтобы увидеть его параметры и кандидатов.</PanelEmptyState>;
-  }
-
-  const rawIntensity = selectedPeak.rawIntensity;
-  const selectedChannel = analysis.channels.find((channel) => channel.id === selectedPeak.channelId);
-  const localThreshold = selectedChannel?.thresholdDataset.intensities[selectedPeak.index];
-
-  return (
-    <>
-      <h2 className={styles.sidePanelTitle}>Пик {formatDecimal(selectedPeak.wavelength, 2)} нм</h2>
-      <dl className={styles.peakSummaryLine} aria-label="Краткие параметры пика">
-        <PeakDetail label="Длина" value={`${formatDecimal(selectedPeak.wavelength, 3)} нм`} />
-        <PeakDetail label="SNR" value={Number.isFinite(selectedPeak.snr) ? formatValue(selectedPeak.snr, 2) : "∞"} />
-        <PeakDetail label="Ширина" value={`${formatValue(selectedPeak.widthNm, 3)} нм`} />
-      </dl>
-
-      <section className={styles.candidateSection} aria-labelledby="candidate-lines-title">
-        <h3 id="candidate-lines-title">Линии и назначения</h3>
-        {selectedPeak.candidates.length ? (
-          <PeakCandidateBrowser key={selectedPeak.id} analysis={analysis} selectedPeak={selectedPeak} />
-        ) : (
-          <PanelEmptyState>
-            В пределах рассчитанных для этого пика адаптивных допусков подходящих линий нет.
-          </PanelEmptyState>
-        )}
-      </section>
-
-      <details className={styles.peakTechnicalDisclosure}>
-        <summary>Параметры пика</summary>
-        <dl className={styles.selectedPeakDetails}>
-          <PeakDetail label="Исходная точка сетки" value={`${formatDecimal(selectedPeak.sampledWavelength, 3)} нм`} />
-          <PeakDetail label="Уточнение максимума" value={selectedPeak.positionRefined ? `${formatSignedDecimal(selectedPeak.refinementOffsetNm, 4)} нм` : "Не применялось"} />
-          <PeakDetail label="Неопределённость положения" value={`≥ ${formatDecimal(selectedPeak.positionUncertaintyNm, 4)} нм`} />
-          <PeakDetail label="Исходная интенсивность" value={formatValue(rawIntensity, 4)} />
-          <PeakDetail label="Подготовленная интенсивность" value={formatValue(selectedPeak.intensity, 4)} />
-          <PeakDetail label="Выраженность" value={formatValue(selectedPeak.prominence, 4)} />
-          <PeakDetail label="Порог в этой точке" value={localThreshold === undefined ? "—" : formatValue(localThreshold, 4)} />
+  const { tab, setTab } = usePeakInspectorUi();
+  const { selectPeak } = useAnalysisWorkspace();
+  if (!analysis?.peaks.length) return <PanelEmptyState>При текущих параметрах пики не найдены.</PanelEmptyState>;
+  if (!selectedPeak) return <div className={styles.inspectorWelcome}><Crosshair size={20} aria-hidden="true" /><h2>Выберите пик</h2><p>На графике или в таблице.</p></div>;
+  const channel = analysis.channels.find((item) => item.id === selectedPeak.channelId);
+  const peaks = channel?.peaks ?? [];
+  const index = peaks.findIndex((item) => item.id === selectedPeak.id);
+  const rawUnit = analysis.source.units.split(" / ")[1];
+  const preparedUnit = channel?.parameters.processing.normalization === "maximum" ? "доля максимума" : rawUnit;
+  const tabs = [{ id: "parameters", label: "Параметры" }, { id: "matches", label: "Соответствия" }] as const;
+  return <>
+    <header className={styles.peakInspectorHeader}>
+      <div className={styles.peakInspectorTitle}><div><h2>{formatDecimal(selectedPeak.wavelength, 3)} нм</h2><small>Пик № {index + 1}{analysis.channels.length > 1 ? ` · ${channel?.name ?? ""}` : ""}</small></div>
+        <nav aria-label="Соседние пики по длине волны"><Button size="icon"  aria-label="Предыдущий пик" disabled={index <= 0} onClick={() => selectPeak(peaks[index - 1].id)}><ChevronLeft size={16} /></Button><Button size="icon"  aria-label="Следующий пик" disabled={index < 0 || index >= peaks.length - 1} onClick={() => selectPeak(peaks[index + 1].id)}><ChevronRight size={16} /></Button></nav>
+      </div>
+      <div className={styles.settingsTabs} role="tablist" aria-label="Разделы инспектора">
+        {tabs.map((item, tabIndex) => <Button variant="ghost" key={item.id} role="tab" id={`inspector-${item.id}-tab`} aria-selected={tab === item.id} aria-controls={`inspector-${item.id}`} tabIndex={tab === item.id ? 0 : -1} onClick={() => setTab(item.id)} onKeyDown={(event) => {
+          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+          event.preventDefault();
+          const next = event.key === "Home" ? 0 : event.key === "End" ? 1 : 1 - tabIndex;
+          setTab(tabs[next].id);
+          document.getElementById(`inspector-${tabs[next].id}-tab`)?.focus();
+        }}>{item.label}</Button>)}
+      </div>
+    </header>
+    <div id={`inspector-${tab}`} role="tabpanel" aria-labelledby={`inspector-${tab}-tab`} className={styles.inspectorTabContent}>
+      {tab === "parameters" ? <>
+        <dl className={styles.inspectorMetrics}>
+          <PeakDetail label={`Интенсивность · ${preparedUnit}`} value={formatMeasuredValue(selectedPeak.intensity)} />
+          <PeakDetail label="Ширина · нм" value={formatValue(selectedPeak.widthNm, 3)} />
+          <PeakDetail label="Сигнал/шум (SNR)" value={Number.isFinite(selectedPeak.snr) ? formatValue(selectedPeak.snr, 2) : "∞"} />
+          <PeakDetail label="Неопределённость положения · нм" value={`≥ ${formatDecimal(selectedPeak.positionUncertaintyNm, 4)}`} />
+          <PeakDetail label={`Исходная интенсивность · ${rawUnit}`} value={formatMeasuredValue(selectedPeak.rawIntensity)} />
         </dl>
-      </details>
-    </>
-  );
+        <p className={styles.settingHint}>Ширина измерена на половине выраженности.</p>
+        {channel?.wavelengthCalibration.status === "applied" ? <p className={styles.settingHint}>Применена поправка шкалы: {formatSignedDecimal(channel.wavelengthCalibration.shiftNm, 3)} нм.</p> : null}
+        <SettingsDisclosure title="Уточнение координаты" value={selectedPeak.positionRefined ? `${formatSignedDecimal(selectedPeak.refinementOffsetNm, 4)} нм` : "не применялось"} readOnly><dl className={styles.inspectorMetrics}><PeakDetail label="Исходная точка сетки · нм" value={formatDecimal(selectedPeak.sampledWavelength, 3)} /><PeakDetail label="Смещение максимума · нм" value={formatSignedDecimal(selectedPeak.refinementOffsetNm, 4)} /></dl></SettingsDisclosure>
+        <SettingsDisclosure title="Обнаружение пика" value={`SNR ${formatValue(selectedPeak.snr, 1)}`} readOnly><dl className={styles.inspectorMetrics}><PeakDetail label="Выраженность" value={formatMeasuredValue(selectedPeak.prominence)} /><PeakDetail label="Локальный порог" value={formatMeasuredValue(channel?.thresholdDataset.intensities[selectedPeak.index])} /></dl></SettingsDisclosure>
+      </> : <section aria-label="Линии и назначения">{selectedPeak.candidates.length ? <PeakCandidateBrowser key={selectedPeak.id} analysis={analysis} selectedPeak={selectedPeak} /> : <PanelEmptyState>Подходящих справочных линий нет.</PanelEmptyState>}</section>}
+    </div>
+  </>;
+}
+
+function formatMeasuredValue(value: number | undefined): string {
+  return value === undefined ? "—" : Math.abs(value) >= 1_000_000 ? value.toExponential(3) : formatValue(value, 4);
 }
 
 function PeakCandidateBrowser({
@@ -265,6 +382,9 @@ function PeakCandidateBrowser({
   selectedPeak: NonNullable<ReturnType<typeof useAnalysisWorkspace>["analysis"]>["peaks"][number];
 }>) {
   const { selectHypothesis, setAnalysisView } = useAnalysisWorkspace();
+  const [recordGroup, setRecordGroup] = useState<CandidateDisplayGroup | null>(null);
+  const recordTrigger = useRef<HTMLButtonElement | null>(null);
+  const openRecord = (group: CandidateDisplayGroup, trigger: HTMLButtonElement) => { recordTrigger.current = trigger; setRecordGroup(group); };
   const [expanded, setExpanded] = useState(false);
   const [query, setQuery] = useState("");
   const [ionizationStage, setIonizationStage] = useState<number | "all">("all");
@@ -280,6 +400,8 @@ function PeakCandidateBrowser({
   const ionizationStages = useMemo(() => [...new Set(view.groups.map((group) => (
     group.representative.ionizationStage
   )))].sort((left, right) => left - right), [view.groups]);
+  const metadata = new Set(view.groups.map((group) => `${group.representative.wavelengthType} · ${group.representative.wavelengthMedium}`));
+  const uniformMetadata = metadata.size === 1;
   const shownRecordCount = filteredGroups.reduce((sum, group) => sum + group.candidates.length, 0);
 
   const openHypothesis = (group: CandidateDisplayGroup) => {
@@ -293,6 +415,9 @@ function PeakCandidateBrowser({
 
   return (
     <>
+      <ReferenceRecordDialog group={recordGroup} onClose={() => setRecordGroup(null)} restoreFocus={() => recordTrigger.current?.focus()} />
+      {uniformMetadata && view.groups[0] ? <p className={styles.settingHint}>{view.groups[0].representative.wavelengthType === "observed" ? "Наблюдаемые длины" : "Ritz-длины"} · {view.groups[0].representative.wavelengthMedium === "air" ? "воздух" : "вакуум"}</p> : null}
+      <Button variant="text" size="compact" className={styles.candidateToggle} type="button" aria-expanded={expanded} onClick={() => setExpanded((current) => !current)}>Все соответствия · {view.candidateCount}</Button>
       {!expanded ? (
         <div className={styles.compactCandidateView}>
           {view.acceptedAssignments.length ? (
@@ -300,7 +425,7 @@ function PeakCandidateBrowser({
               <h4 id={`candidate-assignments-${selectedPeak.id}`}>Назначения в составе</h4>
               <ol className={styles.candidateList}>
                 {view.acceptedAssignments.map((group) => (
-                  <CandidateCard key={group.id} group={group} onOpenHypothesis={openHypothesis} />
+                  <CandidateCard key={group.id} group={group} onOpenHypothesis={openHypothesis} commonMetadata={uniformMetadata} onOpenRecord={openRecord} />
                 ))}
               </ol>
             </section>
@@ -310,7 +435,7 @@ function PeakCandidateBrowser({
             <section className={styles.candidateGroupSection} aria-labelledby={`candidate-nearest-${selectedPeak.id}`}>
               <h4 id={`candidate-nearest-${selectedPeak.id}`}>Ближайшая линия</h4>
               <ol className={styles.candidateList}>
-                <CandidateCard group={view.nearest} onOpenHypothesis={openHypothesis} />
+                <CandidateCard group={view.nearest} onOpenHypothesis={openHypothesis} commonMetadata={uniformMetadata} onOpenRecord={openRecord} />
               </ol>
             </section>
           ) : null}
@@ -319,8 +444,8 @@ function PeakCandidateBrowser({
             <section className={styles.candidateGroupSection} aria-labelledby={`candidate-alternatives-${selectedPeak.id}`}>
               <h4 id={`candidate-alternatives-${selectedPeak.id}`}>Альтернативы</h4>
               <ol className={styles.candidateList}>
-                {view.compactAlternatives.map((group) => (
-                  <CandidateCard key={group.id} group={group} onOpenHypothesis={openHypothesis} />
+                {view.compactAlternatives.slice(0, 2).map((group) => (
+                  <CandidateCard key={group.id} group={group} onOpenHypothesis={openHypothesis} commonMetadata={uniformMetadata} onOpenRecord={openRecord} />
                 ))}
               </ol>
             </section>
@@ -328,11 +453,11 @@ function PeakCandidateBrowser({
         </div>
       ) : (
         <section className={styles.fullCandidateView} aria-labelledby={`all-candidates-${selectedPeak.id}`}>
-          <h4 id={`all-candidates-${selectedPeak.id}`}>Все кандидаты</h4>
+          <h4 id={`all-candidates-${selectedPeak.id}`} className={styles.visuallyHidden}>Все соответствия</h4>
           <div className={styles.candidateFilters}>
             <label className={styles.searchField} htmlFor={`candidate-search-${selectedPeak.id}`}>
               <Search size={14} aria-hidden="true" />
-              <input
+              <Input
                 id={`candidate-search-${selectedPeak.id}`}
                 type="search"
                 value={query}
@@ -343,27 +468,27 @@ function PeakCandidateBrowser({
             </label>
             <label className={styles.selectField} htmlFor={`candidate-ionization-${selectedPeak.id}`}>
               <span>Степень ионизации</span>
-              <select
+              <Select
                 id={`candidate-ionization-${selectedPeak.id}`}
                 value={ionizationStage}
-                onChange={(event) => setIonizationStage(event.target.value === "all" ? "all" : Number(event.target.value))}
+                onValueChange={(value) => setIonizationStage(value === "all" ? "all" : Number(value))}
               >
-                <option value="all">Все степени</option>
-                {ionizationStages.map((stage) => <option key={stage} value={stage}>{stage}</option>)}
-              </select>
+                <SelectItem value="all">Все степени</SelectItem>
+                {ionizationStages.map((stage) => <SelectItem key={stage} value={stage}>{stage}</SelectItem>)}
+              </Select>
             </label>
             <label className={styles.selectField} htmlFor={`candidate-relation-${selectedPeak.id}`}>
               <span>Отношение к составу</span>
-              <select
+              <Select
                 id={`candidate-relation-${selectedPeak.id}`}
                 value={relation}
-                onChange={(event) => setRelation(event.target.value as CandidateRelationFilter)}
+                onValueChange={(value) => setRelation(value as CandidateRelationFilter)}
               >
-                <option value="all">Все отношения</option>
-                <option value="accepted">Участвует в составе</option>
-                <option value="diagnostic">Другое совпадение</option>
-                <option value="other">Остальные</option>
-              </select>
+                <SelectItem value="all">Все отношения</SelectItem>
+                <SelectItem value="accepted">Участвует в составе</SelectItem>
+                <SelectItem value="diagnostic">Другое совпадение</SelectItem>
+                <SelectItem value="other">Остальные</SelectItem>
+              </Select>
             </label>
           </div>
           <output className={styles.candidateCount} data-candidate-count aria-live="polite">
@@ -372,7 +497,7 @@ function PeakCandidateBrowser({
           {filteredGroups.length ? (
             <ol className={styles.candidateList}>
               {filteredGroups.map((group) => (
-                <CandidateCard key={group.id} group={group} onOpenHypothesis={openHypothesis} />
+                <CandidateCard key={group.id} group={group} onOpenHypothesis={openHypothesis} commonMetadata={uniformMetadata} onOpenRecord={openRecord} />
               ))}
             </ol>
           ) : (
@@ -381,74 +506,30 @@ function PeakCandidateBrowser({
         </section>
       )}
 
-      <button
-        className={styles.candidateToggle}
-        type="button"
-        aria-expanded={expanded}
-        onClick={() => setExpanded((current) => !current)}
-      >
-        {expanded ? "Свернуть" : `Все кандидаты (${view.candidateCount})`}
-      </button>
+
     </>
   );
 }
 
-function CandidateCard({
-  group,
-  onOpenHypothesis,
-}: Readonly<{
-  group: CandidateDisplayGroup;
-  onOpenHypothesis: (group: CandidateDisplayGroup) => void;
+function CandidateCard({ group, onOpenHypothesis, onOpenRecord, commonMetadata = false }: Readonly<{
+  group: CandidateDisplayGroup; onOpenHypothesis: (group: CandidateDisplayGroup) => void; onOpenRecord: (group: CandidateDisplayGroup, trigger: HTMLButtonElement) => void; commonMetadata?: boolean;
 }>) {
   const candidate = group.representative;
-
-  return (
-    <li data-candidate-group={group.id} data-candidate-record-count={group.candidates.length}>
-      <div className={styles.candidateHeading}>
-        {group.hypothesis ? (
-          <button className={styles.candidateHypothesisLink} type="button" onClick={() => onOpenHypothesis(group)}>
-            {candidate.elementName} ({candidate.elementSymbol})
-          </button>
-        ) : <strong>{candidate.elementName} ({candidate.elementSymbol})</strong>}
-        {group.candidates.length > 1 ? (
-          <span className={styles.candidateRecordCount}>{formatCount(group.candidates.length, "запись", "записи", "записей")}</span>
-        ) : null}
-      </div>
-      <div className={styles.candidateValues}>
-        <span>{formatCandidateGroupLine(group)} нм</span>
-        <code>Δ {formatSigned(candidate.delta)} нм</code>
-      </div>
-      <details className={styles.candidateTechnicalDetails}>
-        <summary>Технические данные</summary>
-        <dl>
-          <PeakDetail label="Адаптивный допуск" value={`±${formatDecimal(candidate.adaptiveToleranceNm, 3)} нм`} />
-          <PeakDetail label="Происхождение длины" value={candidate.wavelengthType === "observed" ? "Observed" : "Ritz"} />
-          <PeakDetail label="Среда" value={candidate.wavelengthMedium === "air" ? "Воздух" : "Вакуум"} />
-          <PeakDetail label="Нормированное отклонение" value={formatDecimal(candidate.normalizedDelta, 4)} />
-          <PeakDetail label="Объединённая неопределённость" value={`${formatDecimal(candidate.combinedUncertaintyNm, 4)} нм`} />
-          <PeakDetail label="Шаг сетки" value={`${formatDecimal(candidate.uncertainty.gridSamplingNm, 4)} нм`} />
-          <PeakDetail label="Разрешение" value={`${formatDecimal(candidate.uncertainty.spectralResolutionNm, 4)} нм`} />
-          <PeakDetail label="Ширина пика" value={`${formatDecimal(candidate.uncertainty.peakWidthNm, 4)} нм`} />
-          <PeakDetail label="Положение пика" value={`${formatDecimal(candidate.uncertainty.peakPositionNm, 4)} нм`} />
-          <PeakDetail label="Справочная линия" value={`${formatDecimal(candidate.uncertainty.referenceLineNm, 4)} нм`} />
-          <PeakDetail label="Калибровка" value={`${formatDecimal(candidate.uncertainty.calibrationNm, 4)} нм`} />
-          <PeakDetail label="Достигнут максимум допуска" value={candidate.toleranceCapped ? "Да" : "Нет"} />
-        </dl>
-        <div className={styles.candidateSourceRecords}>
-          <strong>Справочные записи и исходные метаданные</strong>
-          <ul>
-            {group.sourceRecords.map((record) => (
-              <li key={record.id}>
-                <code>{record.id}</code>
-                {record.sourceName ? <span>{record.sourceName} · {record.datasetVersion}</span> : null}
-                {record.rawWavelength ? <span>Исходная длина: {record.rawWavelength}{record.notation ?? ""}</span> : null}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </details>
-    </li>
-  );
+  return <li data-candidate-group={group.id} data-candidate-record-count={group.candidates.length}>
+    <details className={styles.candidateRow}>
+      <summary><span>{formatCandidateGroupLine(group)} нм{!commonMetadata ? <small className={styles.candidateMedium}>{candidate.wavelengthType === "observed" ? "Observed" : "Ritz"} · {candidate.wavelengthMedium === "air" ? "воздух" : "вакуум"}</small> : null}</span><code>Δ {formatSigned(candidate.delta)} нм</code></summary>
+      {group.isNearest && group.acceptedAssignment ? <p className={styles.settingHint}>{group.lineIds.length > 1 ? "Группа содержит ближайшую линию." : "Ближайшая справочная линия."}</p> : null}
+      {group.hypothesis ? <Button variant="text" size="compact" className={styles.candidateHypothesisLink} type="button" onClick={() => onOpenHypothesis(group)}>Доказательства: {candidate.elementName} ({candidate.elementSymbol})</Button> : null}
+      <dl className={styles.inspectorMetrics}><PeakDetail label="Допуск · нм" value={`± ${formatDecimal(candidate.adaptiveToleranceNm, 3)}`} /></dl>
+      {candidate.toleranceCapped ? <p className={styles.settingHint}>Допуск ограничен верхним пределом.</p> : null}
+      <SettingsDisclosure title="Расчёт допуска" readOnly><dl className={styles.inspectorMetrics}>
+        <PeakDetail label="Нормированное отклонение" value={formatDecimal(candidate.normalizedDelta, 4)} />
+        <PeakDetail label="Объединённая неопределённость · нм" value={formatDecimal(candidate.combinedUncertaintyNm, 4)} />
+        {Object.entries(candidate.uncertainty).map(([key, value]) => <PeakDetail key={key} label={({gridSamplingNm: "Шаг сетки", spectralResolutionNm: "Разрешение", peakWidthNm: "Ширина пика", peakPositionNm: "Положение пика", referenceLineNm: "Справочная линия", calibrationNm: "Калибровка"} as Record<string, string>)[key] + " · нм"} value={formatDecimal(value, 4)} />)}
+      </dl></SettingsDisclosure>
+      <Button variant="text" size="compact" className={styles.referenceRecordButton} onClick={(event) => onOpenRecord(group, event.currentTarget)}>Справочная запись{group.lineIds.length > 1 ? ` · ${group.lineIds.length}` : ""}</Button>
+    </details>
+  </li>;
 }
 
 function PeakDetail({ label, value }: Readonly<{ label: string; value: string }>) {
@@ -462,12 +543,11 @@ function PanelEmptyState({ children }: Readonly<{ children: ReactNode }>) {
 export function IdentificationLinesPanel() {
   const {
     analysis,
-    identificationTab,
     selectedHypothesisId,
     selectHypothesis,
-    setIdentificationTab,
   } = useAnalysisWorkspace();
   const [query, setQuery] = useState("");
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(true);
   const [sort, setSort] = useState<IdentificationSort>("ranking");
 
   if (!analysis) {
@@ -488,75 +568,49 @@ export function IdentificationLinesPanel() {
       {molecules.length ? (
         <div className={styles.hypothesisMasterList} role="listbox" aria-label="Обнаруженные молекулы">
           {molecules.map((hypothesis) => (
-            <button
-              key={hypothesis.id}
-              type="button"
-              role="option"
-              aria-selected={selectedHypothesisId === hypothesis.id}
-              className={styles.hypothesisMasterItem}
-              onClick={() => selectHypothesis(hypothesis.id, "hypotheses")}
-            >
-              <span className={styles.hypothesisMasterHeading}>
-                <strong>{hypothesis.formula}</strong>
-                <span>{hypothesis.displayName}</span>
-              </span>
-              <span className={styles.hypothesisMasterMetrics}>
-                <span>{formatCount(hypothesis.supportedRegionIds.length, "подтверждённый участок", "подтверждённых участка", "подтверждённых участков")}</span>
-              </span>
-            </button>
+            <ResultChoice key={hypothesis.id} symbol={hypothesis.formula} name={hypothesis.displayName}
+              summary={formatCount(hypothesis.supportedRegionIds.length, "подтверждённый участок", "подтверждённых участка", "подтверждённых участков")}
+              sensitive={hypothesis.admission === "sensitive"} selected={selectedHypothesisId === hypothesis.id} onSelect={() => selectHypothesis(hypothesis.id, "hypotheses")} />
           ))}
         </div>
       ) : null}
       {hypotheses.length ? (
         <div className={styles.hypothesisMasterList} role="listbox" aria-label="Состав">
           {hypotheses.map((entry) => (
-            <button key={entry.id} type="button" role="option" aria-selected={selectedHypothesisId === entry.id} className={styles.hypothesisMasterItem} onClick={() => selectHypothesis(entry.id, "hypotheses")}>
-              <span className={styles.hypothesisMasterHeading}>
-                <strong>{entry.hypothesis.symbol}</strong>
-                <span>{entry.hypothesis.name}</span>
-              </span>
-              <span className={styles.hypothesisMasterMetrics}>
-                <span>{formatCount(entry.hypothesis.reliableCharacteristicGroupCount, "подтверждённая группа", "подтверждённые группы", "подтверждённых групп")}</span>
-              </span>
-            </button>
+            <ResultChoice key={entry.id} symbol={entry.hypothesis.symbol} name={entry.hypothesis.name}
+              summary={formatCount(entry.hypothesis.reliableCharacteristicGroupCount, "характерная группа", "характерные группы", "характерных групп")}
+              sensitive={entry.hypothesis.admission === "sensitive"} selected={selectedHypothesisId === entry.id} onSelect={() => selectHypothesis(entry.id, "hypotheses")} />
           ))}
         </div>
-      ) : <PanelEmptyState>Элементы не определены. Другие совпадения доступны в подробностях.</PanelEmptyState>}
+      ) : !molecules.length ? <PanelEmptyState>Подтверждённых результатов нет.</PanelEmptyState> : null}
 
       <details
         className={styles.identificationDisclosure}
-        open={identificationTab === "diagnostics"}
-        onToggle={(event) => setIdentificationTab(event.currentTarget.open ? "diagnostics" : "hypotheses")}
+        open={diagnosticsOpen}
+        onToggle={(event) => setDiagnosticsOpen(event.currentTarget.open)}
       >
         <summary>Другие совпадения · {analysis.rejectedHypotheses.length}</summary>
         <label className={styles.hypothesisSearch} htmlFor="hypothesis-search">
           <Search size={14} aria-hidden="true" />
-          <input id="hypothesis-search" type="search" aria-label="Поиск другого совпадения по элементу или символу" placeholder="Элемент или символ" value={query} onChange={(event) => setQuery(event.target.value)} />
+          <Input id="hypothesis-search" type="search" aria-label="Поиск другого совпадения по элементу или символу" placeholder="Элемент или символ" value={query} onChange={(event) => setQuery(event.target.value)} />
         </label>
         <label className={styles.hypothesisSort} htmlFor="hypothesis-sort">
           <span>Сортировка</span>
-          <select id="hypothesis-sort" value={sort} onChange={(event) => setSort(event.target.value as IdentificationSort)}>
-            <option value="ranking">Автоматическое ранжирование</option>
-            <option value="characteristic">Качественные группы</option>
-            <option value="independent">Независимые группы</option>
-            <option value="deviation">Среднее отклонение</option>
-            <option value="name">Название</option>
-          </select>
+          <Select id="hypothesis-sort" value={sort} onValueChange={(value) => setSort(value as IdentificationSort)}>
+            <SelectItem value="ranking">Автоматическое ранжирование</SelectItem>
+            <SelectItem value="characteristic">Качественные группы</SelectItem>
+            <SelectItem value="independent">Независимые группы</SelectItem>
+            <SelectItem value="deviation">Среднее отклонение</SelectItem>
+            <SelectItem value="name">Название</SelectItem>
+          </Select>
         </label>
         {diagnostics.length ? (
           <div className={styles.hypothesisMasterList} role="listbox" aria-label="Диагностические совпадения">
             {diagnostics.map((entry) => (
-              <button key={entry.id} type="button" role="option" aria-selected={selectedHypothesisId === entry.id} className={styles.hypothesisMasterItem} onClick={() => selectHypothesis(entry.id, "diagnostics")}>
-                <span className={styles.hypothesisMasterHeading}>
-                  <strong>{entry.hypothesis.symbol}</strong>
-                  <span>{entry.hypothesis.name}</span>
-                </span>
-                <span className={styles.hypothesisMasterMetrics}>
-                  <span>Качественные группы {entry.hypothesis.reliableCharacteristicGroupCount}</span>
-                  <span>Другие группы {entry.hypothesis.weakEvidenceGroupCount}</span>
-                </span>
-                {entry.rejectionReasons.length ? <span className={styles.diagnosticReasonCompact}>{diagnosticReasonLabels[entry.rejectionReasons[0]]}</span> : null}
-              </button>
+              <ResultChoice key={entry.id} symbol={entry.hypothesis.symbol} name={entry.hypothesis.name}
+                summary={formatCount(entry.hypothesis.reliableCharacteristicGroupCount, "характерная группа", "характерные группы", "характерных групп")}
+                reason={entry.rejectionReasons.length ? diagnosticReasonLabels[entry.rejectionReasons[0]] : undefined}
+                selected={selectedHypothesisId === entry.id} onSelect={() => selectHypothesis(entry.id, "diagnostics")} />
             ))}
           </div>
         ) : (
@@ -571,8 +625,8 @@ function SidePanelHeader({ title, onReset, resetDisabled = false }: Readonly<{ t
   return (
     <header className={styles.sidePanelHeader}>
       <h2>{title}</h2>
-      <button
-        className={styles.iconButton}
+      {!resetDisabled ? <Button size="icon"
+
         type="button"
         onClick={onReset}
         aria-label={`Сбросить: ${title.toLowerCase()}`}
@@ -580,7 +634,7 @@ function SidePanelHeader({ title, onReset, resetDisabled = false }: Readonly<{ t
         disabled={resetDisabled}
       >
         <RotateCcw size={15} aria-hidden="true" />
-      </button>
+      </Button> : null}
     </header>
   );
 }
@@ -607,142 +661,60 @@ function NumberParameter({
   onChange: (value: number) => void;
 }>) {
   return (
-    <div className={styles.parameterControl} data-parameter-control>
-      <ParameterLabel htmlFor={id} label={label} help={help} />
+    <div className={`${styles.parameterControl} ${styles.numberParameter}`} data-parameter-control>
+      <div><ParameterLabel htmlFor={id} label={label} help={help} />{unit.length > 5 ? <small className={styles.settingHint}>{unit}</small> : null}</div>
       <span className={styles.numberInputWrap}>
         <DeferredNumberInput
           id={id}
+          label={label}
           min={min}
           max={max}
           step={step}
           value={value}
           onCommit={onChange}
         />
-        {unit ? <span>{unit}</span> : null}
+        {unit && unit.length <= 5 ? <span>{unit}</span> : null}
       </span>
     </div>
   );
 }
 
-function DeferredNumberInput({
-  id,
-  label,
-  value,
-  min,
-  max,
-  step,
-  onCommit,
-}: Readonly<{
-  id: string;
-  label?: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  onCommit: (value: number) => void;
-}>) {
-  const commit = (input: HTMLInputElement) => {
-    const parsed = Number(input.value);
-    if (!Number.isFinite(parsed)) {
-      input.value = String(value);
-      return;
-    }
-    input.value = String(parsed);
-    if (parsed !== value) onCommit(parsed);
-  };
-
-  return (
-    <input
-      key={`${id}:${value}`}
-      id={id}
-      aria-label={label}
-      type="number"
-      defaultValue={value}
-      min={min}
-      max={max}
-      step={step}
-      onBlur={(event) => commit(event.currentTarget)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") event.currentTarget.blur();
-        if (event.key === "Escape") {
-          event.currentTarget.value = String(value);
-          event.currentTarget.blur();
-        }
-      }}
-    />
-  );
-}
-
-function ParameterSection({ title, children }: Readonly<{ title: string; children: ReactNode }>) {
+function ParameterSection({ title, children }: Readonly<{ title?: string; children: ReactNode }>) {
   return (
     <section className={styles.sideParameterGroup} data-parameter-section>
-      <h3>{title}</h3>
+      {title ? <h3>{title}</h3> : null}
       <div className={styles.parameterStack}>{children}</div>
     </section>
   );
 }
 
 function ParameterLabel({ htmlFor, label, help }: Readonly<{ htmlFor: string; label: string; help?: string }>) {
-  return (
-    <div className={styles.parameterLabelRow}>
-      <label htmlFor={htmlFor}>{label}</label>
-      {help ? <InfoTooltip label={label} content={help} /> : null}
-    </div>
-  );
+  return <FieldLabel className={styles.parameterLabelRow} htmlFor={htmlFor} label={label} help={help ? <InfoTooltip label={label} content={help} /> : null} />;
 }
 
 function RangeParameter({ id, label, help, value, min, max, step, output, onChange }: Readonly<{
-  id: string;
-  label: string;
-  help?: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  output: string;
-  onChange: (value: number) => void;
+  id: string; label: string; help?: string; value: number; min: number; max: number; step: number; output: string; onChange: (value: number) => void;
 }>) {
-  return (
-    <div className={styles.parameterControl} data-parameter-control>
-      <div className={styles.parameterHeading}>
-        <ParameterLabel htmlFor={id} label={label} help={help} />
-        <output htmlFor={id}>{output}</output>
-      </div>
-      <input id={id} className={styles.rangeInput} type="range" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} />
+  return <div className={styles.parameterControl} data-parameter-control>
+    <div className={styles.parameterHeading}>
+      <ParameterLabel htmlFor={id} label={label} help={help} />
+      <span className={styles.compactNumber}><DeferredNumberInput id={`${id}-number`} label={`${label}, точное значение`} min={min} max={max} step={step} value={value} onCommit={onChange} />{id === "smoothing-window" ? <span className={styles.compactUnit}>точек</span> : null}</span>
     </div>
-  );
+    <DeferredRangeControl key={`${id}:${value}`} id={id} min={min} max={max} step={step} value={value} onCommit={onChange} />
+    {id === "smoothing-window" ? <small className={styles.settingHint}>{output}</small> : null}
+  </div>;
 }
 
 function LogRangeParameter({ id, label, help, value, min, max, onChange }: Readonly<{
-  id: string;
-  label: string;
-  help?: string;
-  value: number;
-  min: number;
-  max: number;
-  onChange: (value: number) => void;
+  id: string; label: string; help?: string; value: number; min: number; max: number; onChange: (value: number) => void;
 }>) {
-  const minimumExponent = Math.log10(min);
-  const maximumExponent = Math.log10(max);
-  const exponent = Math.log10(Math.min(max, Math.max(min, value)));
-  return (
-    <div className={styles.parameterControl} data-parameter-control>
-      <div className={styles.parameterHeading}>
-        <ParameterLabel htmlFor={id} label={label} help={help} />
-        <output htmlFor={id}>{Math.round(value).toLocaleString("ru-RU")}</output>
-      </div>
-      <input
-        id={id}
-        className={styles.rangeInput}
-        type="range"
-        min={minimumExponent}
-        max={maximumExponent}
-        step={0.05}
-        value={exponent}
-        onChange={(event) => onChange(Math.round(10 ** Number(event.target.value)))}
-      />
+  return <div className={styles.parameterControl} data-parameter-control>
+    <div className={styles.parameterHeading}>
+      <ParameterLabel htmlFor={id} label={label} help={help} />
+      <span className={styles.compactNumber}><DeferredNumberInput id={`${id}-number`} label={`${label}, точное значение`} min={min} max={max} step={1} value={value} onCommit={onChange} /></span>
     </div>
-  );
+    <DeferredRangeControl key={`${id}:${value}`} id={id} min={Math.log10(min)} max={Math.log10(max)} step={0.05} value={Math.log10(Math.min(max, Math.max(min, value)))} onCommit={(next) => onChange(Math.round(10 ** next))} />
+  </div>;
 }
 
 function SelectParameter({ id, label, help, value, options, onChange }: Readonly<{
@@ -756,9 +728,9 @@ function SelectParameter({ id, label, help, value, options, onChange }: Readonly
   return (
     <div className={styles.parameterControl} data-parameter-control>
       <ParameterLabel htmlFor={id} label={label} help={help} />
-      <select id={id} className={styles.parameterSelect} value={value} onChange={(event) => onChange(event.target.value)}>
-        {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-      </select>
+      <Select id={id} className={styles.parameterSelect} value={value} onValueChange={(value) => onChange(value)}>
+        {options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+      </Select>
     </div>
   );
 }
@@ -773,7 +745,7 @@ function ToggleParameter({ id, label, help, checked, onChange }: Readonly<{
   return (
     <div className={styles.toggleParameter} data-parameter-control>
       <ParameterLabel htmlFor={id} label={label} help={help} />
-      <input id={id} className={styles.switchInput} type="checkbox" role="switch" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+      <Switch id={id} checked={checked} onChange={(event) => onChange(event.target.checked)} />
     </div>
   );
 }
@@ -788,9 +760,8 @@ function ValueRangeParameter({ label, help, minimum, maximum, unit, onMinimumCha
   onMaximumChange: (value: number) => void;
 }>) {
   return (
-    <fieldset className={styles.valueRangeParameter} data-parameter-control>
-      <legend>{label}</legend>
-      {help ? <InfoTooltip label={label} content={help} /> : null}
+    <fieldset className={styles.valueRangeParameter} aria-label={label} data-parameter-control>
+      <legend><span className={styles.rangeLegend}>{label}{help ? <InfoTooltip label={label} content={help} /> : null}</span></legend>
       <div className={styles.valueRangeFields}>
         <label htmlFor={minimum.id}>от</label>
         <DeferredNumberInput id={minimum.id} label={`${label}, от`} value={minimum.value} min={minimum.min} max={minimum.max} step={minimum.step} onCommit={onMinimumChange} />
@@ -852,4 +823,14 @@ function formatCandidateGroupLine(group: CandidateDisplayGroup): string {
     ? formatDecimal(candidate.line, 3)
     : `${formatDecimal(minimum, 3)}–${formatDecimal(maximum, 3)}`;
   return `${label} · ${wavelength}`;
+}
+
+function DeferredRangeControl({ id, min, max, step, value, onCommit }: Readonly<{ id: string; min: number; max: number; step: number; value: number; onCommit: (value: number) => void }>) {
+  const [draft, setDraft] = useState(value);
+  const commit = () => { if (draft !== value) onCommit(draft); };
+  return <div className={styles.sliderRow}><RangeInput id={id} min={min} max={max} step={step} value={draft} onChange={(event) => setDraft(Number(event.target.value))} onPointerUp={commit} onKeyUp={commit} onBlur={commit} />{draft !== value ? <output htmlFor={id}>{formatDecimal(id === "baseline-smoothness" ? Math.round(10 ** draft) : draft, 2)}</output> : null}</div>;
+}
+
+function formatSettingValue(value: number): string {
+  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 3 }).format(value);
 }

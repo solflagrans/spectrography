@@ -12,7 +12,7 @@ describe("createAnalysisSession", () => {
     });
 
     expect(session).toMatchObject({
-      schemaVersion: 3,
+      schemaVersion: 4,
       id: "session-1",
       status: "empty",
       spectrumType: "plasma-emission",

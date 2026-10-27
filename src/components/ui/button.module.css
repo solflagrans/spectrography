@@ -1,0 +1,40 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  min-width: 0;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--color-background-surface);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+.button > svg { flex-shrink: 0; }
+.default { min-height: var(--control-height); padding: 5px 10px; }
+.compact { min-height: var(--control-height-compact); padding: 3px 8px; gap: 6px; }
+.icon { width: var(--control-height); min-height: var(--control-height); padding: 0; }
+.hint { width: 24px; min-height: 24px; padding: 0; }
+.secondary:hover, .secondary[data-state="open"] { background: var(--color-background-elevated); border-color: var(--color-action-primary); }
+.primary { background: var(--color-action-primary); border-color: var(--color-action-primary); color: var(--color-text-on-dark); }
+.primary:hover { background: var(--color-action-primary-hover); border-color: var(--color-action-primary-hover); }
+.ghost { border-color: transparent; background: transparent; color: var(--color-text-secondary); }
+.ghost:hover { background: var(--color-background-elevated); color: var(--color-text-primary); }
+.text { border-color: transparent; background: transparent; color: var(--color-action-primary); }
+.text:hover { background: var(--color-background-elevated); }
+.button[aria-pressed="true"], .ghost[aria-selected="true"] { border-color: color-mix(in srgb, var(--color-action-primary) 55%, var(--color-border-default)); background: color-mix(in srgb, var(--color-action-primary) 8%, var(--color-background-surface)); color: var(--color-text-primary); }
+.button:focus-visible { outline: 2px solid var(--color-action-primary); outline-offset: 2px; }
+.button:disabled { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .button { transition: none; } }
+@media (pointer: coarse) {
+  .button { min-height: 44px; }
+  .icon, .hint { width: 44px; }
+}

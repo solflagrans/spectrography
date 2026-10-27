@@ -104,6 +104,7 @@ export interface MolecularHypothesis {
   readonly quality: number;
   readonly randomAgreement: MolecularRandomAgreement;
   readonly accepted: boolean;
+  readonly admission?: "standard" | "sensitive";
   readonly reasons: readonly MolecularHypothesisReason[];
   readonly explanation: string;
 }
@@ -115,6 +116,7 @@ export interface MolecularIdentificationResult {
 }
 
 export interface MolecularAnalysisInput {
+  readonly composition?: import("@/domain/spectrum/composition-settings").CompositionSettings;
   readonly channels: readonly ChannelPreparationResult[];
   readonly systems: readonly MolecularSystemDefinition[];
 }

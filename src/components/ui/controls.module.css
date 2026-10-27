@@ -1,0 +1,30 @@
+.input { appearance: none; box-sizing: border-box; width: 100%; min-width: 0; height: var(--control-height); margin: 0; padding: 5px 8px; border: 1px solid var(--color-border-default); border-radius: var(--radius-sm); background: var(--color-background-surface); color: var(--color-text-primary); font: inherit; font-size: var(--font-size-control); line-height: 20px; font-variant-numeric: tabular-nums; transition: border-color var(--transition-fast); }
+.input:hover { border-color: var(--color-text-secondary); }
+.input::placeholder { color: var(--color-text-secondary); opacity: .8; }
+.input[type="number"] { appearance: textfield; }
+.input::-webkit-inner-spin-button, .input::-webkit-outer-spin-button, .input::-webkit-search-cancel-button, .input::-webkit-search-decoration { appearance: none; margin: 0; }
+.input:focus-visible, .checkbox:focus-visible, .switch:focus-visible, .range:focus-visible { outline: 2px solid var(--color-action-primary); outline-offset: 2px; }
+.input[aria-invalid="true"] { border-color: var(--color-status-danger); }
+.input:disabled, .checkbox:disabled, .switch:disabled, .range:disabled { opacity: .45; cursor: not-allowed; }
+.checkbox { appearance: none; flex: 0 0 16px; width: 16px; height: 16px; margin: 0; border: 1px solid var(--color-border-default); border-radius: 4px; background: var(--color-background-surface); cursor: pointer; display: inline-grid; place-content: center; vertical-align: middle; }
+.checkbox:checked { border-color: var(--color-action-primary); background: var(--color-action-primary); }
+.checkbox:checked::after { content: ""; width: 8px; height: 5px; border-left: 2px solid white; border-bottom: 2px solid white; transform: translateY(-1px) rotate(-45deg); }
+.switch { appearance: none; position: relative; flex: 0 0 34px; width: 34px; height: 20px; margin: 0; border: 1px solid var(--color-border-default); border-radius: 20px; background: var(--color-background-elevated); cursor: pointer; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--color-background-surface); box-shadow: 0 1px 3px #0002; transition: transform var(--transition-fast); }
+.switch:checked { background: var(--color-action-primary); border-color: var(--color-action-primary); }
+.switch:checked::after { transform: translateX(14px); }
+.range { appearance: none; width: 100%; min-width: 0; height: 24px; margin: 0; padding: 0; border: 0; border-radius: 0; background: linear-gradient(to right, var(--color-action-primary) 0%, var(--color-action-primary) var(--range-progress), var(--color-border-default) var(--range-progress), var(--color-border-default) 100%) center / 100% 4px no-repeat; cursor: pointer; }
+.range::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: transparent; }
+.range::-moz-range-track { height: 4px; border-radius: 4px; background: var(--color-border-default); }
+.range::-moz-range-progress { height: 4px; border-radius: 4px; background: var(--color-action-primary); }
+.range::-webkit-slider-thumb { appearance: none; width: 14px; height: 14px; margin-top: -5px; border: 2px solid var(--color-background-surface); border-radius: 50%; background: var(--color-action-primary); box-shadow: 0 0 0 1px var(--color-action-primary); }
+.range::-moz-range-thumb { width: 10px; height: 10px; border: 2px solid var(--color-background-surface); border-radius: 50%; background: var(--color-action-primary); box-shadow: 0 0 0 1px var(--color-action-primary); }
+.numberField { display: flex; align-items: stretch; width: 100%; min-width: 0; height: var(--control-height); border: 1px solid var(--color-border-default); border-radius: var(--radius-sm); background: var(--color-background-surface); }
+.numberField:focus-within { outline: 2px solid var(--color-action-primary); outline-offset: 2px; }
+.numberField > .input { height: 100%; border: 0; background: transparent; padding: 4px 6px; outline: none; }
+.steppers { display: grid; grid-template-rows: 1fr 1fr; flex: 0 0 18px; border-left: 1px solid var(--color-border-default); }
+.steppers > button { width: 18px; min-height: 0; height: 100%; padding: 0; border: 0; border-radius: 0; }
+.steppers > button:focus-visible { position: relative; z-index: 1; outline-offset: 0; }
+@media (prefers-reduced-motion: reduce) { .input, .switch::after { transition: none; } }
+@media (pointer: coarse) { .input, .numberField { min-height: 44px; } .numberField > .input { min-height: 0; } .range { height: 36px; } .steppers { flex-basis: 28px; } .steppers > button { width: 28px; } }
+@media (forced-colors: active) { .checkbox, .switch { appearance: auto; } .checkbox::after, .switch::after { display: none; } .range { appearance: auto; } }

@@ -1,0 +1,8 @@
+.trigger { width: 100%; justify-content: space-between; text-align: left; font-weight: 500; }
+.trigger > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.content { min-width: var(--radix-select-trigger-width); max-height: var(--radix-select-content-available-height); overflow: hidden; }
+.viewport { max-height: min(320px, var(--radix-select-content-available-height)); overflow-y: auto; }
+.indicator { display: inline-flex; flex-shrink: 0; color: var(--color-action-primary); }
+
+/* A full-width field must still shrink beside its label in an inline picker. */
+.trigger { flex: 1 1 auto; max-width: 100%; }
