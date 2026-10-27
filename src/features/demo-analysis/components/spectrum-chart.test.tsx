@@ -35,6 +35,7 @@ const echartsMock = vi.hoisted(() => {
 vi.mock("echarts/core", () => ({ init: echartsMock.init, use: echartsMock.use }));
 vi.mock("echarts/charts", () => ({ LineChart: {}, ScatterChart: {} }));
 vi.mock("echarts/components", () => ({
+  ToolboxComponent: {},
   DataZoomInsideComponent: {},
   DataZoomSliderComponent: {},
   GridComponent: {},
@@ -144,11 +145,11 @@ describe("spectrum chart configuration", () => {
       "Порог обнаружения",
       "Найденные пики",
     ]);
-    expect(series[0]).toMatchObject({ yAxisIndex: 0, lineStyle: { width: 1.1, opacity: 0.62 } });
+    expect(series[0]).toMatchObject({ yAxisIndex: 0, lineStyle: { width: 1.1, opacity: 0.42 } });
     expect(series[1]).toMatchObject({ yAxisIndex: 1, lineStyle: { width: 1.8 } });
-    expect(series[2]).toMatchObject({ yAxisIndex: 1, lineStyle: { type: "dashed" } });
+    expect(series[2]).toMatchObject({ yAxisIndex: 1, lineStyle: { type: "dotted" } });
     expect(series[3]).toMatchObject({ yAxisIndex: 1, itemStyle: { color: palette.peak } });
-    expect(series[3].data?.[0]).toMatchObject({ id: peak.id, symbol: "diamond", symbolSize: 13 });
+    expect(series[3].data?.[0]).toMatchObject({ id: peak.id, symbol: "circle", symbolSize: 11 });
   });
 
   it("keeps reference lines independent from the prepared curve", () => {
@@ -234,13 +235,28 @@ describe("spectrum chart configuration", () => {
       palette,
     );
 
-    expect(tooltip).toContain("401,00 нм");
-    expect(tooltip).toContain("Интенсивность: <strong>240,000</strong>");
-    expect(tooltip).toContain("Подготовленная интенсивность: <strong>0,8000</strong>");
-    expect(tooltip).toContain("Локальный порог: <strong>0,1500</strong>");
-    expect(tooltip).toContain("Выраженность: <strong>0,6200</strong>");
-    expect(tooltip).toContain("Ближайший кандидат: <strong>Fe I · 401,05 нм (Δ -0,050 нм)</strong>");
-    expect(tooltip).toContain("Справочная линия: <strong>Fe 401.05 · 401,05 нм</strong>");
+    expect(tooltip).toContain("401,000 нм");
+    expect(tooltip).toContain("Исходный: <strong>240 ");
+    expect(tooltip).toContain("Подготовленный: <strong>0,8 ");
+    expect(tooltip).toContain("Порог: <strong>0,15 ");
+    expect(tooltip).not.toContain("Выраженность:");
+    expect(tooltip).not.toContain("Ближайший кандидат:");
+    expect(tooltip).toContain("Пик № 1");
+    expect(tooltip).toContain("Справочная линия: <strong>Fe 401.05 · 401,050 нм</strong>");
+  });
+
+  it("formats large tooltip values compactly with explicit units", () => {
+    const tooltip = formatSpectrumTooltip([{ axisValue: 400 }], { rawDataset: { wavelengths: [400], intensities: [37692445802.478] }, rawIntensityUnit: "отсчёты прибора" }, new Set(["raw"]), palette);
+    expect(tooltip).toContain("3,77 × 10<sup>10</sup>");
+    expect(tooltip).toContain("отсч.");
+    expect(tooltip).not.toContain("37692445802");
+  });
+
+  it("normalizes rectangle coordinates and ignores incomplete zoom events", () => {
+    expect(readZoomRange({ batch: [{ startValue: 420, endValue: 460 }] }, FULL_SPECTRUM_ZOOM, [400, 500])).toEqual({ start: 20, end: 60 });
+    expect(readZoomRange({ batch: [{}] }, { start: 20, end: 60 }, [400, 500])).toEqual({ start: 20, end: 60 });
+    const option = createSpectrumChartOption({ rawDataset }, new Set(["raw"]), palette, FULL_SPECTRUM_ZOOM);
+    expect(option.dataZoom).toEqual(expect.arrayContaining([expect.objectContaining({ type: "inside", zoomOnMouseWheel: false, moveOnMouseMove: false })]));
   });
 
   it("preserves a zoom range for updates of one source and resets it for another source", () => {
@@ -291,9 +307,9 @@ describe("SpectrumChart", () => {
   });
 
   it("formats intensity ticks compactly", () => {
-    expect(formatIntensityTick(250_000_000_000)).toBe("2.5e11");
-    expect(formatIntensityTick(0.00002)).toBe("2.0e-5");
-    expect(formatIntensityTick(0.5)).toBe("0.5");
+    expect(formatIntensityTick(250_000_000_000)).toBe("2,5e11");
+    expect(formatIntensityTick(0.00002)).toBe("2,0e-5");
+    expect(formatIntensityTick(0.5)).toBe("0,5");
     expect(formatIntensityTick(0)).toBe("0");
   });
 

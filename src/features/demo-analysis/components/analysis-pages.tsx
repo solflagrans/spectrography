@@ -1,5 +1,6 @@
 "use client";
 
+import { formatCalibrationReason } from "../model/calibration-ui";
 import { Button } from "@/components/ui/button";
 import { Select, SelectItem } from "@/components/ui/select";
 
@@ -304,10 +305,11 @@ export function ProcessingAnalysisPage() {
           rawDataset={channel.rawDataset}
           baselineDataset={channel.baselineDataset}
           preparedDataset={channel.preparedDataset}
+          preparedIntensityUnit={analysis.parameters.processing.normalization === "maximum" ? "доля максимума" : analysis.source.units === "нм / отсчёты прибора" ? "отсчёты прибора" : "отн. ед."}
           peaks={peaks}
           selectedPeakId={selectedPeakId}
           onPeakSelect={selectPeak}
-          referenceLines={compositionView && evidence.length ? evidence.map((line) => ({ label: `${formatEvidenceLabel(line)} ${formatDecimal(line.referenceWavelength, 2)}`, wavelength: line.referenceWavelength })) : undefined}
+          referenceLines={compositionView && evidence.length ? evidence.map((line) => ({ label: `${formatEvidenceLabel(line)} ${formatDecimal(line.referenceWavelength, 2)}`, wavelength: line.referenceWavelength, observedWavelength: line.observations.find((observation) => observation.channelId === channel.id)?.peakWavelength })) : undefined}
           highlightedRegions={compositionView && regions.length ? regions : undefined}
           layerViewKey={section}
           thresholdDataset={channel.thresholdDataset}
@@ -358,6 +360,7 @@ export function PeaksAnalysisPage() {
           rawDataset={channel.rawDataset}
           baselineDataset={channel.baselineDataset}
           preparedDataset={channel.preparedDataset}
+          preparedIntensityUnit={analysis.parameters.processing.normalization === "maximum" ? "доля максимума" : analysis.source.units === "нм / отсчёты прибора" ? "отсчёты прибора" : "отн. ед."}
           peaks={channel.peaks}
           selectedPeakId={selectedPeakId}
           hoveredPeakId={preview?.source === `${analysis.id}:${channel.id}` ? preview.peakId : null}
@@ -471,10 +474,11 @@ export function IdentificationAnalysisPage() {
           rawIntensityUnit={analysis.source.units === "нм / отсчёты прибора" ? "отсчёты прибора" : "отн. ед."}
           compact
           preparedDataset={channel.preparedDataset}
+          preparedIntensityUnit={analysis.parameters.processing.normalization === "maximum" ? "доля максимума" : analysis.source.units === "нм / отсчёты прибора" ? "отсчёты прибора" : "отн. ед."}
           peaks={supportingPeaks}
           selectedPeakId={selectedPeakId}
           onPeakSelect={selectPeak}
-          referenceLines={channelEvidence.map((line) => ({ label: `${formatEvidenceLabel(line)} ${formatDecimal(line.referenceWavelength, 2)}`, wavelength: line.referenceWavelength }))}
+          referenceLines={channelEvidence.map((line) => ({ label: `${formatEvidenceLabel(line)} ${formatDecimal(line.referenceWavelength, 2)}`, wavelength: line.referenceWavelength, observedWavelength: line.observations.find((observation) => observation.channelId === channel.id)?.peakWavelength }))}
           sourceKey={`${analysis.id}:${channel.id}`}
           defaultVisibleLayers={["prepared", "peaks", "referenceLines"]}
           label={`Спектр канала ${channel.name} и линии элемента ${hypothesis.name}`}
@@ -611,6 +615,7 @@ function MolecularPrimaryDetail({
           rawIntensityUnit={analysis.source.units === "нм / отсчёты прибора" ? "отсчёты прибора" : "отн. ед."}
           compact
           preparedDataset={channel.preparedDataset}
+          preparedIntensityUnit={analysis.parameters.processing.normalization === "maximum" ? "доля максимума" : analysis.source.units === "нм / отсчёты прибора" ? "отсчёты прибора" : "отн. ед."}
           peaks={relatedPeaks}
           selectedPeakId={selectedPeakId}
           onPeakSelect={selectPeak}
@@ -801,18 +806,6 @@ function formatEvidenceQuality(strength: AnalysisEvidenceLine["strength"]): stri
   return strength === "strong" ? "Высокая" : strength === "moderate" ? "Средняя" : "Низкая";
 }
 
-function formatCalibrationReason(reason: WorkingAnalysis["channels"][number]["wavelengthCalibration"]["reason"]): string {
-  const labels = {
-    disabled: "отключена пользователем",
-    "insufficient-anchors": "недостаточно однозначных сильных опор",
-    "insufficient-span": "опоры недостаточно разнесены по диапазону",
-    "shift-too-large": "оценённое смещение превышает физически допустимый предел",
-    "validation-not-improved": "независимая проверка не улучшилась",
-    "validation-residual-too-large": "остаток на независимых опорах слишком велик",
-    applied: "подтверждена независимыми опорами",
-  } as const;
-  return labels[reason];
-}
 
 function AnalysisPage({
   title,
@@ -1044,7 +1037,13 @@ function ChannelPicker({
   return (
     <label className={styles.channelPicker} htmlFor={id}>
       <Select id={id} aria-label={label} value={value} onValueChange={(value) => onChange(value)}>
-        {channels.map((channel) => <SelectItem key={channel.id} value={channel.id}>{channel.name}</SelectItem>)}
+        {channels.map((channel) => {
+          const segment = channel.id.match(/-segment-(\d+)$/);
+          const parent = channel.id.replace(/-segment-\d+$/, "");
+          const singleParent = channels.every((item) => item.id.replace(/-segment-\d+$/, "") === parent);
+          const name = segment ? `${singleParent ? "" : `${channel.name.split(" · ")[0]} · `}Участок ${segment[1]} · ${formatDecimal(channel.wavelengthRange.minimum, 2)}–${formatDecimal(channel.wavelengthRange.maximum, 2)} нм` : channel.name;
+          return <SelectItem key={channel.id} value={channel.id}>{name}</SelectItem>;
+        })}
       </Select>
     </label>
   );

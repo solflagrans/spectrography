@@ -3213,3 +3213,49 @@
 .pageIntroduction { display: contents; }
 .analysisPageNavigation { position: sticky; top: -16px; z-index: 10; display: flex; flex-direction: column; align-items: stretch; gap: 12px; margin-top: -16px; padding-top: 16px; padding-bottom: 12px; background: var(--color-background-canvas); border-bottom: 1px solid var(--color-border-default); }
 .analysisPageNavigation .analysisModeTabs { flex-shrink: 0; }
+
+.chartNavigation { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px; }
+
+.chartRangeDialog { max-width: 420px; }
+.chartRangeForm { display: grid; gap: 12px; padding: 16px; font-size: 13px; }
+.chartRangeForm p { margin: 0; color: var(--color-text-secondary); }
+.chartRangeForm [role="alert"] { color: var(--color-status-warning); }
+.chartRangeForm > button { justify-self: end; }
+.chartRangeFields { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 12px; }
+.chartRangeFields label { display: grid; gap: 6px; color: var(--color-text-secondary); }
+.chartRangeFields input { width: 100%; min-width: 0; height: 34px; padding: 6px 8px; border: 1px solid var(--color-border-default); border-radius: 6px; background: var(--color-background-surface); color: var(--color-text-primary); font: inherit; font-variant-numeric: tabular-nums; }
+.chartRangeFields input:focus-visible { outline: 2px solid var(--color-action-primary); outline-offset: 2px; }
+
+/* Chart headers keep metadata, selectors and view tools in distinct aligned groups. */
+.chartWidget { container-type: inline-size; }
+.chartCard .chartToolbar { display: flex; align-items: center; gap: 8px 16px; }
+.chartCard .layerToggles { flex: 1 1 360px; }
+.chartNavigation { flex: 0 0 auto; }
+.processingChartSelectors { flex: 0 1 auto; align-items: center; gap: 8px; }
+.chartCard .processingChartSelectors .channelPicker { width: 240px; flex: 0 1 240px; }
+.chartCard .processingChartSelectors .channelPicker:has([aria-label="Гипотеза на графике"]) { width: 220px; flex-basis: 220px; }
+@container (max-width: 1050px) {
+  .graphToolButton span { display: none; }
+  .graphToolButton { width: 30px; min-width: 30px; padding-inline: 0; }
+}
+.dataPage .chartCard { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px 16px; }
+.dataPage .chartCard > .cardHeader { grid-column: 1; grid-row: 1; margin: 0; }
+.dataPage .chartCard > .chartWidget { display: contents; }
+.dataPage .chartCard .chartToolbar { grid-column: 2; grid-row: 1; justify-self: end; align-self: center; }
+.dataPage .chartCard .chart, .dataPage .chartCard .chartCompact, .dataPage .chartCard .chartFill { grid-column: 1 / -1; grid-row: 2; }
+.calibrationStatus { display: grid; grid-template-columns: minmax(0, 1fr) auto 16px; align-items: center; gap: 6px; min-width: 0; padding: 8px 0; font-size: 12px; line-height: 18px; color: var(--color-text-secondary); }
+.calibrationStatus strong { margin: 0; text-align: right; font: inherit; color: var(--color-text-primary); white-space: nowrap; }
+.calibrationChannelList { display: grid; gap: 8px; }
+.calibrationChannelItem { display: grid; grid-template-columns: minmax(0, 1fr) auto 16px; gap: 6px; padding: 10px; border: 1px solid var(--color-border-default); border-radius: 6px; font-size: 12px; line-height: 18px; }
+.calibrationRange { grid-column: 2; white-space: nowrap; text-align: right; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+.calibrationChannelItem .calibrationStatus { grid-column: 1 / -1; padding: 0; }
+@media (max-width: 700px) {
+  .dataPage .chartCard { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .dataPage .chartCard .chartToolbar { grid-column: 1; grid-row: 2; }
+  .dataPage .chartCard .chart, .dataPage .chartCard .chartCompact, .dataPage .chartCard .chartFill { grid-row: 3; }
+  .processingChartSelectors { width: 100%; }
+  .chartCard .processingChartSelectors .channelPicker { flex: 1 1 200px; }
+}
+
+.calibrationChannelItem > span:first-child { color: var(--color-text-primary); font-weight: 600; }
+.processingSettings .disclosureContent:has(> .calibrationChannelList) { padding-left: 0; }

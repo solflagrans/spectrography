@@ -1,13 +1,14 @@
 import type { EChartsCoreOption } from "echarts/core";
 
 import type { AnalyzedPeak, SpectrumDataset } from "@/domain/spectrum";
-import { formatDecimal, formatSignedDecimal } from "@/features/workspace/model/display-format";
+import { formatDecimal } from "@/features/workspace/model/display-format";
 
 export type SpectrumChartLayer = "raw" | "baseline" | "prepared" | "threshold" | "peaks" | "referenceLines" | "missingReferenceLines" | "regions";
 
 export interface SpectrumReferenceLine {
   readonly label: string;
   readonly wavelength: number;
+  readonly observedWavelength?: number;
 }
 
 export interface SpectrumHighlightedRegion {
@@ -17,6 +18,7 @@ export interface SpectrumHighlightedRegion {
 }
 
 export interface SpectrumChartData {
+  readonly preparedIntensityUnit?: "отн. ед." | "отсчёты прибора" | "доля максимума";
   readonly rawIntensityUnit?: "отн. ед." | "отсчёты прибора";
   readonly rawDataset?: SpectrumDataset;
   readonly baselineDataset?: SpectrumDataset;
@@ -68,6 +70,7 @@ export function createSpectrumChartOption(
   visibleLayers: ReadonlySet<SpectrumChartLayer>,
   palette: SpectrumChartPalette,
   zoom: SpectrumZoomRange,
+  width = 900,
 ): EChartsCoreOption {
   const rawVisible = visibleLayers.has("raw") && Boolean(data.rawDataset);
   const baselineVisible = visibleLayers.has("baseline") && Boolean(data.baselineDataset);
@@ -82,6 +85,15 @@ export function createSpectrumChartOption(
   const dualAxis = rawAxisRequired && preparedAxisRequired;
   const preparedAxisIndex = dualAxis ? 1 : 0;
   const [minimumWavelength, maximumWavelength] = getWavelengthExtent(data);
+  const span = (maximumWavelength - minimumWavelength) * (zoom.end - zoom.start) / 100;
+  const visibleMinimum = minimumWavelength + (maximumWavelength - minimumWavelength) * zoom.start / 100;
+  const labelSpacing = span * 48 / Math.max(width - 144, 160);
+  let lastLabel = Number.NEGATIVE_INFINITY;
+  const labelledReferences = new Set((data.referenceLines ?? []).slice().sort((a, b) => a.wavelength - b.wavelength).filter((line) => {
+    if (line.wavelength < visibleMinimum || line.wavelength > visibleMinimum + span || line.wavelength - lastLabel < labelSpacing) return false;
+    lastLabel = line.wavelength;
+    return true;
+  }));
   const series: Record<string, unknown>[] = [];
 
   if (rawVisible && data.rawDataset) {
@@ -93,7 +105,7 @@ export function createSpectrumChartOption(
       yAxisIndex: 0,
       showSymbol: false,
       sampling: "lttb",
-      lineStyle: { color: palette.raw, width: preparedVisible ? 1.1 : 1.6, opacity: preparedVisible ? 0.62 : 0.9 },
+      lineStyle: { color: palette.raw, width: preparedVisible ? 1.1 : 1.6, opacity: preparedVisible ? 0.42 : 0.95 },
       itemStyle: { color: palette.raw },
       emphasis: { lineStyle: { opacity: 0.8 } },
       z: 1,
@@ -140,7 +152,7 @@ export function createSpectrumChartOption(
       yAxisIndex: preparedAxisIndex,
       showSymbol: false,
       silent: true,
-      lineStyle: { color: palette.threshold, width: 1.25, type: "dashed" },
+      lineStyle: { color: palette.threshold, width: 1.1, type: "dotted" },
       z: 2,
     });
   }
@@ -156,11 +168,11 @@ export function createSpectrumChartOption(
         return {
           id: peak.id,
           value: [peak.wavelength, peak.intensity],
-          symbol: selected ? "diamond" : "circle",
-          symbolSize: selected ? 13 : 8,
+          symbol: "circle",
+          symbolSize: selected ? 11 : 5,
           itemStyle: selected
             ? {
-                color: palette.peak,
+                color: palette.surface,
                 borderColor: palette.reference,
                 borderWidth: 3,
                 shadowBlur: 5,
@@ -170,7 +182,12 @@ export function createSpectrumChartOption(
         };
       }),
       yAxisIndex: preparedAxisIndex,
-      symbolSize: 8,
+      symbolSize: 5,
+      markLine: {
+        silent: true, symbol: ["none", "none"], label: { show: false },
+        lineStyle: { color: palette.reference, width: 1, type: "dashed", opacity: 0.65 },
+        data: data.peaks.filter((peak) => peak.id === data.selectedPeakId).map((peak) => ({ xAxis: peak.wavelength })),
+      },
       cursor: "pointer",
       itemStyle: { color: palette.peak, borderColor: palette.surface, borderWidth: 1.5 },
       z: 5,
@@ -185,16 +202,18 @@ export function createSpectrumChartOption(
       data: [],
       yAxisIndex: preparedAxisIndex,
       showSymbol: false,
-      silent: true,
+      silent: false,
       lineStyle: { opacity: 0 },
       markLine: {
-        silent: true,
+        silent: false,
         symbol: ["none", "none"],
         data: data.referenceLines.map((line) => ({
           name: line.label,
           xAxis: line.wavelength,
+          tooltip: { trigger: "item", formatter: () => `<strong>${escapeHtml(line.label)}</strong><br>Справочная длина: ${formatDecimal(line.wavelength, 3)} нм${line.observedWavelength !== undefined ? `<br>Наблюдаемый пик: ${formatDecimal(line.observedWavelength, 3)} нм<br>Отклонение: ${formatDecimal(line.observedWavelength - line.wavelength, 3)} нм` : "<br>Без назначенного пика"}` },
           lineStyle: { color: palette.reference, opacity: 0.72, type: "solid", width: 1.25 },
           label: {
+            show: labelledReferences.has(line),
             color: palette.reference,
             formatter: line.label,
             position: "insideEndTop",
@@ -215,14 +234,15 @@ export function createSpectrumChartOption(
       data: [],
       yAxisIndex: preparedAxisIndex,
       showSymbol: false,
-      silent: true,
+      silent: false,
       lineStyle: { opacity: 0 },
       markLine: {
-        silent: true,
+        silent: false,
         symbol: ["none", "none"],
         data: data.missingReferenceLines.map((line) => ({
           name: line.label,
           xAxis: line.wavelength,
+          tooltip: { trigger: "item", formatter: () => `<strong>${escapeHtml(line.label)}</strong><br>Справочная длина: ${formatDecimal(line.wavelength, 3)} нм${line.observedWavelength !== undefined ? `<br>Наблюдаемый пик: ${formatDecimal(line.observedWavelength, 3)} нм<br>Отклонение: ${formatDecimal(line.observedWavelength - line.wavelength, 3)} нм` : "<br>Без назначенного пика"}` },
           lineStyle: { color: palette.missingReference, opacity: 0.34, type: "dashed", width: 1 },
           label: { show: false },
         })),
@@ -243,7 +263,7 @@ export function createSpectrumChartOption(
       lineStyle: { opacity: 0 },
       markArea: {
         silent: true,
-        itemStyle: { color: withAlpha(palette.region, 0.12) },
+        itemStyle: { color: withAlpha(palette.region, 0.07), borderColor: withAlpha(palette.region, 0.3), borderWidth: 1 },
         label: { color: palette.region, fontSize: 12, position: "insideTop" },
         data: data.highlightedRegions.map((region) => [
           { name: region.label, xAxis: region.minimum },
@@ -259,12 +279,17 @@ export function createSpectrumChartOption(
     grid: {
       left: dualAxis ? 72 : 60,
       right: dualAxis ? 72 : 24,
-      top: 30,
+      top: 40,
       bottom: 72,
     },
+    toolbox: { show: true, itemSize: 0, itemGap: 0, feature: { dataZoom: { yAxisIndex: "none", icon: { zoom: "path://", back: "path://" } } } },
     tooltip: {
       trigger: "axis",
       confine: true,
+      transitionDuration: 0,
+      backgroundColor: palette.surface,
+      borderColor: palette.border,
+      textStyle: { color: palette.text, fontSize: 12 },
       axisPointer: { type: "line", snap: true },
       formatter: (parameters: unknown) => formatSpectrumTooltip(
         parameters,
@@ -281,11 +306,11 @@ export function createSpectrumChartOption(
       min: minimumWavelength,
       max: maximumWavelength,
       nameTextStyle: { color: palette.text, fontSize: 12, fontWeight: 600 },
-      axisLabel: { color: palette.text, fontSize: 12 },
+      axisLabel: { color: palette.text, fontSize: 12, hideOverlap: true, showMinLabel: false, showMaxLabel: false, formatter: (value: number) => formatWavelengthTick(value, span) },
       axisLine: { lineStyle: { color: palette.border } },
       splitLine: { show: false },
     },
-    yAxis: createYAxis(rawAxisRequired, preparedAxisRequired, dualAxis, palette, data.rawIntensityUnit),
+    yAxis: createYAxis(rawAxisRequired, preparedAxisRequired, dualAxis, palette, data.rawIntensityUnit, data),
     dataZoom: [
       {
         id: "spectrum-inside-zoom",
@@ -294,8 +319,8 @@ export function createSpectrumChartOption(
         filterMode: "none",
         start: zoom.start,
         end: zoom.end,
-        zoomOnMouseWheel: true,
-        moveOnMouseMove: true,
+        zoomOnMouseWheel: false,
+        moveOnMouseMove: zoom.start > 0 || zoom.end < 100,
         moveOnMouseWheel: false,
       },
       {
@@ -305,7 +330,9 @@ export function createSpectrumChartOption(
         filterMode: "none",
         start: zoom.start,
         end: zoom.end,
-        height: 18,
+        height: 22,
+        handleSize: "110%",
+        brushSelect: false,
         bottom: 8,
         borderColor: palette.border,
         backgroundColor: palette.surface,
@@ -313,7 +340,8 @@ export function createSpectrumChartOption(
         handleStyle: { color: palette.prepared, borderColor: palette.prepared },
         moveHandleStyle: { color: palette.prepared },
         textStyle: { color: palette.text, fontSize: 12 },
-        showDetail: false,
+        showDetail: true,
+        labelFormatter: (value: number) => `${formatWavelengthTick(value, span)} нм`,
       },
     ],
     series,
@@ -335,39 +363,39 @@ export function formatSpectrumTooltip(
   if (!anchorDataset?.wavelengths.length) return "";
 
   const anchorIndex = findNearestSampleIndex(anchorDataset.wavelengths, axisValue);
-  const wavelength = anchorDataset.wavelengths[anchorIndex];
+  const points = Array.isArray(parameters) ? parameters : [parameters];
+  const directPeak = points.find((point) => point?.seriesId === "detected-peaks")?.data?.id;
+  const hoveredPeak = data.peaks?.find((peak) => peak.id === directPeak);
+  const wavelength = hoveredPeak?.wavelength ?? anchorDataset.wavelengths[anchorIndex];
   const rows = [`<strong>${formatWavelength(wavelength)} нм</strong>`];
 
   if (visibleLayers.has("raw") && data.rawDataset) {
     const index = findNearestSampleIndex(data.rawDataset.wavelengths, wavelength);
-    rows.push(formatTooltipRow(palette.raw, rawIntensityLabel(data.rawIntensityUnit), data.rawDataset.intensities[index], 3));
+    rows.push(formatTooltipRow(palette.raw, "Исходный", data.rawDataset.intensities[index], 4, shortIntensityUnit(data.rawIntensityUnit)));
   }
 
   if (visibleLayers.has("baseline") && data.baselineDataset) {
     const index = findNearestSampleIndex(data.baselineDataset.wavelengths, wavelength);
-    rows.push(formatTooltipRow(palette.baseline, "Базовая линия", data.baselineDataset.intensities[index], 3));
+    rows.push(formatTooltipRow(palette.baseline, "Базовая линия", data.baselineDataset.intensities[index], 4, shortIntensityUnit(data.rawIntensityUnit)));
   }
 
   if (visibleLayers.has("prepared") && data.preparedDataset) {
     const index = findNearestSampleIndex(data.preparedDataset.wavelengths, wavelength);
-    rows.push(formatTooltipRow(palette.prepared, "Подготовленная интенсивность", data.preparedDataset.intensities[index], 4));
+    rows.push(formatTooltipRow(palette.prepared, "Подготовленный", data.preparedDataset.intensities[index], 4, shortIntensityUnit(data.preparedIntensityUnit)));
   }
 
   if (visibleLayers.has("threshold") && data.thresholdDataset) {
     const index = findNearestSampleIndex(data.thresholdDataset.wavelengths, wavelength);
-    rows.push(formatTooltipRow(palette.threshold, "Локальный порог", data.thresholdDataset.intensities[index], 4));
+    rows.push(formatTooltipRow(palette.threshold, "Порог", data.thresholdDataset.intensities[index], 4, shortIntensityUnit(data.preparedIntensityUnit)));
   }
 
   if (visibleLayers.has("peaks") && data.peaks?.length) {
-    const peak = findPeakAtWavelength(data.peaks, wavelength, anchorDataset.wavelengths);
+    const peak = hoveredPeak ?? findPeakAtWavelength(data.peaks, wavelength, anchorDataset.wavelengths);
     if (peak) {
       rows.push(
-        "<span><strong>Найденный пик</strong></span>",
-        formatTooltipRow(palette.peak, "Интенсивность", peak.intensity, 4),
-        `<span>Выраженность: <strong>${formatDecimal(peak.prominence, 4)}</strong></span>`,
+        `<span><strong>Пик № ${(data.peaks?.indexOf(peak) ?? 0) + 1} · ${formatDecimal(peak.wavelength, 3)} нм</strong></span>`,
+        formatTooltipRow(palette.peak, "Интенсивность", peak.intensity, 4, shortIntensityUnit(data.preparedIntensityUnit)),
         `<span>SNR: <strong>${Number.isFinite(peak.snr) ? formatDecimal(peak.snr, 2) : "∞"}</strong></span>`,
-        `<span>Ширина: <strong>${formatDecimal(peak.widthNm, 3)} нм</strong></span>`,
-        `<span>Ближайший кандидат: <strong>${formatPeakMatch(peak)}</strong></span>`,
       );
     }
   }
@@ -379,6 +407,7 @@ export function formatSpectrumTooltip(
       anchorDataset.wavelengths,
     );
     if (reference) {
+      if (reference.observedWavelength !== undefined) rows.push(`<span>Наблюдаемый пик: <strong>${formatDecimal(reference.observedWavelength, 3)} нм</strong> · Δ ${formatDecimal(reference.observedWavelength - reference.wavelength, 3)} нм</span>`);
       rows.push(formatTooltipTextRow(
         palette.reference,
         "Справочная линия",
@@ -413,10 +442,14 @@ export function preserveZoomForSource(
 export function readZoomRange(
   event: unknown,
   fallback: SpectrumZoomRange,
+  extent?: readonly [number, number],
 ): SpectrumZoomRange {
   const candidate = getZoomEventCandidate(event);
-  const start = toFiniteNumber(candidate?.start);
-  const end = toFiniteNumber(candidate?.end);
+  const span = extent ? extent[1] - extent[0] : 0;
+  const startValue = toFiniteNumber(candidate?.startValue);
+  const endValue = toFiniteNumber(candidate?.endValue);
+  const start = toFiniteNumber(candidate?.start) ?? (extent && span > 0 && startValue !== null ? Math.max(0, (startValue - extent[0]) / span * 100) : null);
+  const end = toFiniteNumber(candidate?.end) ?? (extent && span > 0 && endValue !== null ? Math.min(100, (endValue - extent[0]) / span * 100) : null);
   if (start === null || end === null || start < 0 || end > 100 || start >= end) return fallback;
   return { start, end };
 }
@@ -426,24 +459,28 @@ function createYAxis(
   preparedRequired: boolean,
   dualAxis: boolean,
   palette: SpectrumChartPalette,
-  rawIntensityUnit?: SpectrumChartData["rawIntensityUnit"],
+  rawIntensityUnit: SpectrumChartData["rawIntensityUnit"],
+  data: SpectrumChartData,
 ): EChartsCoreOption["yAxis"] {
+  const rawExponent = intensityExponent(data.rawDataset ?? data.baselineDataset);
+  const preparedExponent = intensityExponent(data.preparedDataset);
+  const multiplier = (exponent: number) => exponent ? ` · ×10${String(exponent).replace(/[-0-9]/g, (digit) => "⁻⁰¹²³⁴⁵⁶⁷⁸⁹"["-0123456789".indexOf(digit)])}` : "";
   const rawAxis = {
     type: "value" as const,
-    name: rawIntensityLabel(rawIntensityUnit),
+    name: rawIntensityLabel(rawIntensityUnit) + multiplier(rawExponent),
     position: "left" as const,
-    nameTextStyle: { color: palette.raw, fontSize: 12, fontWeight: 600 },
-    axisLabel: { color: palette.raw, fontSize: 12, formatter: formatIntensityTick },
+    nameTextStyle: { color: palette.text, fontSize: 11, align: "left" },
+    axisLabel: { color: palette.raw, fontSize: 12, formatter: (value: number) => formatIntensityTick(value / 10 ** rawExponent) },
     axisLine: { show: true, lineStyle: { color: palette.raw, opacity: 0.7 } },
     splitLine: { lineStyle: { color: palette.border, opacity: 0.34 } },
     scale: true,
   };
   const preparedAxis = {
     type: "value" as const,
-    name: "Подготовленная интенсивность",
+    name: "Подготовленная интенсивность" + multiplier(preparedExponent),
     position: dualAxis ? "right" as const : "left" as const,
-    nameTextStyle: { color: palette.prepared, fontSize: 12, fontWeight: 600 },
-    axisLabel: { color: palette.prepared, fontSize: 12, formatter: formatIntensityTick },
+    nameTextStyle: { color: palette.text, fontSize: 11, align: dualAxis ? "right" : "left" },
+    axisLabel: { color: palette.prepared, fontSize: 12, formatter: (value: number) => formatIntensityTick(value / 10 ** preparedExponent) },
     axisLine: { show: true, lineStyle: { color: palette.prepared, opacity: 0.8 } },
     splitLine: { lineStyle: { color: palette.border, opacity: dualAxis ? 0 : 0.34 } },
     scale: true,
@@ -454,7 +491,7 @@ function createYAxis(
   return preparedAxis;
 }
 
-function getWavelengthExtent(data: SpectrumChartData): readonly [number, number] {
+export function getWavelengthExtent(data: SpectrumChartData): readonly [number, number] {
   let minimum = Number.POSITIVE_INFINITY;
   let maximum = Number.NEGATIVE_INFINITY;
   for (const wavelengths of [data.rawDataset?.wavelengths, data.baselineDataset?.wavelengths, data.preparedDataset?.wavelengths]) {
@@ -559,41 +596,43 @@ function lowerBound(values: readonly number[], target: number): number {
   return low;
 }
 
-function formatTooltipRow(color: string, label: string, value: number, precision: number): string {
-  return formatTooltipTextRow(color, label, formatDecimal(value, precision));
+function formatTooltipRow(color: string, label: string, value: number, precision: number, unit: string): string {
+  const magnitude = Math.abs(value);
+  const formatted = Number.isFinite(value) && (magnitude >= 100_000 || (magnitude > 0 && magnitude < 0.001))
+    ? (() => {
+        const [mantissa, exponent] = value.toExponential(2).split("e");
+        return `${Number(mantissa).toLocaleString("ru-RU", { maximumFractionDigits: 2 })} × 10<sup>${Number(exponent)}</sup>`;
+      })()
+    : Number.isFinite(value) ? value.toLocaleString("ru-RU", { maximumFractionDigits: precision, useGrouping: false }) : value === Infinity ? "∞" : value === -Infinity ? "−∞" : "—";
+  return formatTooltipTextRow(color, label, `${formatted}${unit ? ` <span style="font-weight:400">${escapeHtml(unit)}</span>` : ""}`);
+}
+
+function shortIntensityUnit(unit: SpectrumChartData["preparedIntensityUnit"]): string {
+  return unit === "отсчёты прибора" ? "отсч." : unit === "доля максимума" ? "доля макс." : unit ?? "отн. ед.";
 }
 
 function formatTooltipTextRow(color: string, label: string, value: string): string {
   return `<span style="display:inline-block;width:8px;height:8px;margin-right:8px;border-radius:50%;background:${escapeHtml(color)}"></span>${escapeHtml(label)}: <strong>${value}</strong>`;
 }
 
-function formatPeakMatch(peak: AnalyzedPeak): string {
-  if (!peak.match) return "нет";
-  const label = peak.match.ionizationLabel
-    ? `${peak.match.elementSymbol} ${peak.match.ionizationLabel}`
-    : peak.match.elementSymbol;
-  return `${escapeHtml(label)} · ${formatWavelength(peak.match.line)} нм (${formatSignedDelta(peak.match.delta)} нм)`;
-}
-
-function formatSignedDelta(value: number): string {
-  return `Δ ${formatSignedDecimal(value, 3)}`;
-}
-
 function formatWavelength(value: number): string {
-  return formatDecimal(value, 2);
+  return formatDecimal(value, 3);
 }
 
-function getZoomEventCandidate(event: unknown): { readonly start?: unknown; readonly end?: unknown } | undefined {
+function getZoomEventCandidate(event: unknown): { readonly start?: unknown; readonly end?: unknown; readonly startValue?: unknown; readonly endValue?: unknown } | undefined {
   if (!event || typeof event !== "object") return undefined;
   const value = event as {
     readonly start?: unknown;
     readonly end?: unknown;
-    readonly batch?: readonly { readonly start?: unknown; readonly end?: unknown }[];
+    readonly startValue?: unknown;
+    readonly endValue?: unknown;
+    readonly batch?: readonly { readonly start?: unknown; readonly end?: unknown; readonly startValue?: unknown; readonly endValue?: unknown }[];
   };
   return value.batch?.[0] ?? value;
 }
 
 function toFiniteNumber(value: unknown): number | null {
+  if (value === undefined || value === null || value === "") return null;
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
 }
@@ -622,6 +661,17 @@ function rawIntensityLabel(unit: SpectrumChartData["rawIntensityUnit"]): string 
 export function formatIntensityTick(value: number): string {
   const magnitude = Math.abs(value);
   return magnitude >= 1_000_000 || (magnitude > 0 && magnitude < 0.001)
-    ? value.toExponential(1).replace("e+", "e")
-    : String(Number(value.toPrecision(5)));
+    ? value.toExponential(1).replace("e+", "e").replace(".", ",")
+    : Number(value.toPrecision(5)).toLocaleString("ru-RU", { maximumFractionDigits: 8, useGrouping: false });
+}
+
+export function formatWavelengthTick(value: number, visibleSpan: number): string {
+  const precision = Math.min(6, Math.max(0, 2 - Math.floor(Math.log10(Math.max(visibleSpan, 1e-6)))));
+  return value.toLocaleString("ru-RU", { maximumFractionDigits: precision, useGrouping: false });
+}
+
+function intensityExponent(dataset?: SpectrumDataset): number {
+  let maximum = 0;
+  for (const value of dataset?.intensities ?? []) if (Number.isFinite(value)) maximum = Math.max(maximum, Math.abs(value));
+  return maximum >= 10_000 || (maximum > 0 && maximum < 0.001) ? Math.floor(Math.log10(maximum)) : 0;
 }

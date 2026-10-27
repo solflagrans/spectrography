@@ -1,5 +1,6 @@
 "use client";
 
+import { formatCalibrationReason } from "../model/calibration-ui";
 import { Button } from "@/components/ui/button";
 import { Select, SelectItem } from "@/components/ui/select";
 
@@ -41,6 +42,16 @@ const processingSections = [
   { id: "peak-settings", label: "Поиск пиков", icon: ScanLine },
   { id: "composition-settings", label: "Состав", icon: Search },
 ] as const;
+
+function CalibrationStatus({ channel }: Readonly<{ channel: NonNullable<ReturnType<typeof useAnalysisWorkspaceCore>["analysis"]>["channels"][number] }>) {
+  const calibration = channel.wavelengthCalibration;
+  const applied = calibration.status === "applied";
+  return <div className={styles.calibrationStatus}>
+    <span>Смещение шкалы</span>
+    <strong>{applied ? `${formatSignedDecimal(calibration.shiftNm, 3)} нм` : "Не применено"}</strong>
+    <InfoTooltip label="Коррекция шкалы длины волны" content={`${applied ? "Общее смещение длин волн применено" : "Общее смещение длин волн не применено"}: ${formatCalibrationReason(calibration.reason)}. Исходные измерения не изменяются.`} />
+  </div>;
+}
 
 export function ProcessingSettingsPanel() {
   const section = useProcessingSection();
@@ -210,9 +221,13 @@ function PreparationSettingsPanel() {
           checked={parameters.wavelengthCalibration.allowAutomaticCorrection}
           onChange={(checked) => updateWavelengthCalibrationParameters({ allowAutomaticCorrection: checked })}
         />
-        {selectedChannel ? <p className={styles.settingHint}>{selectedChannel.wavelengthCalibration.status === "applied" ? `Применена поправка: ${formatSignedDecimal(selectedChannel.wavelengthCalibration.shiftNm, 3)} нм` : "Поправка не применена"}</p> : null}
-        {analysis && analysis.channels.length > 1 ? <SettingsDisclosure title="Другие каналы" value={String(analysis.channels.length - 1)} readOnly>
-          <dl className={styles.calibrationChannels}>{analysis.channels.filter((channel) => channel.id !== selectedChannel?.id).map((channel) => <div key={channel.id}><dt>{channel.name}</dt><dd>{channel.wavelengthCalibration.status === "applied" ? `${formatSignedDecimal(channel.wavelengthCalibration.shiftNm, 3)} нм` : "Без поправки"}</dd></div>)}</dl>
+        {selectedChannel ? <CalibrationStatus channel={selectedChannel} /> : null}
+        {analysis && analysis.channels.length > 1 ? <SettingsDisclosure title="Другие участки и каналы" value={String(analysis.channels.length - 1)} readOnly>
+          <div className={styles.calibrationChannelList}>{analysis.channels.filter((channel) => channel.id !== selectedChannel?.id).map((channel) => <div className={styles.calibrationChannelItem} key={channel.id}>
+            <span>{channel.id.match(/-segment-(\d+)$/) ? `Участок ${channel.id.match(/-segment-(\d+)$/)![1]}` : channel.name}</span>
+            <span className={styles.calibrationRange}>{formatDecimal(channel.wavelengthRange.minimum, 2)}–{formatDecimal(channel.wavelengthRange.maximum, 2)} нм</span>
+            <CalibrationStatus channel={channel} />
+          </div>)}</div>
         </SettingsDisclosure> : null}
       </ParameterSection>
       <CalculationFeedback status={calculationStatus} error={parameterError} />
