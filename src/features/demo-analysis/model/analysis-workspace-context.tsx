@@ -111,10 +111,6 @@ export function AnalysisWorkspaceProvider({
 
   const applyAnalysis = useCallback((nextAnalysis: WorkingAnalysis, previousHypothesisId: string | null) => {
     setAnalysis(nextAnalysis);
-    if (!analysisRunner && sourceRef.current) {
-      const sourceToSave = sourceRef.current;
-      void import("@/infrastructure/browser-session/workspace-session").then(({ persistWorkspace }) => persistWorkspace(sourceToSave, nextAnalysis)).catch(() => setParameterError("Анализ рассчитан, но не удалось сохранить сессию в браузере."));
-    }
     const currentUi = uiStore.getState();
     const selectedPeakId = currentUi.selectedPeakId
       && nextAnalysis.peaks.some((peak) => peak.id === currentUi.selectedPeakId)
@@ -150,7 +146,7 @@ export function AnalysisWorkspaceProvider({
       hypothesisSelectionNotice,
     });
     setCalculationStatus("ready");
-  }, [uiStore, analysisRunner]);
+  }, [uiStore]);
 
   const calculate = useCallback((
     nextParameters: InteractiveAnalysisParameters,
@@ -187,23 +183,6 @@ export function AnalysisWorkspaceProvider({
     runnerRef.current?.dispose();
   }, []);
 
-  useEffect(() => {
-    if (analysisRunner) return;
-    let cancelled = false;
-    const initialRequest = importRequest.current;
-    void import("@/infrastructure/browser-session/workspace-session").then(({ restoreWorkspace }) => restoreWorkspace()).then((saved) => {
-      if (!saved || cancelled || sourceRef.current || importRequest.current !== initialRequest) return;
-      sourceRef.current = saved.source;
-      parametersRef.current = saved.parameters;
-      setParameters(saved.parameters);
-      setSelectedSpectrumType(normalizeSpectrumType(saved.source.spectrumType));
-      calculate(saved.parameters, saved.source);
-    }).catch(() => {
-      if (!cancelled && !sourceRef.current) setParameterError("Не удалось восстановить сохранённую сессию. Можно загрузить измерение заново.");
-    });
-    return () => { cancelled = true; };
-  }, [analysisRunner, calculate]);
-
   const activateSource = useCallback(async (source: CreateWorkingAnalysisInput) => {
     calculationRequest.current += 1;
     if (recalculationTimer.current) clearTimeout(recalculationTimer.current);
@@ -213,12 +192,14 @@ export function AnalysisWorkspaceProvider({
     setParameters(DEFAULT_INTERACTIVE_ANALYSIS_PARAMETERS);
     setParameterError(null);
     uiStore.setState({
+      peakInspectorTab: "parameters",
+      peakInspectorOpen: false,
       selectedPeakId: null,
       selectedHypothesisId: null,
       identificationTab: "hypotheses",
       selectedIdentificationChannelId: null,
       hypothesisSelectionNotice: false,
-      analysisView: "composition",
+      analysisView: "peaks",
     });
     setSelectedSpectrumType(normalizeSpectrumType(source.spectrumType));
     setCalculationStatus("calculating");
@@ -368,6 +349,7 @@ export function AnalysisWorkspaceProvider({
   const selectPeak = useCallback((peakId: string | null) => {
     uiStore.setState({
       selectedPeakId: peakId,
+      peakInspectorOpen: peakId !== null,
     });
   }, [uiStore]);
 
@@ -505,4 +487,15 @@ export function useAnalysisWorkspaceUi<T>(selector: (state: AnalysisWorkspaceUiS
   const selected = useStore(uiStore ?? missingWorkspaceUiStore, selector);
   if (!uiStore) throw new Error("useAnalysisWorkspaceUi должен использоваться внутри AnalysisWorkspaceProvider.");
   return selected;
+}
+
+export function usePeakInspectorUi() {
+  const store = useContext(AnalysisWorkspaceUiContext);
+  if (!store) throw new Error("Peak inspector requires a workspace provider.");
+  const tab = useStore(store, (state) => state.peakInspectorTab);
+  const open = useStore(store, (state) => state.peakInspectorOpen);
+  return { tab, open,
+    setTab: (peakInspectorTab: AnalysisWorkspaceUiState["peakInspectorTab"]) => store.setState({ peakInspectorTab }),
+    setOpen: (peakInspectorOpen: boolean) => store.setState({ peakInspectorOpen }),
+  };
 }

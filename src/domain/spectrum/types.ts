@@ -24,6 +24,7 @@ export interface SpectrumDataset {
 export type SpectrumNormalizationMethod = "maximum" | "none";
 
 export interface SpectrumProcessingParameters {
+  readonly analysisRange?: { readonly minimum: number; readonly maximum: number };
   readonly smoothingWindow: number;
   readonly baselineSmoothness: number;
   readonly baselineAsymmetry: number;

@@ -41,3 +41,9 @@ a {
 ::selection {
   background: color-mix(in srgb, var(--color-action-primary) 24%, transparent);
 }
+
+/* Keep one scrollbar gutter while Radix locks page scrolling for a popup.
+   The root already reserves it; react-remove-scroll's body margin would reserve it twice. */
+html > body[data-scroll-locked] {
+  margin-right: 0 !important;
+}

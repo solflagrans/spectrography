@@ -1,15 +1,25 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+import { Select, SelectItem } from "@/components/ui/select";
+
 import { describeCompositionSettings, resolveCompositionSettings } from "@/domain/spectrum/composition-settings";
 
 import {
+  ChevronDown,
+  ChevronRight,
+  Download,
   CircleAlert,
+  Info,
   Database,
   LoaderCircle,
   Sparkles,
   Upload,
+  X,
 } from "lucide-react";
 import Link from "next/link";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import * as Dialog from "@radix-ui/react-dialog";
 import {
   createColumnHelper,
   createSortedRowModel,
@@ -17,7 +27,7 @@ import {
   tableFeatures,
   useTable,
 } from "@tanstack/react-table";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Fragment } from "react";
 import type { ChangeEvent, DragEvent, ReactNode } from "react";
 
@@ -34,12 +44,12 @@ import type {
   AnalyzedPeak,
   ElementInterpretation,
   NewAnalysisSpectrumType,
-  SpectralLineCandidate,
 } from "@/domain/spectrum";
 import {
   useAnalysisWorkspace,
   useAnalysisWorkspaceCore,
   useAnalysisWorkspaceUi,
+  usePeakInspectorUi,
 } from "@/features/demo-analysis/model/analysis-workspace-context";
 import { InfoTooltip } from "@/features/workspace/components/info-tooltip";
 import { formatCount, formatDecimal, formatSignedDecimal } from "@/features/workspace/model/display-format";
@@ -49,7 +59,12 @@ import {
 } from "@/features/demo-analysis/model/identification-ui";
 
 import styles from "./analysis-page.module.css";
+import menuStyles from "@/components/ui/menu-surface.module.css";
+import { createAnalysisExport, createPeaksCsv, createSpectrumCsv } from "@/application/export-analysis/export-analysis";
 import { SpectrumChart } from "./lazy-spectrum-chart";
+import { ReferenceRecordDialog } from "./reference-record-dialog";
+import { useProcessingSection } from "../model/processing-section";
+import type { SpectrumChartLayer } from "./spectrum-chart-option";
 
 const SPECTRUM_TYPE_OPTIONS = [
   { value: "plasma-emission", label: "Эмиссия плазмы/разряда" },
@@ -70,29 +85,14 @@ export function DataAnalysisPage() {
     );
   }
 
-  const datasetDetails: Array<readonly [string, string]> = [
-    ["Файл", analysis.source.fileName],
-    ["Источник", analysis.source.kind],
-    ["Формат", analysis.source.format],
-    ["Единицы", analysis.source.units],
-    ["Средняя интенсивность", formatDecimal(analysis.rawStats.mean, 2)],
-  ];
-  if (analysis.instrumentMetadata) {
-    datasetDetails.push(
-      ["Серийный номер", analysis.instrumentMetadata.serialNumber || "Не указан"],
-      ["Время интеграции", `${formatNumber(analysis.instrumentMetadata.integrationTimeMs)} мс`],
-      ["Усреднений", String(analysis.instrumentMetadata.averages)],
-    );
-  }
-  const channelSignalToNoise = analysis.channels.map((channel) => channel.suitability.metrics.usefulDynamicRangeSnr);
-  const channelResolution = analysis.channels.map((channel) => channel.spectralResolutionNm);
-  const channelScaleUncertainty = analysis.channels.map((channel) => channel.wavelengthCalibration.uncertaintyNm);
-  const blockingIssues = analysis.channels.flatMap((channel) => channel.suitability.issues).filter((issue) => issue.severity === "critical");
 
   return (
     <AnalysisPage title="Данные" action={<SpectrumImportControls compact />}>
-      <Card title="Исходный спектр">
+      <Card className={styles.chartCard} title="Исходный спектр" description={<span className={styles.dataChartSummary}>
+        <span><span>Диапазон</span><strong>{formatNumber(analysis.wavelengthRange.minimum)}–{formatNumber(analysis.wavelengthRange.maximum)} нм</strong></span><span><strong>{formatCount(analysis.rawDataset.wavelengths.length, "точка", "точки", "точек")}</strong></span><span><span>Средний шаг</span><strong>≈{formatDecimal(analysis.wavelengthStep, 3)} нм</strong> <InfoTooltip label="Средний шаг" content="Среднее расстояние между соседними точками. При неравномерной сетке шаг отдельных участков может отличаться." /></span>
+      </span>}>
         <SpectrumChart
+          rawIntensityUnit={analysis.source.units === "нм / отсчёты прибора" ? "отсчёты прибора" : "отн. ед."}
           rawDataset={analysis.rawDataset}
           sourceKey={analysis.id}
           defaultVisibleLayers={["raw"]}
@@ -101,60 +101,74 @@ export function DataAnalysisPage() {
         />
       </Card>
 
-      <MetricGrid>
-        <Metric label="Диапазон" value={`${formatNumber(analysis.wavelengthRange.minimum)}–${formatNumber(analysis.wavelengthRange.maximum)} нм`} />
-        <Metric label="Количество точек" value={String(analysis.rawDataset.wavelengths.length)} />
-        <Metric label="Интенсивность" value={`${formatDecimal(analysis.rawStats.minimum, 2)}–${formatDecimal(analysis.rawStats.maximum, 2)}`} />
-        <Metric label="Средний шаг" value={`~${formatDecimal(analysis.wavelengthStep, 3)} нм`} />
-      </MetricGrid>
-
-      <div className={styles.dataSummaryGrid}>
-        <Card title="Измерение"><DefinitionList items={datasetDetails} /></Card>
-        <Card title="Тип спектра">
-          <label className={styles.spectrumTypeField} htmlFor="spectrum-type">
-            <select id="spectrum-type" aria-label="Тип спектра" value={selectedSpectrumType} onChange={(event) => updateSpectrumType(event.target.value as NewAnalysisSpectrumType)}>
-              {SPECTRUM_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-          </label>
-        </Card>
-        <div id="measurement-quality">
-        <Card title="Параметры измерения" accessory={blockingIssues.length ? <Tag tone="danger">Анализ недоступен</Tag> : undefined}>
-          <dl className={styles.randomAgreementGrid}>
-            <div><dt>Сигнал / шум</dt><dd>{formatMetricRange(channelSignalToNoise, 1)}</dd></div>
-            <div><dt>Разрешение</dt><dd>{formatMetricRange(channelResolution, 3)} нм</dd></div>
-            <div><dt>Найдено пиков</dt><dd>{analysis.peaks.length}</dd></div>
-            <div><dt>Неопределённость шкалы</dt><dd>{formatMetricRange(channelScaleUncertainty, 3)} нм</dd></div>
-          </dl>
-          <details className={styles.technicalDisclosure}>
-            <summary>По каналам</summary>
-            {analysis.channels.map((channel) => (
-              <div key={channel.id} className={styles.traceCard}>
-                {analysis.channels.length > 1 ? <h3>{channel.name}</h3> : null}
-                <dl className={styles.randomAgreementGrid}>
-                  <div><dt>Полезный диапазон / шум</dt><dd>{Number.isFinite(channel.suitability.metrics.usefulDynamicRangeSnr) ? formatDecimal(channel.suitability.metrics.usefulDynamicRangeSnr, 1) : "∞"}</dd></div>
-                  <div><dt>Элементов разрешения</dt><dd>{formatDecimal(channel.suitability.metrics.resolutionElements, 1)}</dd></div>
-                  <div><dt>Дрейф базовой линии</dt><dd>{formatDecimal(channel.suitability.metrics.baselineDriftRatio, 3)}</dd></div>
-                  <div><dt>Одиночных выбросов</dt><dd>{channel.suitability.metrics.isolatedOutlierCount}</dd></div>
-                  <div><dt>Разрешение</dt><dd>{formatDecimal(channel.spectralResolutionNm, 3)} нм</dd></div>
-                  <div><dt>Неопределённость шкалы</dt><dd>{formatDecimal(channel.wavelengthCalibration.uncertaintyNm, 3)} нм</dd></div>
-                </dl>
-                <p className={styles.detailNote}>Коррекция шкалы: {channel.wavelengthCalibration.status === "applied" ? `${formatSignedDelta(channel.wavelengthCalibration.shiftNm)} нм` : "не применена"}; причина: {formatCalibrationReason(channel.wavelengthCalibration.reason)}.</p>
-                {channel.suitability.issues.length ? (
-                  <div className={styles.measurementDiagnostics}>
-                    <strong>Диагностика</strong>
-                    <ul>{channel.suitability.issues.map((issue) => (
-                      <li key={issue.code} data-severity={issue.severity}>{issue.explanation}</li>
-                    ))}</ul>
-                  </div>
-                ) : null}
-              </div>
-            ))}
-          </details>
-        </Card>
+      <Card className={styles.measurementCard} title="Измерение" description={<span className={styles.measurementFile}><span>{analysis.source.fileName}</span><Tag tone="neutral">{analysis.source.format}</Tag></span>} accessory={<ImportDetails analysis={analysis} />}>
+        <div className={styles.measurementFields}>
+          {analysis.source.kind ? <div><span>Источник</span><span>{analysis.source.kind}</span></div> : null}
+          <div><span>Единицы</span><span>{analysis.source.units}</span></div>
+          <label htmlFor="spectrum-type"><span>Тип спектра</span><Select id="spectrum-type" aria-label="Тип спектра" value={selectedSpectrumType} onValueChange={(value) => updateSpectrumType(value as NewAnalysisSpectrumType)}>
+            {SPECTRUM_TYPE_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+          </Select></label>
         </div>
-      </div>
+      </Card>
+      <div id="measurement-quality"><Card title="Каналы и характеристики">
+        {analysis.channels.some((channel) => channel.suitability.issues.some((issue) => issue.severity === "critical")) ? <ul className={styles.dataWarnings}>{analysis.channels.flatMap((channel) => channel.suitability.issues.filter((issue) => issue.severity === "critical").map((issue) => <li key={`${channel.id}:${issue.code}`} data-severity="critical">{dataChannelLabel(channel)}: {issue.explanation}</li>))}</ul> : null}
+        <div className={styles.tableScroll}><table className={`${styles.table} ${styles.dataChannelTable}`}>
+          <colgroup><col style={{ width: 180 }} /><col style={{ width: 170 }} /><col style={{ width: 180 }} /><col style={{ width: 280 }} /><col /></colgroup>
+          <thead><tr><th>Канал / участок</th><th>Диапазон, нм</th><th><span className={styles.dataNumericHeading}>Разрешение, нм <InfoTooltip label="Разрешение канала" content="Расчётная оценка ширины FWHM по пикам канала." /></span></th><th><span className={styles.dataNumericHeading}>Неопределённость шкалы, нм <InfoTooltip label="Неопределённость шкалы" content="Оценка неопределённости шкалы длины волны, используемая при сопоставлении линий." /></span></th><th><span className={styles.visuallyHidden}>Подробности</span></th></tr></thead>
+          <tbody>{analysis.channels.map((channel) => <tr key={channel.id}>
+            <td>{dataChannelLabel(channel)}{!channel.usable ? <span className={styles.excludedChannel}>Исключён из анализа</span> : null}</td><td>{formatDecimal(channel.wavelengthRange.minimum, 2)}–{formatDecimal(channel.wavelengthRange.maximum, 2)}</td>
+            <td>{Number.isFinite(channel.spectralResolutionNm) ? formatDecimal(channel.spectralResolutionNm, 3) : "Не определено"}</td>
+            <td>{Number.isFinite(channel.wavelengthCalibration.uncertaintyNm) ? formatDecimal(channel.wavelengthCalibration.uncertaintyNm, 3) : "Не определена"}</td>
+            <td><ChannelDataDetails channel={channel} /></td>
+          </tr>)}</tbody>
+        </table></div>
+      </Card></div>
     </AnalysisPage>
   );
+}
+
+function dataChannelLabel(channel: WorkingAnalysis["channels"][number]): string {
+  const segment = channel.id.match(/-segment-(\d+)$/);
+  return segment ? `${channel.name.split(" · ")[0]} · участок ${segment[1]}` : channel.name;
+}
+
+function ChannelDataDetails({ channel }: Readonly<{ channel: WorkingAnalysis["channels"][number] }>) {
+  const label = dataChannelLabel(channel);
+  return <Dialog.Root><Dialog.Trigger asChild><Button variant="ghost" size="compact" aria-label={`Подробности: ${label}`}>Подробнее…</Button></Dialog.Trigger>
+    <Dialog.Portal><Dialog.Overlay className={`${styles.dialogOverlay} ${styles.referenceOverlay}`} /><Dialog.Content className={`${styles.referenceDialog} ${styles.importDialog}`} aria-describedby={undefined}>
+      <div className={styles.referenceDialogHeader}><Dialog.Title>{label}</Dialog.Title><Dialog.Close asChild><Button size="icon" aria-label="Закрыть характеристики участка"><X size={18} /></Button></Dialog.Close></div>
+      <div className={styles.channelDialogBody}>
+        <div className={styles.channelDialogSummary}><span>{formatDecimal(channel.wavelengthRange.minimum, 2)}–{formatDecimal(channel.wavelengthRange.maximum, 2)} нм</span><span data-usable={channel.usable}>{channel.usable ? "Используется в анализе" : "Исключён из анализа"}</span></div>
+        <section className={styles.channelDialogSection}><h3>Показатели сигнала</h3><DefinitionList items={[
+          ["Полезный диапазон / шум", formatMeasuredValue(channel.suitability.metrics.usefulDynamicRangeSnr)],
+          ["Элементов разрешения", formatDecimal(channel.suitability.metrics.resolutionElements, 1)],
+          ["Дрейф базовой линии", formatDecimal(channel.suitability.metrics.baselineDriftRatio, 3)],
+          ["Одиночных выбросов", String(channel.suitability.metrics.isolatedOutlierCount)],
+        ]} /></section>
+        <section className={styles.channelDialogSection}><h3>Коррекция шкалы длины волны</h3><p className={styles.channelCalibrationExplanation}><strong>{channel.wavelengthCalibration.status === "applied" ? `Применено смещение ${formatSignedDelta(channel.wavelengthCalibration.shiftNm)} нм` : "Не применена"}</strong>: {formatCalibrationReason(channel.wavelengthCalibration.reason)}.</p></section>
+        {channel.suitability.issues.length ? <section className={styles.channelDialogSection}><h3>Диагностика</h3><ul className={styles.channelDiagnostics}>{channel.suitability.issues.map((issue) => <li key={issue.code} data-severity={issue.severity}>
+          {issue.severity === "diagnostic" ? <Info size={16} aria-hidden="true" /> : <CircleAlert size={16} aria-hidden="true" />}
+          <div><div className={styles.channelDiagnosticHeading}><strong>{({ "insufficient-range": "Покрытие диапазона", "low-dynamic-range": "Динамический диапазон", "baseline-drift": "Базовая линия", "isolated-outliers": "Одиночные выбросы", "possible-signal-limit": "Предельные значения сигнала", "insufficient-features": "Спектральные признаки", "uncertain-resolution": "Оценка разрешения", "uncertain-calibration": "Неопределённость шкалы" } as const)[issue.code]}</strong><span>{issue.severity === "diagnostic" ? "Справочно" : issue.severity === "critical" ? "Критично" : "Предупреждение"}</span></div><p>{issue.explanation}</p></div>
+        </li>)}</ul></section> : null}
+      </div>
+    </Dialog.Content></Dialog.Portal>
+  </Dialog.Root>;
+}
+
+function ImportDetails({ analysis }: Readonly<{ analysis: WorkingAnalysis }>) {
+  const metadata = analysis.instrumentMetadata;
+  return <Dialog.Root><Dialog.Trigger asChild><Button variant="ghost" size="compact" aria-label="Подробности импорта">Подробнее…</Button></Dialog.Trigger>
+    <Dialog.Portal><Dialog.Overlay className={`${styles.dialogOverlay} ${styles.referenceOverlay}`} /><Dialog.Content className={`${styles.referenceDialog} ${styles.importDialog}`} aria-describedby={undefined}>
+      <div className={styles.referenceDialogHeader}><Dialog.Title>Подробности импорта</Dialog.Title><Dialog.Close asChild><Button size="icon" aria-label="Закрыть подробности импорта"><X size={18} /></Button></Dialog.Close></div>
+      <DefinitionList items={[
+        ["Файл", analysis.source.fileName], ["Формат", analysis.source.format], ["Источник", analysis.source.kind],
+        ["Минимальная интенсивность", formatMeasuredValue(analysis.rawStats.minimum)], ["Максимальная интенсивность", formatMeasuredValue(analysis.rawStats.maximum)], ["Средняя интенсивность", formatMeasuredValue(analysis.rawStats.mean)],
+        ...(metadata ? [["Серийный номер", metadata.serialNumber || "Не указан"], ["Время интеграции", `${formatNumber(metadata.integrationTimeMs)} мс`], ["Усреднений", String(metadata.averages)], ["Пиксели", `${metadata.startPixel}–${metadata.stopPixel}`]] as const : []),
+        ...(analysis.auxiliaryData ? [["Массив dark", `${analysis.auxiliaryData.dark.length} значений`], ["Массив reference", `${analysis.auxiliaryData.reference.length} значений`]] as const : []),
+      ]} />
+      {analysis.auxiliaryData ? <p className={styles.detailNote}>Dark и reference сохранены как исходные вспомогательные данные и автоматически не применяются.</p> : null}
+    </Dialog.Content></Dialog.Portal>
+  </Dialog.Root>;
 }
 
 function SpectrumImportControls({ compact = false }: Readonly<{ compact?: boolean }>) {
@@ -189,9 +203,9 @@ function SpectrumImportControls({ compact = false }: Readonly<{ compact?: boolea
     return (
       <section className={styles.compactImport} aria-label="Замена спектра">
         <input ref={inputRef} className={styles.fileInput} type="file" accept=".json,.xlsx,.raw8,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={handleInput} aria-label="Файл спектра" disabled={isReading} />
-        <button className={styles.replaceFileButton} type="button" onClick={() => inputRef.current?.click()} disabled={isReading}>
+        <Button type="button" onClick={() => inputRef.current?.click()} disabled={isReading}>
           {isReading ? "Читаем файл…" : "Заменить файл"}
-        </button>
+        </Button>
         {importError ? <div className={styles.importError} role="alert"><CircleAlert size={16} aria-hidden="true" /><div className={styles.noticeContent}><strong>Файл не открыт</strong><span>{importError}</span></div></div> : null}
       </section>
     );
@@ -230,20 +244,20 @@ function SpectrumImportControls({ compact = false }: Readonly<{ compact?: boolea
           aria-label="Файл спектра"
           disabled={isReading}
         />
-        <button
+        <Button variant="primary"
           className={styles.fileButton}
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={isReading}
         >
           {analysis ? "Заменить файл" : "Выбрать файл"}
-        </button>
+        </Button>
       </div>
       {!analysis ? <div className={styles.demoImportAction}>
-        <button type="button" onClick={openDemoAnalysis} disabled={isReading}>
+        <Button type="button" onClick={openDemoAnalysis} disabled={isReading}>
           <Sparkles size={15} aria-hidden="true" />
           Открыть образец NASA PDS
-        </button>
+        </Button>
       </div> : null}
       {importError ? (
         <div className={styles.importError} role="alert">
@@ -259,42 +273,56 @@ function SpectrumImportControls({ compact = false }: Readonly<{ compact?: boolea
 }
 
 export function ProcessingAnalysisPage() {
-  const { analysis, selectedIdentificationChannelId, selectIdentificationChannel } = useAnalysisWorkspace();
+  const { analysis, selectedIdentificationChannelId, selectIdentificationChannel, selectedHypothesisId, selectHypothesis, selectedPeakId, selectPeak } = useAnalysisWorkspace();
+  const section = useProcessingSection();
   if (!analysis) return <AnalysisUnavailable section="Обработка" />;
   const channel = analysis.channels.find((item) => item.id === selectedIdentificationChannelId)
     ?? analysis.channels[0];
   if (!channel) return <AnalysisUnavailable section="Обработка" />;
+  const compositionView = section === "composition-settings";
+  const molecule = analysis.molecularHypotheses.find((item) => item.id === selectedHypothesisId);
+  const atomic = findIdentificationEntry(analysis, selectedHypothesisId)?.hypothesis;
+  const evidence = atomic?.evidence.filter((line) => line.isCharacteristic && line.strength !== "weak" && line.observations.some((item) => item.channelId === channel.id)) ?? [];
+  const supportingIds = new Set(evidence.flatMap((line) => line.observations.filter((item) => item.channelId === channel.id).map((item) => item.peakId)));
+  const regions = molecule?.observations.filter((item) => item.channelId === channel.id && item.supported).map((item) => ({ label: item.regionId, minimum: item.observedRange.minimum, maximum: item.observedRange.maximum })) ?? [];
+  const defaults: readonly SpectrumChartLayer[] = section === "peak-settings" ? ["prepared", "threshold", "peaks"] : compositionView ? ["prepared", "peaks", "referenceLines", "regions"] : ["raw", "baseline", "prepared"];
+  const peaks = compositionView ? channel.peaks.filter((peak) => supportingIds.has(peak.id) || regions.some((region) => peak.wavelength >= region.minimum && peak.wavelength <= region.maximum)) : channel.peaks;
+  const hypotheses = [...analysis.hypotheses.map((item) => ({ id: item.id, label: `${item.name} (${item.symbol})` })), ...analysis.molecularHypotheses.map((item) => ({ id: item.id, label: item.formula }))];
   return (
     <AnalysisPage title="Обработка">
       <Card
-        title={analysis.channels.length === 1 ? "Подготовленный спектр" : `Подготовленный спектр: ${channel.name}`}
-        accessory={analysis.channels.length > 1 ? (
-          <ChannelPicker
-            id="processing-channel"
-            label="Канал обработки"
-            channels={analysis.channels}
-            value={channel.id}
-            onChange={selectIdentificationChannel}
-          />
-        ) : undefined}
+        className={styles.chartCard}
+        title={section === "peak-settings" ? "Поиск пиков" : compositionView ? "Подтверждения состава" : "Подготовка спектра"}
+        accessory={<div className={styles.processingChartSelectors}>
+          {analysis.channels.length > 1 ? <ChannelPicker id="processing-channel" label="Канал обработки" channels={analysis.channels} value={channel.id} onChange={selectIdentificationChannel} /> : null}
+          {compositionView && hypotheses.length ? <label className={styles.channelPicker}>Гипотеза<Select aria-label="Гипотеза на графике" value={hypotheses.some((item) => item.id === selectedHypothesisId) ? selectedHypothesisId! : ""} onValueChange={(value) => selectHypothesis(value, "hypotheses")}>{hypotheses.map((item) => <SelectItem key={item.id} value={item.id}>{item.label}</SelectItem>)}</Select></label> : null}
+        </div>}
       >
         <SpectrumChart
+          rawIntensityUnit={analysis.source.units === "нм / отсчёты прибора" ? "отсчёты прибора" : "отн. ед."}
           fill
           rawDataset={channel.rawDataset}
           baselineDataset={channel.baselineDataset}
           preparedDataset={channel.preparedDataset}
-          peaks={channel.peaks}
+          peaks={peaks}
+          selectedPeakId={selectedPeakId}
+          onPeakSelect={selectPeak}
+          referenceLines={compositionView && evidence.length ? evidence.map((line) => ({ label: `${formatEvidenceLabel(line)} ${formatDecimal(line.referenceWavelength, 2)}`, wavelength: line.referenceWavelength })) : undefined}
+          highlightedRegions={compositionView && regions.length ? regions : undefined}
+          layerViewKey={section}
           thresholdDataset={channel.thresholdDataset}
           sourceKey={`${analysis.id}:${channel.id}`}
-          defaultVisibleLayers={["raw", "baseline", "prepared", "threshold"]}
+          defaultVisibleLayers={defaults}
           label={`Исходный и подготовленный спектры ${analysis.source.fileName}`}
         />
+        {compositionView && !atomic && !molecule ? <p className={styles.settingHint}>Принятых гипотез нет. Спектр доступен для исследования.</p> : null}
       </Card>
     </AnalysisPage>
   );
 }
 
 export function PeaksAnalysisPage() {
+  const [preview, setPreview] = useState<{ source: string; peakId: string } | null>(null);
   const {
     analysis,
     selectedIdentificationChannelId,
@@ -310,43 +338,53 @@ export function PeaksAnalysisPage() {
   return (
     <AnalysisPage
       title="Анализ"
+      peakLayout
     >
       <Card
-        title="Пики"
+        className={styles.chartCard}
+        title="Подготовленный спектр"
         accessory={analysis.channels.length > 1 ? (
           <ChannelPicker
             id="peaks-channel"
             label="Канал пиков"
             channels={analysis.channels}
             value={channel.id}
-            onChange={selectIdentificationChannel}
+            onChange={(channelId) => { setPreview(null); selectIdentificationChannel(channelId); }}
           />
         ) : <Tag tone="neutral">{formatCount(channel.peaks.length, "пик", "пика", "пиков")}</Tag>}
       >
         <SpectrumChart
+          rawIntensityUnit={analysis.source.units === "нм / отсчёты прибора" ? "отсчёты прибора" : "отн. ед."}
           rawDataset={channel.rawDataset}
+          baselineDataset={channel.baselineDataset}
           preparedDataset={channel.preparedDataset}
           peaks={channel.peaks}
           selectedPeakId={selectedPeakId}
+          hoveredPeakId={preview?.source === `${analysis.id}:${channel.id}` ? preview.peakId : null}
           onPeakSelect={selectPeak}
           thresholdDataset={channel.thresholdDataset}
           sourceKey={`${analysis.id}:${channel.id}`}
-          defaultVisibleLayers={["prepared", "threshold", "peaks"]}
+          defaultVisibleLayers={["prepared", "peaks"]}
+          compact
           label="Подготовленный спектр с отмеченными пиками"
         />
       </Card>
-      <Card title="Найденные пики" accessory={<Tag tone="success">{channel.peaks.length}</Tag>}>
+      <Card title={`Пики · ${channel.peaks.length}`} accessory={<AnalysisExportMenu analysis={analysis} channelId={channel.id} />} description={<>Интенсивность · {channel.parameters.processing.normalization === "maximum" ? "доля максимума (0–1)" : analysis.source.units.split(" / ")[1]}</>}>
         <PeakTable
+          onPeakPreview={(peakId) => setPreview(peakId ? { source: `${analysis.id}:${channel.id}`, peakId } : null)}
           peaks={channel.peaks}
           selectedPeakId={selectedPeakId}
           onPeakSelect={selectPeak}
         />
       </Card>
+      <CompactInterpretation analysis={analysis} />
+
     </AnalysisPage>
   );
 }
 
 export function IdentificationAnalysisPage() {
+  const { setTab: setInspectorTab } = usePeakInspectorUi();
   const {
     analysis,
     hypothesisSelectionNotice,
@@ -364,6 +402,7 @@ export function IdentificationAnalysisPage() {
       <AnalysisPage title="Анализ">
         <AnalysisConclusion analysis={analysis} />
         <MolecularPrimaryDetail analysis={analysis} hypothesis={selectedMolecule} />
+        <MolecularChecks analysis={analysis} standalone />
       </AnalysisPage>
     );
   }
@@ -381,6 +420,7 @@ export function IdentificationAnalysisPage() {
             ? "Элементы не определены. Другие совпадения доступны в подробностях."
             : "Элементы не определены."}
         </InlineEmptyState>
+        <MolecularChecks analysis={analysis} standalone />
       </AnalysisPage>
     );
   }
@@ -388,7 +428,7 @@ export function IdentificationAnalysisPage() {
   const channel = analysis.channels.find((item) => item.id === selectedIdentificationChannelId)
     ?? analysis.channels[0];
   if (!channel || !channel.usable) {
-    return <AnalysisPage title="Анализ"><AnalysisConclusion analysis={analysis} /><InlineEmptyState>Выбранный канал недоступен или его качества недостаточно для интерпретации.</InlineEmptyState></AnalysisPage>;
+    return <AnalysisPage title="Анализ"><AnalysisConclusion analysis={analysis} /><InlineEmptyState>Выбранный канал недоступен или его качества недостаточно для интерпретации.</InlineEmptyState><MolecularChecks analysis={analysis} standalone /></AnalysisPage>;
   }
   const reliableEvidence = [...hypothesis.evidence]
     .filter((line) => line.isCharacteristic && line.strength !== "weak")
@@ -404,44 +444,31 @@ export function IdentificationAnalysisPage() {
         <div className={styles.selectionNotice} role="status">Выбранный результат больше недоступен после пересчёта. Открыт первый доступный.</div>
       ) : null}
 
-      <section className={styles.hypothesisOverview} aria-labelledby="selected-hypothesis-title">
-        <div className={styles.hypothesisOverviewHeading}>
-          <div>
-            <h2 id="selected-hypothesis-title">{hypothesis.name} ({hypothesis.symbol})</h2>
-            <p>{formatElementSupportSummary(hypothesis)}</p>
-          </div>
+      <section className={styles.resultOverview} aria-labelledby="selected-hypothesis-title">
+        <div className={styles.resultOverviewTitle}>
+          <h2 id="selected-hypothesis-title">{hypothesis.name} <span>· {hypothesis.symbol}</span></h2>
+          <Tag tone={selectedEntry.rejectionReasons.length ? "neutral" : "success"}>{selectedEntry.rejectionReasons.length ? "Не подтверждён" : "Обнаружено"}</Tag>
         </div>
-        <div className={styles.reliableEvidenceSummary}>
-          <strong>Ключевые признаки</strong>
-          {reliableEvidence.length ? (
-            <ul>{reliableEvidence.slice(0, 5).map((line) => (
-              <li key={line.groupId}>
-                <code>{formatGroupWavelength(line)}</code>
-                <span>{line.elementSymbol} {line.ionizationLabel} · {line.isKeyCharacteristic ? "ключевая группа" : "подтверждённая группа"}</span>
-              </li>
-            ))}</ul>
-          ) : <span>Подтверждённых характерных групп нет.</span>}
-        </div>
-        {selectedEntry.rejectionReasons.length ? (
-          <div className={styles.diagnosticReasons} aria-label="Причины диагностического результата">
-            <strong>Не входит в состав</strong>
-            <ul>{selectedEntry.rejectionReasons.map((reason) => <li key={reason}>{diagnosticReasonLabels[reason]}</li>)}</ul>
-          </div>
-        ) : null}
+        <p>{formatElementSupportSummary(hypothesis)}{hypothesis.admission === "sensitive" ? " Чувствительный отбор." : ""}</p>
+        {selectedEntry.rejectionReasons.length ? <div className={styles.resultRejection} aria-label="Причины диагностического результата">
+          <p>{diagnosticReasonLabels[selectedEntry.rejectionReasons[0]]}</p>
+          {selectedEntry.rejectionReasons.length > 1 ? <details><summary>Другие причины · {selectedEntry.rejectionReasons.length - 1}</summary><ul>{selectedEntry.rejectionReasons.slice(1).map((reason) => <li key={reason}>{diagnosticReasonLabels[reason]}</li>)}</ul></details> : null}
+        </div> : null}
       </section>
 
       <Card
-        title={analysis.channels.length === 1 ? "Спектр" : `Спектр канала: ${channel.name}`}
+        title="Спектр"
         accessory={analysis.channels.length > 1 ? (
           <label className={styles.channelPicker} htmlFor="identification-channel">
             <span>Канал</span>
-            <select id="identification-channel" value={channel.id} onChange={(event) => selectIdentificationChannel(event.target.value)}>
-              {analysis.channels.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-            </select>
+            <Select id="identification-channel" value={channel.id} onValueChange={(value) => selectIdentificationChannel(value)}>
+              {analysis.channels.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}
+            </Select>
           </label>
         ) : undefined}
       >
         <SpectrumChart
+          rawIntensityUnit={analysis.source.units === "нм / отсчёты прибора" ? "отсчёты прибора" : "отн. ед."}
           compact
           preparedDataset={channel.preparedDataset}
           peaks={supportingPeaks}
@@ -452,79 +479,11 @@ export function IdentificationAnalysisPage() {
           defaultVisibleLayers={["prepared", "peaks", "referenceLines"]}
           label={`Спектр канала ${channel.name} и линии элемента ${hypothesis.name}`}
         />
+        {!channelEvidence.length && reliableEvidence.length ? <p className={styles.detailNote}>В выбранном канале нет характерных совпадений. Доказательства ниже относятся к другим каналам.</p> : null}
       </Card>
 
-      <details className={styles.technicalDisclosure}>
-        <summary>Доказательства и показатели</summary>
-        <section className={styles.evidenceSection} aria-labelledby="identification-summary-title">
-        <h3 id="identification-summary-title">Сводка</h3>
-        <div className={styles.identificationMetrics}>
-          <Metric label="Степени ионизации" value={hypothesis.ionizationStages.map(toRoman).join(", ") || "—"} />
-          <Metric label="Характерные группы" value={`${hypothesis.foundCharacteristicGroupCount} / ${hypothesis.availableCharacteristicGroupCount}`} />
-          <Metric label="Независимые группы" value={String(hypothesis.independentMatchedGroupCount)} />
-          <Metric label="Среднее отклонение" value={`${formatDecimal(hypothesis.meanAbsoluteDelta, 3)} нм`} />
-        </div>
-        </section>
-        <section className={styles.evidenceSection} aria-labelledby="diagnostic-metrics-title">
-        <h3 id="diagnostic-metrics-title">Диагностические показатели</h3>
-        <div className={styles.identificationDetailGrid}>
-        <Card title="Основания ранжирования">
-          <ul className={styles.reasonList}>{hypothesis.rankingReasons.map((reason) => <li key={reason.code}><span>{reason.description}</span><code>{formatReasonValue(reason.code, reason.value)}</code></li>)}</ul>
-        </Card>
-        <Card title={<span className={styles.titleWithTooltip}>Контроль случайных совпадений <InfoTooltip label="Контроль случайных совпадений" content="Сравнение со смещёнными контрольными линиями. Показатель служит для ранжирования и не является вероятностью присутствия элемента." /></span>}>
-          <dl className={styles.randomAgreementGrid}>
-            <div><dt>Наблюдалось</dt><dd>{hypothesis.randomAgreement.observedAgreements}</dd></div>
-            <div><dt>Ожидание для элемента</dt><dd>{formatDecimal(hypothesis.randomAgreement.expectedAgreements, 2)}</dd></div>
-            <div><dt>После перебора элементов</dt><dd>{formatDecimal(hypothesis.randomAgreement.adjustedExpectedAgreements, 2)}</dd></div>
-            <div><dt>Проверено элементов</dt><dd>{hypothesis.randomAgreement.testedElementCount}</dd></div>
-            <div><dt>Требуется групп</dt><dd>{hypothesis.randomAgreement.requiredAgreements}</dd></div>
-            <div><dt>Смещённых контролей</dt><dd>{hypothesis.randomAgreement.testedOffsets}</dd></div>
-            <div><dt>95-й процентиль контролей</dt><dd>{hypothesis.randomAgreement.control95PercentileAgreements}</dd></div>
-            <div><dt>Согласованное созвездие</dt><dd>{hypothesis.randomAgreement.coherentConstellationOverride ? "Да" : "Нет"}</dd></div>
-          </dl>
-        </Card>
-        </div>
-        </section>
-
-      <Card title="Совпавшие группы">
-        <div className={styles.ionizationGroups}>
-          {hypothesis.ionizationGroups.map((group) => (
-            <section key={group.ionizationStage}>
-              <h3>{hypothesis.symbol} {group.ionizationLabel}</h3>
-              <dl>
-                <div><dt>Найдено групп</dt><dd>{group.foundCharacteristicGroupIds.length}</dd></div>
-                <div><dt>Доступно групп</dt><dd>{group.availableCharacteristicGroups.length}</dd></div>
-                <div><dt>Согласованных групп</dt><dd>{group.evidence.length}</dd></div>
-              </dl>
-              <div className={styles.ionizationLineSummary}>
-                <div>
-                  <strong>Найденные характерные линии</strong>
-                  {group.evidence.some((line) => line.isCharacteristic) ? (
-                    <ul>{group.evidence.filter((line) => line.isCharacteristic).map((line) => <li key={line.groupId}>{formatGroupWavelength(line)}</li>)}</ul>
-                  ) : <span>Нет найденных линий</span>}
-                </div>
-                <div>
-                  <strong>Без найденного пика</strong>
-                  {group.missingCharacteristicGroups.length ? (
-                    <ul>{group.missingCharacteristicGroups.map((item) => <li key={item.id}>{formatDecimal(item.representativeWavelength, 3)} нм</li>)}</ul>
-                  ) : <span>Нет пропущенных линий</span>}
-                </div>
-              </div>
-            </section>
-          ))}
-        </div>
-        <div className={styles.channelObservationList} aria-label="Наблюдения по каналам">
-          {hypothesis.observationsByChannel.map((summary) => (
-            <button key={summary.channelId} type="button" onClick={() => selectIdentificationChannel(summary.channelId)} aria-pressed={summary.channelId === channel.id}>
-              {analysis.channels.find((item) => item.id === summary.channelId)?.name ?? summary.channelId}
-              <span>{summary.observationCount} набл.</span>
-            </button>
-          ))}
-        </div>
-      </Card>
-
-      <Card title="Таблица доказательств" accessory={<Tag tone="neutral">{hypothesis.evidence.length}</Tag>}>
-        <EvidenceTable
+      <Card className={styles.evidenceCard} title="Доказательства" accessory={analysis.channels.length > 1 ? <span className={styles.evidenceScope}>Все каналы</span> : undefined}>
+        <EvidenceTable key={`${analysis.id}:${hypothesis.id}`}
           analysis={analysis}
           hypothesis={hypothesis}
           onObservationOpen={(peakId, channelId) => {
@@ -532,25 +491,56 @@ export function IdentificationAnalysisPage() {
             selectPeak(peakId);
           }}
           onPeakOpen={(peakId) => {
+            setInspectorTab("matches");
             selectPeak(peakId);
             setAnalysisView("peaks");
           }}
         />
       </Card>
 
-      <Card title="Ненайденные характерные линии">
-        {hypothesis.availableCharacteristicGroupCount === 0 ? (
-          <InlineEmptyState>Для этого элемента в покрываемом диапазоне нет характерных групп.</InlineEmptyState>
-        ) : hypothesis.ionizationGroups.some((group) => group.missingCharacteristicGroups.length) ? (
-          <div className={styles.missingLineList}>
-            {hypothesis.ionizationGroups.flatMap((group) => group.missingCharacteristicGroups).map((item) => (
-              <div key={item.id}><code>{formatDecimal(item.representativeWavelength, 3)} нм</code><span>{hypothesis.symbol} {item.ionizationLabel}</span><span>{formatCount(item.lines.length, "линия", "линии", "линий")} в группе</span></div>
-            ))}
-          </div>
-        ) : <InlineEmptyState>Все доступные характерные линии имеют сопоставленное наблюдение.</InlineEmptyState>}
-        <p className={styles.detailNote}>Видимость линии зависит от условий измерения и чувствительности прибора; отсутствие пика само по себе не доказывает отсутствие элемента.</p>
-      </Card>
+      <details className={styles.interpretationDisclosure}>
+        <summary><span className={styles.titleWithTooltip}>Ненайденные признаки · {hypothesis.ionizationGroups.reduce((count, group) => count + group.missingCharacteristicGroups.length, 0)} <InfoTooltip label="Ненайденные признаки" content="Отсутствие пика само по себе не доказывает отсутствие элемента." /></span></summary>
+        {hypothesis.availableCharacteristicGroupCount === 0 ? <InlineEmptyState>В покрываемом диапазоне нет характерных групп для проверки.</InlineEmptyState> :
+          hypothesis.ionizationGroups.some((group) => group.missingCharacteristicGroups.length) ? <div className={styles.missingEvidenceSections}>{hypothesis.ionizationGroups.filter((group) => group.missingCharacteristicGroups.length).map((group) => <section key={group.ionizationStage}>
+            <h3>{hypothesis.symbol} {group.ionizationLabel}</h3>
+            <ul className={styles.missingEvidenceList}>{group.missingCharacteristicGroups.map((item) => <li key={item.id}><code>{formatDecimal(item.representativeWavelength, 3)} нм</code><span>{formatCount(item.lines.length, "линия", "линии", "линий")} в группе</span></li>)}</ul>
+          </section>)}</div> : <InlineEmptyState>Все доступные характерные группы имеют сопоставленное наблюдение.</InlineEmptyState>}
       </details>
+      <details className={`${styles.interpretationDisclosure} ${styles.resultChecks}`}>
+        <summary>Проверка результата</summary>
+        <dl>
+          <div><dt>Контроль случайных совпадений</dt><dd data-passed={hypothesis.randomAgreement.distinguishableFromRandom}>{hypothesis.randomAgreement.distinguishableFromRandom ? "Пройден" : "Не пройден"}</dd></div>
+          <div><dt>Согласованность шкалы длины волны</dt><dd data-passed={hypothesis.wavelengthCoherence.coherent}>{hypothesis.wavelengthCoherence.coherent ? "Подтверждена" : "Не подтверждена"}</dd></div>
+        </dl>
+      </details>
+      <details className={styles.interpretationDisclosure}>
+        <summary>Подробности расчёта</summary>
+        <section className={styles.calculationSection}>
+          <h3>Сопоставление линий</h3>
+          <DefinitionList items={[
+            ["Степени ионизации", hypothesis.ionizationStages.map(toRoman).join(", ") || "—"],
+            ["Качественные характерные группы / доступные", `${hypothesis.reliableCharacteristicGroupCount} / ${hypothesis.availableCharacteristicGroupCount}`],
+            ["Все сопоставленные группы", String(hypothesis.independentMatchedGroupCount)],
+            ["Слабые или нехарактерные группы", String(hypothesis.weakEvidenceGroupCount)],
+            ["Среднее абсолютное отклонение", `${formatDecimal(hypothesis.meanAbsoluteDelta, 3)} нм`],
+            ["Ключевые группы с качественным наблюдением", String(hypothesis.rankingReasons.find((reason) => reason.code === "key-groups")?.value ?? 0)],
+          ]} />
+        </section>
+        <section className={styles.calculationSection}>
+          <h3 className={styles.titleWithTooltip}>Контроль случайных совпадений <InfoTooltip label="Контроль случайных совпадений" content="Сравнение со смещёнными контрольными линиями. Показатели не являются вероятностью присутствия элемента." /></h3>
+          <DefinitionList items={[
+            ["Наблюдалось характерных совпадений", String(hypothesis.randomAgreement.observedAgreements)],
+            ["Ожидание для элемента", formatDecimal(hypothesis.randomAgreement.expectedAgreements, 2)],
+            ["После перебора элементов", formatDecimal(hypothesis.randomAgreement.adjustedExpectedAgreements, 2)],
+            ["Проверено элементов", String(hypothesis.randomAgreement.testedElementCount)],
+            ["Требуется групп", String(hypothesis.randomAgreement.requiredAgreements)],
+            ["Смещённых контролей", String(hypothesis.randomAgreement.testedOffsets)],
+            ["95-й процентиль контролей", String(hypothesis.randomAgreement.control95PercentileAgreements)],
+            ["Применён критерий точного многолинейного совпадения", hypothesis.randomAgreement.coherentConstellationOverride ? "Да" : "Нет"],
+          ]} />
+        </section>
+      </details>
+      <MolecularChecks analysis={analysis} standalone />
     </AnalysisPage>
   );
 }
@@ -561,57 +551,32 @@ export function AnalysisAnalysisPage() {
 }
 
 function AnalysisConclusion({ analysis }: Readonly<{ analysis: WorkingAnalysis }>) {
-  const { selectedHypothesisId, selectHypothesis } = useAnalysisWorkspace();
+  const { selectedHypothesisId, selectHypothesis, setAnalysisView } = useAnalysisWorkspace();
   const reliableItems = [
-    ...analysis.hypotheses.map((hypothesis) => ({
-      id: hypothesis.id,
-      symbol: hypothesis.symbol,
-      name: hypothesis.name,
-      support: `${formatElementSupportSummary(hypothesis)}${hypothesis.admission === "sensitive" ? " Чувствительный отбор." : ""}`,
-    })),
-    ...analysis.molecularHypotheses.map((hypothesis) => ({
-      id: hypothesis.id,
-      symbol: hypothesis.formula,
-      name: hypothesis.displayName,
-      support: `${formatMolecularSupportSummary(hypothesis)}${hypothesis.admission === "sensitive" ? " Чувствительный отбор." : ""}`,
-    })),
+    ...analysis.hypotheses.map((item) => ({ id: item.id, symbol: item.symbol, name: item.name, tab: "hypotheses" as const })),
+    ...analysis.molecularHypotheses.map((item) => ({ id: item.id, symbol: item.formula, name: item.displayName, tab: "hypotheses" as const })),
   ];
-  const primary = reliableItems[0];
-  const additional = reliableItems.slice(1);
-  return (
-    <section className={styles.analysisConclusion} aria-labelledby="analysis-conclusion-title">
-      <div className={styles.analysisConclusionCopy}>
-        <h2 id="analysis-conclusion-title">Состав</h2>
-        <p className={styles.compositionSummary}>{describeCompositionSettings(analysis.parameters.composition)}</p>
-        {resolveCompositionSettings(analysis.parameters.composition).elementMode !== "all" ? <p>Результат относится только к проверяемым элементам.</p> : null}
-        {analysis.hypotheses.some((item) => item.admission === "sensitive") ? <p>В составе есть результаты чувствительного отбора с менее выраженными подтверждениями.</p> : null}
-        <p>{primary ? <><strong>Обнаружено: {primary.name} ({primary.symbol}).</strong> {primary.support}{additional.length ? <> Также: {additional.map((item) => `${item.name.toLocaleLowerCase("ru-RU")} (${item.symbol})`).join(", ")}.</> : null}</> : "Элементы не определены."}</p>
-        {reliableItems.length ? (
-          <label className={styles.mobileHypothesisSelect}>
-            <span>Выбрать результат</span>
-            <select
-              value={reliableItems.some((item) => item.id === selectedHypothesisId) ? selectedHypothesisId ?? primary?.id : primary?.id}
-              onChange={(event) => selectHypothesis(event.target.value, "hypotheses")}
-            >
-              {reliableItems.map((item) => <option key={item.id} value={item.id}>{item.name} ({item.symbol})</option>)}
-            </select>
-          </label>
-        ) : null}
-        {analysis.rejectedHypotheses.length ? <details className={styles.mobileCompositionDiagnostics}>
-          <summary>Возможные атомные совпадения · {analysis.rejectedHypotheses.length}</summary>
-          <div className={styles.elementChoices}>{analysis.rejectedHypotheses.map(({ hypothesis }) => <button key={hypothesis.id} type="button" onClick={() => selectHypothesis(hypothesis.id, "diagnostics")}>{hypothesis.name} ({hypothesis.symbol}) · {hypothesis.reliableCharacteristicGroupCount} групп</button>)}</div>
-        </details> : null}
-        {analysis.rejectedMolecularHypotheses.length ? <details className={styles.identificationDisclosure}>
-          <summary>Возможные молекулярные совпадения · {analysis.rejectedMolecularHypotheses.length}</summary>
-          {analysis.rejectedMolecularHypotheses.map((item) => <div key={item.id}>
-            <strong>{item.formula} · {item.systemName}</strong>
-            <p>{item.explanation}</p>
-            <ul>{item.reasons.map((reason) => <li key={reason}>{formatMolecularReason(reason)}</li>)}</ul>
-          </div>)}
-        </details> : null}
-      </div>
-    </section>
-  );
+  const choices = [...reliableItems, ...analysis.rejectedHypotheses.map(({ hypothesis }) => ({ id: hypothesis.id, symbol: hypothesis.symbol, name: hypothesis.name, tab: "diagnostics" as const }))];
+  return <section className={styles.compositionStrip} aria-labelledby="analysis-conclusion-title">
+    <p id="analysis-conclusion-title"><strong>{reliableItems.length ? `Обнаружено: ${reliableItems.map((item) => `${item.name} (${item.symbol})`).join(", ")}` : "Элементы не определены."}</strong><span>{describeCompositionSettings(analysis.parameters.composition)}</span></p>
+    {resolveCompositionSettings(analysis.parameters.composition).elementMode !== "all" ? <p className={styles.detailNote}>Результат относится только к проверяемым элементам.</p> : null}
+    {choices.length ? <label className={styles.mobileResultSelect}><span>Выбрать результат</span><Select value={choices.some((item) => item.id === selectedHypothesisId) ? selectedHypothesisId! : ""} onValueChange={(value) => { const choice = choices.find((item) => item.id === value); if (choice) selectHypothesis(value, choice.tab); setAnalysisView("composition"); }}>
+      {choices.map((item) => <SelectItem key={item.id} value={item.id}>{item.name} ({item.symbol}){item.tab === "diagnostics" ? " · не подтверждён" : ""}</SelectItem>)}
+    </Select></label> : null}
+  </section>;
+}
+
+function MolecularChecks({ analysis, standalone = false }: Readonly<{ analysis: WorkingAnalysis; standalone?: boolean }>) {
+  if (!analysis.rejectedMolecularHypotheses.length) return null;
+  const checks = <section className={`${styles.evidenceSection} ${styles.spectrumChecks}`} aria-label="Проверка молекулярных систем">
+    <h3 className={styles.titleWithTooltip}>Проверка молекулярных систем <InfoTooltip label="Проверка молекулярных систем" content="Проверка относится ко всему спектру и не зависит от выбранного элемента." /></h3>
+    {analysis.rejectedMolecularHypotheses.map((item) => <details key={item.id} className={styles.molecularCheck}>
+      <summary>{item.formula} · {item.systemName}</summary>
+      <p>{item.explanation}</p>
+      <ul>{item.reasons.map((reason) => <li key={reason}>{formatMolecularReason(reason)}</li>)}</ul>
+    </details>)}
+  </section>;
+  return standalone ? <details className={styles.interpretationDisclosure}><summary>Проверки всего спектра</summary>{checks}</details> : checks;
 }
 
 function MolecularPrimaryDetail({
@@ -627,35 +592,23 @@ function MolecularPrimaryDetail({
 
   return (
     <>
-      <section className={styles.hypothesisOverview} aria-labelledby="selected-molecule-title">
-        <div className={styles.hypothesisOverviewHeading}>
-          <div>
-            <h2 id="selected-molecule-title">{hypothesis.displayName} ({hypothesis.formula})</h2>
-            <p>{hypothesis.explanation}</p>
-          </div>
-        </div>
-        <div className={styles.reliableEvidenceSummary}>
-          <strong>Главные признаки</strong>
-          <ul>{observations.map((observation) => (
-            <li key={`${observation.channelId}-${observation.regionId}`}>
-              <code>{formatDecimal(observation.observedRange.minimum, 1)}–{formatDecimal(observation.observedRange.maximum, 1)} нм</code>
-              <span>Форма характерного участка согласуется с системой {hypothesis.systemName}</span>
-            </li>
-          ))}</ul>
-        </div>
+      <section className={styles.resultOverview} aria-labelledby="selected-molecule-title">
+        <div className={styles.resultOverviewTitle}><h2 id="selected-molecule-title">{hypothesis.displayName} <span>· {hypothesis.formula}</span></h2><Tag tone="success">Обнаружено</Tag></div>
+        <p>{formatMolecularSupportSummary(hypothesis)}{hypothesis.admission === "sensitive" ? " Чувствительный отбор." : ""}</p>
       </section>
       <Card
-        title={`Связанные участки спектра: ${channel.name}`}
+        title="Спектр"
         accessory={analysis.channels.length > 1 ? (
           <label className={styles.channelPicker} htmlFor="molecular-channel">
             <span>Канал</span>
-            <select id="molecular-channel" value={channel.id} onChange={(event) => selectIdentificationChannel(event.target.value)}>
-              {analysis.channels.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-            </select>
+            <Select id="molecular-channel" value={channel.id} onValueChange={(value) => selectIdentificationChannel(value)}>
+              {analysis.channels.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}
+            </Select>
           </label>
         ) : undefined}
       >
         <SpectrumChart
+          rawIntensityUnit={analysis.source.units === "нм / отсчёты прибора" ? "отсчёты прибора" : "отн. ед."}
           compact
           preparedDataset={channel.preparedDataset}
           peaks={relatedPeaks}
@@ -671,9 +624,17 @@ function MolecularPrimaryDetail({
           label={`Спектр канала ${channel.name} и области системы ${hypothesis.formula}`}
         />
       </Card>
-      <details className={styles.technicalDisclosure}>
-        <summary>Технические подробности молекулярного сопоставления</summary>
+      <Card className={styles.evidenceCard} title="Доказательства">
+        <div className={styles.tableScroll}><table className={`${styles.table} ${styles.molecularEvidenceTable}`}>
+          <thead><tr><th>Характерный участок · нм</th><th>Канал</th><th>Совпадение формы</th></tr></thead>
+          <tbody>{hypothesis.observations.map((item) => <tr key={`${item.channelId}-${item.regionId}`}><td><code>{formatDecimal(item.observedRange.minimum, 1)}–{formatDecimal(item.observedRange.maximum, 1)}</code></td><td>{analysis.channels.find((entry) => entry.id === item.channelId)?.name ?? item.channelId}</td><td>{item.supported ? "Подтверждено" : "Не подтверждено"}</td></tr>)}</tbody>
+        </table></div>
+      </Card>
+      <details className={`${styles.interpretationDisclosure} ${styles.resultChecks}`}><summary>Проверка результата</summary><dl><div><dt>Контроль случайных совпадений формы</dt><dd data-passed={hypothesis.randomAgreement.distinguishableFromRandom}>{hypothesis.randomAgreement.distinguishableFromRandom ? "Пройден" : "Не пройден"}</dd></div></dl></details>
+      <details className={styles.interpretationDisclosure}>
+        <summary>Подробности молекулярного сопоставления</summary>
         <MolecularHypothesisDetails hypothesis={hypothesis} />
+
       </details>
     </>
   );
@@ -690,82 +651,55 @@ function EvidenceTable({
   onObservationOpen: (peakId: string, channelId: string) => void;
   onPeakOpen: (peakId: string) => void;
 }>) {
-  if (!hypothesis.evidence.length) {
-    return <InlineEmptyState>У этого элемента нет согласованных линий.</InlineEmptyState>;
-  }
-
-  return (
-    <div className={styles.tableScroll}>
-      <table className={`${styles.table} ${styles.evidenceTable}`}>
-        <colgroup>
-          <col className={styles.evidenceGroupColumn} />
-          <col className={styles.evidencePeakColumn} />
-          <col className={styles.evidenceDeltaColumn} />
-          <col className={styles.evidenceSnrColumn} />
-          <col className={styles.evidenceQualityColumn} />
-        </colgroup>
-        <thead>
-          <tr>
-            <th>Группа и справочная длина</th>
-            <th>Пик</th>
-            <th>Отклонение</th>
-            <th>SNR</th>
-            <th><span className={styles.titleWithTooltip}>Качество <InfoTooltip label="Качество совпадения" content="Эвристическая оценка для ранжирования совпадений; не является вероятностью." /></span></th>
-          </tr>
-        </thead>
-        <tbody>
-          {hypothesis.evidence.map((line) => {
-            const alternatives = [...new Set(line.observations.flatMap((observation) => (
-              hypothesis.alternativeExplanations.find((item) => item.peakId === observation.peakId && item.channelId === observation.channelId)?.elementSymbols ?? []
-            )))].filter((symbol) => symbol !== hypothesis.symbol);
-            const firstObservation = line.observations[0];
-            return (
-              <Fragment key={line.groupId}>
-                <tr
-                  className={styles.selectableRow}
-                  data-evidence-row={line.groupId}
-                  tabIndex={firstObservation ? 0 : undefined}
-                  onClick={() => {
-                    if (!firstObservation) return;
-                    onObservationOpen(firstObservation.peakId, firstObservation.channelId);
-                    onPeakOpen(firstObservation.peakId);
-                  }}
-                  onKeyDown={(event) => {
-                    if (firstObservation && (event.key === "Enter" || event.key === " ")) {
-                      event.preventDefault();
-                      onObservationOpen(firstObservation.peakId, firstObservation.channelId);
-                      onPeakOpen(firstObservation.peakId);
-                    }
-                  }}
-                >
-                  <td data-label="Группа и справочная длина"><div className={styles.evidenceGroupCell}><strong>{formatEvidenceLabel(line)}</strong><code>{formatGroupWavelength(line)}</code>{line.memberLineIds.length > 1 ? <small>{formatCount(line.memberLineIds.length, "линия", "линии", "линий")}</small> : null}</div></td>
-                  <td data-label="Пик"><div className={styles.valueStack}>{line.observations.map((observation) => <code key={`${observation.channelId}-${observation.peakId}`}>{formatDecimal(observation.peakWavelength, 3)} нм</code>)}</div></td>
-                  <td data-label="Отклонение"><div className={styles.valueStack}>{line.observations.map((observation) => <code key={`${observation.channelId}-${observation.peakId}`}>{formatSignedDelta(observation.delta)} нм</code>)}</div></td>
-                  <td data-label="SNR"><div className={styles.valueStack}>{line.observations.map((observation) => <code key={`${observation.channelId}-${observation.peakId}`}>{Number.isFinite(observation.snr) ? formatDecimal(observation.snr, 2) : "∞"}</code>)}</div></td>
-                  <td data-label="Качество"><span className={styles.qualityCell}><span>{formatEvidenceQuality(line.strength)}</span><code>{formatDecimal(line.quality, 2)}</code></span></td>
-                </tr>
-                <tr className={styles.evidenceDetailRow}>
-                  <td colSpan={5}>
-                    <details>
-                      <summary>Подробнее · {formatCount(alternatives.length, "альтернатива", "альтернативы", "альтернатив")}</summary>
-                      <dl className={styles.rowDetailsGrid}>
-                        <div><dt>Тип длины</dt><dd>{formatWavelengthOrigin(line.wavelengthType)}</dd></div>
-                        <div><dt>Среда</dt><dd>{formatWavelengthMedium(line.wavelengthMedium)}</dd></div>
-                        {analysis.channels.length > 1 ? <div><dt>Каналы</dt><dd>{line.observations.map((observation) => analysis.channels.find((item) => item.id === observation.channelId)?.name ?? observation.channelId).join(", ")}</dd></div> : null}
-                        <div><dt>Альтернативные элементы</dt><dd>{alternatives.length ? alternatives.join(", ") : "Нет"}</dd></div>
-                        <div><dt>Состав группы</dt><dd>{line.memberLineIds.join(", ")}</dd></div>
-                        <div><dt>Наблюдений</dt><dd>{line.observations.length}</dd></div>
-                      </dl>
-                    </details>
-                  </td>
-                </tr>
-              </Fragment>
-            );
-          })}
-        </tbody>
-      </table>
+  const [recordLine, setRecordLine] = useState<AnalysisEvidenceLine | null>(null);
+  const recordTrigger = useRef<HTMLButtonElement | null>(null);
+  const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
+  const characteristic = hypothesis.evidence.filter((line) => line.isCharacteristic && line.strength !== "weak");
+  const rows = [...(showAll ? hypothesis.evidence : characteristic)].sort((left, right) => Number(right.isKeyCharacteristic) - Number(left.isKeyCharacteristic) || Number(right.isCharacteristic) - Number(left.isCharacteristic) || right.quality - left.quality);
+  return <>
+    <div className={styles.evidenceToolbar} role="group" aria-label="Показать доказательства">
+      <Button size="compact" variant="ghost" aria-pressed={!showAll} onClick={() => setShowAll(false)}>Характерные · {characteristic.length}</Button>
+      <Button size="compact" variant="ghost" aria-pressed={showAll} onClick={() => setShowAll(true)}>Все совпадения · {hypothesis.evidence.length}</Button>
     </div>
-  );
+    {!rows.length ? <InlineEmptyState>{showAll ? "Сопоставленных групп нет." : "Качественных характерных совпадений нет. Остальные доступны в полном списке."}</InlineEmptyState> :
+    <div className={`${styles.tableScroll} ${styles.evidenceTableScroll}`}>
+      <table className={`${styles.table} ${styles.evidenceTable}`}>
+        <colgroup><col className={styles.evidenceGroupColumn} /><col className={styles.evidencePeakColumn} /><col className={styles.evidenceDeltaColumn} /><col className={styles.evidenceSnrColumn} /><col className={styles.evidenceQualityColumn} /></colgroup>
+        <thead><tr><th>Группа · нм</th><th>Пик · нм</th><th>Отклонение · нм</th><th>SNR</th><th><span className={styles.titleWithTooltip}>Качество <InfoTooltip label="Качество совпадения" content="Оценка отдельного совпадения для ранжирования; не вероятность присутствия элемента." /></span></th></tr></thead>
+        <tbody>{rows.map((line) => {
+          const alternatives = [...new Set(line.observations.flatMap((observation) => hypothesis.alternativeExplanations.find((item) => item.peakId === observation.peakId && item.channelId === observation.channelId)?.elementSymbols ?? []))].filter((symbol) => symbol !== hypothesis.symbol);
+          const first = line.observations[0];
+          const expanded = expandedGroupId === line.groupId;
+          const openPeak = () => { if (first) { onObservationOpen(first.peakId, first.channelId); onPeakOpen(first.peakId); } };
+          return <Fragment key={line.groupId}>
+            <tr className={styles.selectableRow} data-evidence-row={line.groupId} tabIndex={first ? 0 : undefined} onClick={openPeak} onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); openPeak(); } }}>
+              <td data-label="Группа · нм"><div className={styles.evidenceIdentity}>
+                <Button variant="ghost" size="hint" aria-label={`Подробности группы ${formatGroupWavelength(line)}`} aria-expanded={expanded} aria-controls={`evidence-${line.groupId}`} onClick={(event) => { event.stopPropagation(); setExpandedGroupId(expanded ? null : line.groupId); }}>{expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</Button>
+                <div><strong>{formatEvidenceLabel(line)}{line.isKeyCharacteristic ? <span className={styles.evidenceKey}>Ключевая</span> : null}</strong><code>{formatGroupWavelength(line)}</code></div>
+              </div></td>
+              <td data-label="Пик · нм"><div className={styles.valueStack}>{line.observations.map((observation) => <code key={`${observation.channelId}-${observation.peakId}`}>{formatDecimal(observation.peakWavelength, 3)}</code>)}</div></td>
+              <td data-label="Отклонение · нм"><div className={styles.valueStack}>{line.observations.map((observation) => <code key={`${observation.channelId}-${observation.peakId}`}>{formatSignedDelta(observation.delta)}</code>)}</div></td>
+              <td data-label="SNR"><div className={styles.valueStack}>{line.observations.map((observation) => <code key={`${observation.channelId}-${observation.peakId}`}>{Number.isFinite(observation.snr) ? formatDecimal(observation.snr, 2) : "∞"}</code>)}</div></td>
+              <td data-label="Качество"><span className={styles.qualityCell}><span>{formatEvidenceQuality(line.strength)}</span></span></td>
+            </tr>
+            {expanded ? <tr className={styles.evidenceExpandedRow} id={`evidence-${line.groupId}`}><td colSpan={5}>
+              <div className={styles.evidenceDetails}><dl className={styles.evidenceDetailsMetrics}>
+                <div><dt>Индекс совпадения <InfoTooltip label="Числовой индекс совпадения" content="Эвристический индекс качества отдельного совпадения для ранжирования. Не является вероятностью присутствия элемента." /></dt><dd>{formatDecimal(line.quality, 2)}</dd></div>
+                <div><dt>Тип длины</dt><dd>{formatWavelengthOrigin(line.wavelengthType)}</dd></div>
+                <div><dt>Среда</dt><dd>{formatWavelengthMedium(line.wavelengthMedium)}</dd></div>
+                <div><dt>Каналы наблюдений</dt><dd>{line.observations.map((observation) => analysis.channels.find((item) => item.id === observation.channelId)?.name ?? observation.channelId).join(", ")}</dd></div>
+                <div><dt>Альтернативные элементы</dt><dd>{alternatives.length ? alternatives.join(", ") : "Нет"}</dd></div>
+                <div><dt>Линий в группе</dt><dd>{line.memberLineIds.length}</dd></div>
+              </dl>
+              <div className={styles.evidenceDetailsActions}><Button size="compact" onClick={(event) => { recordTrigger.current = event.currentTarget; setRecordLine(line); }}>Справочные линии · {line.memberLineIds.length}</Button></div></div>
+            </td></tr> : null}
+          </Fragment>;
+        })}</tbody>
+      </table>
+    </div>}
+    <ReferenceRecordDialog lineIds={recordLine?.memberLineIds} title={recordLine ? `Справочные линии · ${formatEvidenceLabel(recordLine)} · ${formatGroupWavelength(recordLine)}` : undefined} onClose={() => setRecordLine(null)} restoreFocus={() => recordTrigger.current?.focus()} />
+  </>;
 }
 
 export function LibraryAnalysisPage() {
@@ -880,26 +814,14 @@ function formatCalibrationReason(reason: WorkingAnalysis["channels"][number]["wa
   return labels[reason];
 }
 
-function formatMetricRange(values: readonly number[], maximumFractionDigits: number): string {
-  const finiteValues = values.filter(Number.isFinite);
-  if (!finiteValues.length) return "∞";
-  const minimum = Math.min(...finiteValues);
-  const maximum = Math.max(...finiteValues);
-  if (values.some((value) => value === Number.POSITIVE_INFINITY)) {
-    return `${formatDecimal(minimum, maximumFractionDigits)}–∞`;
-  }
-  return minimum === maximum
-    ? formatDecimal(minimum, maximumFractionDigits)
-    : `${formatDecimal(minimum, maximumFractionDigits)}–${formatDecimal(maximum, maximumFractionDigits)}`;
-}
-
 function AnalysisPage({
   title,
   children,
   showAnalysisModes = title === "Анализ",
   action,
   summary,
-}: Readonly<{ title: string; children: ReactNode; showAnalysisModes?: boolean; action?: ReactNode; summary?: string }>) {
+  peakLayout = false,
+}: Readonly<{ peakLayout?: boolean; title: string; children: ReactNode; showAnalysisModes?: boolean; action?: ReactNode; summary?: string }>) {
   const { analysisView, calculationStatus, parameterError, setAnalysisView } = useAnalysisWorkspace();
   const status = calculationStatus === "calculating"
     ? <Tag tone="info">Обновляем анализ…</Tag>
@@ -908,7 +830,7 @@ function AnalysisPage({
       : null;
 
   return (
-    <div className={styles.page} aria-busy={calculationStatus === "calculating"}>
+    <div className={`${styles.page} ${title === "Данные" ? styles.dataPage : ""} ${peakLayout ? styles.peakPage : ""} ${showAnalysisModes && analysisView === "composition" ? styles.compositionPage : ""}`} aria-busy={calculationStatus === "calculating"}>
       <header className={styles.pageHeader}>
         <div>
           <h1>{title}</h1>
@@ -918,8 +840,8 @@ function AnalysisPage({
       </header>
       {showAnalysisModes ? (
         <div className={styles.analysisModeTabs} role="tablist" aria-label="Режим анализа">
-          <button type="button" role="tab" aria-selected={analysisView === "composition"} onClick={() => setAnalysisView("composition")}>Состав</button>
-          <button type="button" role="tab" aria-selected={analysisView === "peaks"} onClick={() => setAnalysisView("peaks")}>Все пики</button>
+          <Button variant="ghost" type="button" role="tab" aria-selected={analysisView === "peaks"} onClick={() => setAnalysisView("peaks")}>Спектр и пики</Button>
+          <Button variant="ghost" type="button" role="tab" aria-selected={analysisView === "composition"} onClick={() => setAnalysisView("composition")}>Интерпретация</Button>
         </div>
       ) : null}
       <div className={calculationStatus === "calculating" ? styles.analysisUpdating : styles.analysisCurrent}>
@@ -945,39 +867,28 @@ function AnalysisUnavailable({ section }: Readonly<{ section: string }>) {
       <Database size={28} aria-hidden="true" />
       <h1>{section}</h1>
       <p>Сначала откройте свой файл или образец NASA PDS в разделе «Данные».</p>
-      <Link className={styles.secondaryButton} href="/data">
+      <Button asChild className={styles.unavailableAction}><Link href="/data">
         Перейти к данным
-      </Link>
+      </Link></Button>
     </section>
   );
 }
 
 function Card({
+  className,
   title,
   accessory,
+  description,
   children,
-}: Readonly<{ title: ReactNode; accessory?: ReactNode; children: ReactNode }>) {
+}: Readonly<{ className?: string; title: ReactNode; accessory?: ReactNode; description?: ReactNode; children: ReactNode }>) {
   return (
-    <section className={styles.card}>
+    <section className={[styles.card, className].filter(Boolean).join(" ")}>
       <header className={styles.cardHeader}>
-        <h2>{title}</h2>
+        <div className={styles.cardHeading}><h2>{title}</h2>{description ? <p>{description}</p> : null}</div>
         {accessory}
       </header>
       {children}
     </section>
-  );
-}
-
-function MetricGrid({ children }: Readonly<{ children: ReactNode }>) {
-  return <div className={styles.metricGrid}>{children}</div>;
-}
-
-function Metric({ label, value }: Readonly<{ label: string; value: string }>) {
-  return (
-    <div className={styles.metric}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
   );
 }
 
@@ -998,10 +909,12 @@ function PeakTable({
   peaks,
   selectedPeakId,
   onPeakSelect,
+  onPeakPreview,
 }: Readonly<{
   peaks: readonly AnalyzedPeak[];
   selectedPeakId: string | null;
   onPeakSelect: (peakId: string) => void;
+  onPeakPreview: (peakId: string | null) => void;
 }>) {
   const table = useTable({
     data: peaks,
@@ -1011,12 +924,25 @@ function PeakTable({
     enableSortingRemoval: false,
   });
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const orderedIds = table.getRowModel().rows.map((row) => row.id).join("|");
+  useEffect(() => {
+    const container = containerRef.current;
+    const row = container?.querySelector<HTMLElement>('tr[aria-selected="true"]');
+    if (!container || !row) return;
+    const bounds = container.getBoundingClientRect();
+    const rowBounds = row.getBoundingClientRect();
+    const headerHeight = container.querySelector("thead")?.getBoundingClientRect().height ?? 0;
+    if (rowBounds.top < bounds.top + headerHeight) container.scrollTop += rowBounds.top - bounds.top - headerHeight;
+    else if (rowBounds.bottom > bounds.bottom) container.scrollTop += rowBounds.bottom - bounds.bottom;
+  }, [orderedIds, selectedPeakId]);
+
   if (!peaks.length) {
     return <InlineEmptyState>При текущих параметрах пики не обнаружены.</InlineEmptyState>;
   }
 
   return (
-    <div className={styles.tableScroll}>
+    <div ref={containerRef} className={`${styles.tableScroll} ${styles.peakTableScroll}`}>
       <table className={styles.table}>
         <thead>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -1031,14 +957,14 @@ function PeakTable({
                       : undefined}
                 >
                   {header.isPlaceholder ? null : header.column.getCanSort() ? (
-                    <button
+                    <Button size="compact" variant="ghost"
                       type="button"
                       className={styles.sortableHeader}
                       onClick={header.column.getToggleSortingHandler()}
                     >
                       <table.FlexRender header={header} />
                       <span aria-hidden="true">{header.column.getIsSorted() === "asc" ? "↑" : header.column.getIsSorted() === "desc" ? "↓" : "↕"}</span>
-                    </button>
+                    </Button>
                   ) : <table.FlexRender header={header} />}
                 </th>
               ))}
@@ -1055,6 +981,10 @@ function PeakTable({
               className={`${styles.selectableRow} ${peak.id === selectedPeakId ? styles.selectableRowSelected : ""}`}
               aria-selected={peak.id === selectedPeakId}
               tabIndex={0}
+              onMouseEnter={() => onPeakPreview(peak.id)}
+              onMouseLeave={() => onPeakPreview(null)}
+              onFocus={() => onPeakPreview(peak.id)}
+              onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) onPeakPreview(null); }}
               onClick={() => onPeakSelect(peak.id)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") {
@@ -1082,21 +1012,10 @@ const peakTableFeatures = tableFeatures({
 const peakColumnHelper = createColumnHelper<typeof peakTableFeatures, AnalyzedPeak>();
 const peakTableColumns = peakColumnHelper.columns([
   peakColumnHelper.display({ id: "number", header: "№", cell: ({ row }) => row.index + 1 }),
-  peakColumnHelper.accessor("wavelength", { header: "Длина волны", cell: ({ row }) => <code>{formatDecimal(row.original.wavelength, 2)} нм</code> }),
+  peakColumnHelper.accessor("wavelength", { header: "Длина волны", cell: ({ row }) => <code>{formatDecimal(row.original.wavelength, 3)} нм</code> }),
   peakColumnHelper.accessor("intensity", { header: "Интенсивность", cell: ({ row }) => <code>{formatDecimal(row.original.intensity, 3)}</code> }),
-  peakColumnHelper.display({
-    id: "nearest-line",
-    header: () => (
-      <span className={styles.tableHeaderWithInfo}>
-        Ближайшая линия
-        <InfoTooltip label="Ближайшая линия" content="Геометрически ближайшая справочная линия, а не итоговое назначение." />
-      </span>
-    ),
-    cell: ({ row }) => row.original.match
-      ? `${formatCandidateLabel(row.original.match)} · ${formatDecimal(row.original.match.line, 2)} нм`
-      : "Не найдено",
-  }),
-  peakColumnHelper.display({ id: "delta", header: "Отклонение", cell: ({ row }) => <code>{row.original.match ? `${formatSignedDelta(row.original.match.delta)} нм` : "—"}</code> }),
+  peakColumnHelper.accessor("widthNm", { header: "Ширина, нм", cell: ({ row }) => <code>{formatDecimal(row.original.widthNm, 3)}</code> }),
+  peakColumnHelper.display({ id: "assignment", header: "Назначение", cell: ({ row }) => <PeakAssignment peakId={row.original.id} /> }),
   peakColumnHelper.accessor("snr", { header: "SNR", cell: ({ row }) => <code>{Number.isFinite(row.original.snr) ? formatDecimal(row.original.snr, 2) : "∞"}</code> }),
 ]);
 
@@ -1122,22 +1041,15 @@ function ChannelPicker({
 }>) {
   return (
     <label className={styles.channelPicker} htmlFor={id}>
-      <span>Канал</span>
-      <select id={id} aria-label={label} value={value} onChange={(event) => onChange(event.target.value)}>
-        {channels.map((channel) => <option key={channel.id} value={channel.id}>{channel.name}</option>)}
-      </select>
+      <Select id={id} aria-label={label} value={value} onValueChange={(value) => onChange(value)}>
+        {channels.map((channel) => <SelectItem key={channel.id} value={channel.id}>{channel.name}</SelectItem>)}
+      </Select>
     </label>
   );
 }
 
 function formatSignedDelta(delta: number): string {
   return formatSignedDecimal(delta, 3);
-}
-
-function formatCandidateLabel(candidate: SpectralLineCandidate): string {
-  return candidate.ionizationLabel
-    ? `${candidate.elementSymbol} ${candidate.ionizationLabel}`
-    : candidate.elementSymbol;
 }
 
 function formatEvidenceLabel(line: AnalysisEvidenceLine): string {
@@ -1159,11 +1071,6 @@ function toRoman(stage: number): string {
   return numerals[stage] ?? String(stage);
 }
 
-function formatReasonValue(code: string, value: number): string {
-  if (code === "wavelength-agreement") return `${formatDecimal(value, 3)} нм`;
-  return Number.isInteger(value) ? String(value) : formatDecimal(value, 2);
-}
-
 function formatWavelengthOrigin(origin: "observed" | "ritz"): string {
   return origin === "observed" ? "наблюдаемая" : "Ritz";
 }
@@ -1172,6 +1079,49 @@ function formatWavelengthMedium(medium: "air" | "vacuum"): string {
   return medium === "air" ? "воздух" : "вакуум";
 }
 
+function formatMeasuredValue(value: number): string {
+  return Number.isFinite(value) ? formatDecimal(value, 2) : value === Infinity ? "∞" : "Не определено";
+}
+
 function formatNumber(value: number): string {
   return Number.isInteger(value) ? String(value) : formatDecimal(value, 2);
+}
+
+function PeakAssignment({ peakId }: Readonly<{ peakId: string }>) {
+  const { analysis, selectPeak } = useAnalysisWorkspace();
+  const { setTab } = usePeakInspectorUi();
+  const assigned = analysis?.hypotheses.filter((hypothesis) => hypothesis.evidence.some((group) => group.observations.some((item) => item.peakId === peakId)));
+  return assigned?.length ? <Button variant="text" size="compact" className={styles.assignmentLink} aria-label={`Соответствия пика: ${assigned.map((item) => item.symbol).join(", ")}`} onClick={(event) => { event.stopPropagation(); setTab("matches"); selectPeak(peakId); }}>{assigned.map((item) => item.symbol).join(", ")}</Button> : "—";
+}
+
+function CompactInterpretation({ analysis }: Readonly<{ analysis: WorkingAnalysis }>) {
+  const { setAnalysisView } = useAnalysisWorkspace();
+  const labels = [...analysis.hypotheses.map((item) => item.symbol), ...analysis.molecularHypotheses.map((item) => item.formula)];
+  return <section className={styles.compactInterpretation} aria-label="Краткая интерпретация"><div className={styles.compactInterpretationCopy}><strong>Интерпретация</strong> · {labels.length ? labels.join(", ") : "Принятых гипотез нет"}{resolveCompositionSettings(analysis.parameters.composition).elementMode !== "all" || resolveCompositionSettings(analysis.parameters.composition).mode !== "standard" ? <small className={styles.settingHint}>{describeCompositionSettings(analysis.parameters.composition)}</small> : null}</div><Button variant="text" size="compact" onClick={() => setAnalysisView("composition")}>Доказательства</Button></section>;
+}
+
+function AnalysisExportMenu({ analysis, channelId }: Readonly<{ analysis: WorkingAnalysis; channelId: string }>) {
+  const channel = analysis.channels.find((item) => item.id === channelId)!;
+  const download = (kind: "peaks" | "spectrum" | "analysis") => {
+    const content = kind === "peaks" ? createPeaksCsv(channel) : kind === "spectrum" ? createSpectrumCsv(channel) : createAnalysisExport(analysis);
+    const url = URL.createObjectURL(new Blob([content], { type: kind === "analysis" ? "application/json;charset=utf-8" : "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${analysis.source.fileName}-${channelId}-${kind}.${kind === "analysis" ? "json" : "csv"}`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  return <DropdownMenu.Root>
+    <DropdownMenu.Trigger asChild><Button aria-label="Экспорт результатов">
+      <Download size={16} aria-hidden="true" /><span>Экспорт</span><ChevronDown size={14} aria-hidden="true" />
+    </Button></DropdownMenu.Trigger>
+    <DropdownMenu.Portal>
+      <DropdownMenu.Content className={menuStyles.content} align="end" sideOffset={6} collisionPadding={12}>
+        <DropdownMenu.Item className={menuStyles.item} onSelect={() => download("peaks")}><span>Таблица пиков</span><span className={menuStyles.metadata}>CSV</span></DropdownMenu.Item>
+        <DropdownMenu.Item className={menuStyles.item} onSelect={() => download("spectrum")}><span>Подготовленный спектр</span><span className={menuStyles.metadata}>CSV</span></DropdownMenu.Item>
+        <DropdownMenu.Separator className={menuStyles.separator} />
+        <DropdownMenu.Item className={menuStyles.item} onSelect={() => download("analysis")}><span>Все результаты и параметры</span><span className={menuStyles.metadata}>JSON</span></DropdownMenu.Item>
+      </DropdownMenu.Content>
+    </DropdownMenu.Portal>
+  </DropdownMenu.Root>;
 }

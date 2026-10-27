@@ -4,6 +4,7 @@ import { createSpectralLibraryWavelengthIndex, type SpectralLibraryWavelengthInd
 import { identifyMolecularSystems } from "@/domain/molecular-spectrum/identification";
 import type { MolecularSystemDefinition } from "@/domain/molecular-spectrum/types";
 
+import { restrictAnalysisRange } from "./analysis-range";
 import { segmentSpectrumChannel } from "./channel-segmentation";
 import { validateDataset } from "./dataset";
 import { buildElementHypotheses } from "./identification";
@@ -65,7 +66,7 @@ export function runInteractiveSpectrumAnalysis(
     : [{ id: "channel-1", name: "Канал 1", dataset: input }];
   validateChannels(sourceChannelInputs);
   sourceChannelInputs.forEach((channel) => validateDataset(channel.dataset));
-  const channelInputs = sourceChannelInputs.flatMap(segmentSpectrumChannel);
+  const channelInputs = sourceChannelInputs.flatMap(segmentSpectrumChannel).flatMap((channel) => restrictAnalysisRange(channel, (channel.parameters ?? parameters).processing));
   validateChannels(channelInputs);
   const libraryIndex = Array.isArray(library)
     ? createSpectralLibraryWavelengthIndex(library)
@@ -227,6 +228,8 @@ export function runInteractiveSpectrumAnalysis(
 }
 
 export function validateInteractiveAnalysisParameters(parameters: InteractiveAnalysisParameters): void {
+  const range = parameters.processing.analysisRange;
+  if (range && (!Number.isFinite(range.minimum) || !Number.isFinite(range.maximum) || range.minimum >= range.maximum)) throw new Error("Начало диапазона анализа должно быть меньше конца; границы должны быть конечными числами.");
   resolveCompositionSettings(parameters.composition);
   validateProcessingParameters(parameters.processing);
   validatePeakSearchParameters(parameters.peakSearch);

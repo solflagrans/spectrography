@@ -1,26 +1,4 @@
-.trigger {
-  display: inline-grid;
-  width: 1.5rem;
-  height: 1.5rem;
-  flex: 0 0 auto;
-  place-items: center;
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-full);
-  background: transparent;
-  color: var(--color-text-secondary);
-  cursor: help;
-}
-
-.trigger:hover {
-  background: var(--color-background-canvas);
-  color: var(--color-text-primary);
-}
-
-.trigger:focus-visible {
-  outline: 2px solid var(--color-action-primary);
-  outline-offset: 1px;
-}
+.trigger { flex: 0 0 auto; }
 
 .content {
   z-index: 100;

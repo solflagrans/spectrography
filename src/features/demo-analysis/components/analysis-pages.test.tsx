@@ -2,6 +2,7 @@
 
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ComponentProps } from "react";
 
 import {
   AnalysisWorkspaceProvider,
@@ -23,6 +24,11 @@ import {
   ProcessingAnalysisPage,
 } from "./analysis-pages";
 
+vi.mock("@/components/ui/select", () => ({
+  Select: ({ onValueChange, ...props }: ComponentProps<"select"> & { onValueChange: (value: string) => void }) => <select {...props} onChange={(event) => onValueChange(event.target.value)} />,
+  SelectItem: (props: ComponentProps<"option">) => <option {...props} />,
+}));
+
 const navigationMock = vi.hoisted(() => ({ push: vi.fn() }));
 
 vi.mock("next/navigation", () => ({ useRouter: () => navigationMock }));
@@ -34,6 +40,7 @@ vi.mock("./lazy-spectrum-chart", () => ({
     label: string;
     peaks?: readonly { id: string; wavelength: number }[];
     selectedPeakId?: string | null;
+    hoveredPeakId?: string | null;
     onPeakSelect?: (peakId: string) => void;
     sourceKey?: string;
     referenceLines?: readonly unknown[];
@@ -44,6 +51,7 @@ vi.mock("./lazy-spectrum-chart", () => ({
       data-layer-controls={String(props.showLayerControls ?? true)}
       data-has-prepared={String(Boolean(props.preparedDataset))}
       data-selected-peak={props.selectedPeakId ?? ""}
+      data-hovered-peak={props.hoveredPeakId ?? ""}
       data-source-key={props.sourceKey ?? ""}
       data-reference-count={String(props.referenceLines?.length ?? 0)}
       data-missing-reference-count={String(props.missingReferenceLines?.length ?? 0)}
@@ -186,11 +194,11 @@ describe("interactive demo analysis", () => {
     render(<ProcessingSettingsScenario />);
 
     expect(screen.getByRole("switch", { name: "Автоматически уточнять шкалу" })).toBeTruthy();
-    expect(screen.getByRole("spinbutton", { name: "Окно оценки шума" })).toBeTruthy();
+    expect(screen.getByRole("spinbutton", { name: "Окно" })).toBeTruthy();
     expect(screen.queryByRole("spinbutton", { name: /MAD первых разностей/ })).toBeNull();
     expect(screen.getByText("Гладкость базовой линии")).toBeTruthy();
-    expect(screen.getByText("Окно сглаживания")).toBeTruthy();
-    expect(screen.getByText("Масштаб интенсивности")).toBeTruthy();
+    expect(screen.getByText("Сглаживание")).toBeTruthy();
+    expect(screen.getByText("Нормализация")).toBeTruthy();
     expect(screen.getByRole("option", { name: "К максимуму (0–1)" })).toBeTruthy();
     expect(screen.getByRole("option", { name: "Не нормировать" })).toBeTruthy();
   });
@@ -198,9 +206,9 @@ describe("interactive demo analysis", () => {
   it("shows one unit for the complete peak-width range", () => {
     render(<PeakSelectionScenario />);
 
-    const widthRange = screen.getByRole("group", { name: "Ширина пика" });
-    expect(within(widthRange).getByRole("spinbutton", { name: "Ширина пика, от" })).toBeTruthy();
-    expect(within(widthRange).getByRole("spinbutton", { name: "Ширина пика, до" })).toBeTruthy();
+    const widthRange = screen.getByRole("group", { name: "Ширина на половине выраженности" });
+    expect(within(widthRange).getByRole("spinbutton", { name: "Ширина на половине выраженности, от" })).toBeTruthy();
+    expect(within(widthRange).getByRole("spinbutton", { name: "Ширина на половине выраженности, до" })).toBeTruthy();
     expect(within(widthRange).getAllByText("нм")).toHaveLength(1);
   });
 
@@ -335,8 +343,13 @@ describe("interactive demo analysis", () => {
     await waitFor(() => expect(screen.getByTestId("file-name").textContent).toBe("instrument.Raw8"));
     expect(screen.getByTestId("point-count").textContent).toBe("4");
     expect(screen.getByText("RAW8")).toBeTruthy();
+    expect(screen.queryByText("2107079U2")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Подробности импорта" }));
+    expect(screen.getByRole("dialog", { name: "Подробности импорта" })).toBeTruthy();
     expect(screen.getByText("2107079U2")).toBeTruthy();
     expect(screen.getByText("4 мс")).toBeTruthy();
+    expect(screen.getByText("Массив dark")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Закрыть подробности импорта" }));
     expect(screen.getByText("нм / отсчёты прибора")).toBeTruthy();
     expect(screen.queryByText("Проверка целостности")).toBeNull();
     const dataChart = screen.getAllByTestId("spectrum-chart")[0];
@@ -348,7 +361,7 @@ describe("interactive demo analysis", () => {
     render(<PeakSelectionScenario />);
     await openDemoAnalysis();
 
-    expect(screen.getByText(/Выберите пик на графике или в таблице/)).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Выберите пик" })).toBeTruthy();
 
     const graphButtons = screen.getAllByRole("button", { name: /График: выбрать пик/ });
     fireEvent.click(graphButtons[0]);
@@ -356,9 +369,9 @@ describe("interactive demo analysis", () => {
     const selectedId = screen.getByTestId("selected-peak").textContent;
     expect(selectedId).not.toBe("—");
     expect(screen.getByRole("region", { name: "Инспектор пика" })).toBeTruthy();
-    expect(screen.getByText("Длина")).toBeTruthy();
-    expect(screen.getByText("Ширина")).toBeTruthy();
-    expect(screen.getByText("Параметры пика")).toBeTruthy();
+    expect(screen.getByText("Неопределённость положения · нм")).toBeTruthy();
+    expect(screen.getByText("Ширина · нм")).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Параметры" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.queryByText("Ближайшая по длине волны")).toBeNull();
 
     const chart = screen.getByRole("img", { name: "Подготовленный спектр с отмеченными пиками" });
@@ -367,22 +380,63 @@ describe("interactive demo analysis", () => {
     expect(selectedRow?.getAttribute("data-peak-id")).toBe(selectedId);
 
     const selectableRows = [...document.querySelectorAll("tr[data-peak-id]")];
+    fireEvent.mouseEnter(selectableRows[1]);
+    expect(chart.getAttribute("data-hovered-peak")).toBe(selectableRows[1].getAttribute("data-peak-id"));
+    expect(chart.getAttribute("data-selected-peak")).toBe(selectedId);
+    fireEvent.mouseLeave(selectableRows[1]);
+    expect(chart.getAttribute("data-hovered-peak")).toBe("");
+    fireEvent.focus(selectableRows[1]);
+    expect(chart.getAttribute("data-hovered-peak")).toBe(selectableRows[1].getAttribute("data-peak-id"));
+    fireEvent.blur(selectableRows[1]);
+    expect(chart.getAttribute("data-hovered-peak")).toBe("");
     fireEvent.click(selectableRows[1]);
     const nextId = selectableRows[1].getAttribute("data-peak-id");
     expect(screen.getByTestId("selected-peak").textContent).toBe(nextId);
     expect(chart.getAttribute("data-selected-peak")).toBe(nextId);
     expect(selectableRows[1].getAttribute("aria-selected")).toBe("true");
-    expect(screen.getByRole("heading", { name: "Линии и назначения" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Соответствия" })).toBeTruthy();
 
     const snrSort = screen.getByRole("columnheader", { name: /SNR/ }).querySelector("button")!;
     fireEvent.click(snrSort);
     expect(snrSort.closest("th")?.getAttribute("aria-sort")).toMatch(/ascending|descending/);
   });
 
+  it("keeps inspector sections while navigating adjacent peaks", async () => {
+    render(<PeakSelectionScenario />);
+    await openDemoAnalysis();
+    fireEvent.click(screen.getAllByRole("button", { name: /График: выбрать пик/ })[0]);
+    expect(screen.getByRole("button", { name: "Предыдущий пик" }).hasAttribute("disabled")).toBe(true);
+    fireEvent.click(screen.getByRole("tab", { name: "Соответствия" }));
+    const firstId = screen.getByTestId("selected-peak").textContent;
+    fireEvent.click(screen.getByRole("button", { name: "Следующий пик" }));
+    expect(screen.getByTestId("selected-peak").textContent).not.toBe(firstId);
+    expect(screen.getByRole("tab", { name: "Соответствия" }).getAttribute("aria-selected")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Предыдущий пик" }));
+    expect(screen.getByTestId("selected-peak").textContent).toBe(firstId);
+  });
+
+  it("opens canonical reference records and returns to the same peak", async () => {
+    render(<PeakSelectionScenario />);
+    await openDemoAnalysis();
+    fireEvent.click(screen.getAllByRole("button", { name: /График: выбрать пик/ })[0]);
+    const selected = screen.getByTestId("selected-peak").textContent;
+    fireEvent.click(screen.getByRole("tab", { name: "Соответствия" }));
+    const group = document.querySelector<HTMLElement>("[data-candidate-group]")!;
+    fireEvent.click(group.querySelector("summary")!);
+    fireEvent.click(within(group).getByRole("button", { name: /Справочная запись/ }));
+    const dialog = screen.getByRole("dialog");
+    await waitFor(() => expect(within(dialog).getByText("Источник: NIST ASD")).toBeTruthy(), { timeout: 15000 });
+    expect(within(dialog).getAllByText("Идентификатор").length).toBeGreaterThan(0);
+    fireEvent.click(within(dialog).getByRole("button", { name: "Закрыть справочную запись" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByTestId("selected-peak").textContent).toBe(selected);
+  }, 20000);
+
   it("distinguishes assignments from the nearest candidate and keeps the compact list bounded", async () => {
     render(<PeakSelectionScenario />);
     await openDemoAnalysis();
     fireEvent.click(screen.getAllByRole("button", { name: /График: выбрать пик/ })[0]);
+    fireEvent.click(screen.getByRole("tab", { name: "Соответствия" }));
 
     expect(screen.getByRole("heading", { name: "Ближайшая линия" })).toBeTruthy();
     expect(screen.queryByText(/не итоговая идентификация/)).toBeNull();
@@ -400,12 +454,13 @@ describe("interactive demo analysis", () => {
     render(<PeakSelectionScenario />);
     await openDemoAnalysis();
     fireEvent.click(screen.getAllByRole("button", { name: /График: выбрать пик/ })[0]);
+    fireEvent.click(screen.getByRole("tab", { name: "Соответствия" }));
 
-    const showAll = screen.getByRole("button", { name: /Все кандидаты \(\d+\)/ });
+    const showAll = screen.getByRole("button", { name: /Все соответствия · \d+/ });
     expect(showAll.getAttribute("aria-expanded")).toBe("false");
     fireEvent.click(showAll);
-    expect(screen.getByRole("heading", { name: "Все кандидаты" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Свернуть" }).getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("heading", { name: "Все соответствия" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Все соответствия · \d+/ }).getAttribute("aria-expanded")).toBe("true");
 
     const search = screen.getByLabelText("Поиск кандидата по названию элемента или символу");
     fireEvent.change(search, { target: { value: "Железо" } });
@@ -422,9 +477,9 @@ describe("interactive demo analysis", () => {
 
     fireEvent.change(search, { target: { value: "несуществующий элемент" } });
     expect(screen.getByText("По выбранным условиям кандидаты не найдены.")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Свернуть" }));
+    fireEvent.click(screen.getByRole("button", { name: /Все соответствия · \d+/ }));
     expect(screen.getByRole("heading", { name: "Альтернативы" })).toBeTruthy();
-    expect(screen.queryByRole("heading", { name: "Все кандидаты" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Все соответствия" })).toBeNull();
   });
 
   it("preserves a selected source point when it remains a peak and resets it otherwise", async () => {
@@ -434,7 +489,8 @@ describe("interactive demo analysis", () => {
     fireEvent.click(screen.getAllByRole("button", { name: /График: выбрать пик/ })[0]);
     const selectedId = screen.getByTestId("selected-peak").textContent;
 
-    fireEvent.change(screen.getByRole("slider", { name: "Минимальный SNR" }), { target: { value: "5.5" } });
+    fireEvent.change(screen.getByRole("slider", { name: "Минимальное отношение сигнал/шум" }), { target: { value: "5.5" } });
+    fireEvent.pointerUp(screen.getByRole("slider", { name: "Минимальное отношение сигнал/шум" }));
     await act(async () => vi.advanceTimersByTime(181));
     expect(screen.getByTestId("selected-peak").textContent).toBe(selectedId);
 
@@ -465,14 +521,21 @@ describe("interactive demo analysis", () => {
     render(<IdentificationScenario />);
     await openDemoAnalysis();
 
-    const diagnosticDetails = screen.getByText(/^Возможные совпадения ·/).closest("details")!;
+    const diagnosticDetails = screen.getByText(/^Другие совпадения ·/).closest("details")!;
     diagnosticDetails.open = true;
     fireEvent(diagnosticDetails, new Event("toggle"));
-    expect(screen.getByTestId("identification-tab").textContent).toBe("diagnostics");
+    expect(diagnosticDetails.open).toBe(true);
+    expect(screen.getByTestId("identification-tab").textContent).toBe("hypotheses");
+    const mainSelection = screen.getByTestId("selected-hypothesis").textContent;
+    diagnosticDetails.open = false;
+    fireEvent(diagnosticDetails, new Event("toggle"));
+    diagnosticDetails.open = true;
+    fireEvent(diagnosticDetails, new Event("toggle"));
+    expect(screen.getByTestId("selected-hypothesis").textContent).toBe(mainSelection);
     expect(document.querySelector('[role="option"][aria-selected="true"]')).toBeTruthy();
 
     fireEvent.click(screen.getByRole("option", { name: /N.*Азот/ }));
-    expect(screen.getByRole("heading", { level: 2, name: "Азот (N)" })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 2, name: "Азот · N" })).toBeTruthy();
     expect(screen.getAllByText("Не отличается от случайного согласования").length).toBeGreaterThan(0);
 
     fireEvent.change(screen.getByLabelText("Поиск другого совпадения по элементу или символу"), { target: { value: "Азот" } });
@@ -490,13 +553,14 @@ describe("interactive demo analysis", () => {
     vi.useFakeTimers();
     render(<IdentificationScenario />);
     await openDemoAnalysis();
-    const diagnosticDetails = screen.getByText(/^Возможные совпадения ·/).closest("details")!;
+    const diagnosticDetails = screen.getByText(/^Другие совпадения ·/).closest("details")!;
     diagnosticDetails.open = true;
     fireEvent(diagnosticDetails, new Event("toggle"));
     fireEvent.click(screen.getByRole("option", { name: /N.*Азот/ }));
     const selectedHypothesis = screen.getByTestId("selected-hypothesis").textContent;
 
-    fireEvent.change(screen.getByRole("slider", { name: "Минимальный SNR" }), { target: { value: "5.5" } });
+    fireEvent.change(screen.getByRole("slider", { name: "Минимальное отношение сигнал/шум" }), { target: { value: "5.5" } });
+    fireEvent.pointerUp(screen.getByRole("slider", { name: "Минимальное отношение сигнал/шум" }));
     await act(async () => vi.advanceTimersByTime(181));
     expect(screen.getByTestId("selected-hypothesis").textContent).toBe(selectedHypothesis);
 
@@ -510,7 +574,7 @@ describe("interactive demo analysis", () => {
   it("opens a supporting observation and carries the selected peak to the peak mode", async () => {
     render(<IdentificationScenario />);
     await openDemoAnalysis();
-    const diagnosticDetails = screen.getByText(/^Возможные совпадения ·/).closest("details")!;
+    const diagnosticDetails = screen.getByText(/^Другие совпадения ·/).closest("details")!;
     diagnosticDetails.open = true;
     fireEvent(diagnosticDetails, new Event("toggle"));
     fireEvent.click(screen.getByRole("option", { name: /N.*Азот/ }));
@@ -519,10 +583,8 @@ describe("interactive demo analysis", () => {
     expect(Number(chart.getAttribute("data-reference-count"))).toBeGreaterThanOrEqual(0);
     expect(Number(chart.getAttribute("data-missing-reference-count"))).toBeGreaterThanOrEqual(0);
 
-    const technicalDetails = screen.getByText("Доказательства и показатели").closest("details")!;
-    technicalDetails.open = true;
-    fireEvent(technicalDetails, new Event("toggle"));
-    fireEvent.click(technicalDetails.querySelector('tr[tabindex="0"]')!);
+    fireEvent.click(screen.getByRole("button", { name: /^Все совпадения ·/ }));
+    fireEvent.click(document.querySelector('tr[data-evidence-row][tabindex="0"]')!);
     expect(screen.getByTestId("selected-peak").textContent).not.toBe("—");
     expect(screen.getByTestId("analysis-view").textContent).toBe("peaks");
   });
@@ -531,6 +593,7 @@ describe("interactive demo analysis", () => {
     render(<PeakSelectionScenario />);
     await openDemoAnalysis();
     fireEvent.click(screen.getAllByRole("button", { name: /График: выбрать пик/ })[0]);
+    fireEvent.click(screen.getByRole("tab", { name: "Соответствия" }));
     fireEvent.click(document.querySelector("[data-candidate-group] button")!);
 
     expect(screen.getByTestId("selected-hypothesis").textContent).not.toBe("—");
@@ -540,11 +603,12 @@ describe("interactive demo analysis", () => {
   it("preserves the selected peak through the full list, filtering, hypothesis and return flow", async () => {
     render(<EndToEndScenario />);
     await openDemoAnalysis();
-    fireEvent.click(screen.getByRole("tab", { name: "Все пики" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Спектр и пики" }));
     fireEvent.click(document.querySelector("tr[data-peak-id]")!);
+    fireEvent.click(screen.getByRole("tab", { name: "Соответствия" }));
     const selectedPeak = screen.getByTestId("selected-peak").textContent;
 
-    fireEvent.click(screen.getByRole("button", { name: /Все кандидаты \(\d+\)/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Все соответствия · \d+/ }));
     fireEvent.change(screen.getByLabelText("Поиск кандидата по названию элемента или символу"), {
       target: { value: "N" },
     });
@@ -555,7 +619,7 @@ describe("interactive demo analysis", () => {
 
     expect(screen.getByTestId("analysis-view").textContent).toBe("composition");
     expect(screen.getByTestId("selected-peak").textContent).toBe(selectedPeak);
-    fireEvent.click(screen.getByRole("tab", { name: "Все пики" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Спектр и пики" }));
     expect(screen.getByTestId("selected-peak").textContent).toBe(selectedPeak);
     expect(document.querySelector('tr[aria-selected="true"]')?.getAttribute("data-peak-id")).toBe(selectedPeak);
   });
@@ -577,32 +641,48 @@ describe("interactive demo analysis", () => {
     expect((spectrumTypeField as HTMLSelectElement).value).toBe("plasma-emission");
     expect(within(spectrumTypeField).getAllByRole("option")).toHaveLength(1);
 
+    fireEvent.click(screen.getByRole("tab", { name: "Интерпретация" }));
     const composition = screen.getByRole("listbox", { name: "Состав" });
     const mainChoice = within(composition).getAllByRole("option")[0];
     fireEvent.click(mainChoice);
     expect(screen.getByTestId("selected-hypothesis").textContent).not.toBe("—");
 
-    const technical = screen.queryByText("Доказательства и показатели");
-    if (technical) {
-      const details = technical.closest("details")!;
-      details.open = true;
-      fireEvent(details, new Event("toggle"));
-      fireEvent.click(details.querySelector('tr[tabindex="0"]')!);
-      expect(screen.getByTestId("analysis-view").textContent).toBe("peaks");
-      expect(screen.getByTestId("selected-peak").textContent).not.toBe("—");
-    }
+    fireEvent.click(document.querySelector('tr[data-evidence-row][tabindex="0"]')!);
+    expect(screen.getByTestId("analysis-view").textContent).toBe("peaks");
+    expect(screen.getByTestId("selected-peak").textContent).not.toBe("—");
   });
 
   it("uses a concise evidence summary without internal strength classes", async () => {
     render(<EndToEndScenario />);
     await openDemoAnalysis();
+    fireEvent.click(screen.getByRole("tab", { name: "Интерпретация" }));
 
-    expect(screen.getByRole("heading", { name: "Параметры измерения" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Каналы и характеристики" })).toBeTruthy();
     expect(screen.queryByText(/Ограниченное качество/i)).toBeNull();
     const conclusion = document.getElementById("analysis-conclusion-title")!.closest("section")!;
     expect(conclusion.textContent).toMatch(/Обнаружено:/);
-    expect(conclusion.textContent).toMatch(/характерн(ая|ые|ых) групп/);
+    expect(document.getElementById("selected-hypothesis-title")!.closest("section")!.textContent).toMatch(/характерн(ая|ые|ых) групп/);
     expect(conclusion.textContent).not.toMatch(/огранич|гипотез|не гарантирован/i);
+    expect(conclusion.textContent).not.toMatch(/молекулярн/i);
+    expect(screen.queryByText("Ключевые признаки")).toBeNull();
+    expect(screen.queryByText("Совпавшие группы")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Доказательства" })).toBeTruthy();
+    expect(screen.getByText("Подробности расчёта").closest("details")?.open).toBe(false);
+    const expanders = screen.getAllByRole("button", { name: /^Подробности группы/ });
+    const firstId = expanders[0].getAttribute("aria-controls")!;
+    expect(document.getElementById(firstId)).toBeNull();
+    fireEvent.click(expanders[0]);
+    expect(screen.getByTestId("analysis-view").textContent).toBe("composition");
+    expect(document.getElementById(firstId)?.textContent).toMatch(/Индекс совпадения/);
+    if (expanders.length > 1) {
+      fireEvent.click(expanders[1]);
+      expect(document.getElementById(firstId)).toBeNull();
+      expect(document.getElementById(expanders[1].getAttribute("aria-controls")!)).toBeTruthy();
+    }
+    expect(screen.queryByText(/Неподтверждённые молекулярные системы/)).toBeNull();
+    const molecularChecks = screen.getByRole("region", { name: "Проверка молекулярных систем", hidden: true });
+    expect(molecularChecks.closest("details")?.querySelector("summary")?.textContent).toBe("Проверки всего спектра");
+    expect(molecularChecks.textContent).toMatch(/Совпадение формы молекулярных полос не найдено/);
   });
 });
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { Info } from "lucide-react";
 import { createContext, useContext, useId, useState } from "react";
@@ -40,14 +42,14 @@ export function InfoTooltip({ content, label }: Readonly<{ content: ReactNode; l
   return (
     <Tooltip.Root open={open} onOpenChange={setOpen}>
       <Tooltip.Trigger asChild>
-        <button
+        <Button variant="ghost" size="hint"
           className={styles.trigger}
           type="button"
           aria-label={`Подсказка: ${label}`}
           onClick={() => setOpen(!open)}
         >
           <Info size={14} aria-hidden="true" />
-        </button>
+        </Button>
       </Tooltip.Trigger>
       <Tooltip.Portal>
         <Tooltip.Content className={styles.content} sideOffset={6} collisionPadding={8}>

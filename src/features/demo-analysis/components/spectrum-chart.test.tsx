@@ -9,6 +9,7 @@ import { SpectrumChart } from "./spectrum-chart";
 import {
   createSpectrumChartOption,
   formatSpectrumTooltip,
+  formatIntensityTick,
   FULL_SPECTRUM_ZOOM,
   preserveZoomForSource,
   readZoomRange,
@@ -119,7 +120,7 @@ afterEach(() => {
 describe("spectrum chart configuration", () => {
   it("builds only visible layers and links simultaneous signals to two labelled axes", () => {
     const option = createSpectrumChartOption(
-      { rawDataset, preparedDataset, peaks: [peak], selectedPeakId: peak.id, thresholdDataset },
+      { rawDataset, rawIntensityUnit: "отсчёты прибора", preparedDataset, peaks: [peak], selectedPeakId: peak.id, thresholdDataset },
       new Set(["raw", "prepared", "threshold", "peaks"]),
       palette,
       FULL_SPECTRUM_ZOOM,
@@ -134,7 +135,7 @@ describe("spectrum chart configuration", () => {
     }>;
 
     expect(axes.map((axis) => [axis.name, axis.position])).toEqual([
-      ["Исходные отсчёты", "left"],
+      ["Интенсивность, отсчёты прибора", "left"],
       ["Подготовленная интенсивность", "right"],
     ]);
     expect(series.map((item) => item.name)).toEqual([
@@ -234,7 +235,7 @@ describe("spectrum chart configuration", () => {
     );
 
     expect(tooltip).toContain("401,00 нм");
-    expect(tooltip).toContain("Исходные отсчёты: <strong>240,000</strong>");
+    expect(tooltip).toContain("Интенсивность: <strong>240,000</strong>");
     expect(tooltip).toContain("Подготовленная интенсивность: <strong>0,8000</strong>");
     expect(tooltip).toContain("Локальный порог: <strong>0,1500</strong>");
     expect(tooltip).toContain("Выраженность: <strong>0,6200</strong>");
@@ -262,6 +263,40 @@ describe("spectrum chart configuration", () => {
 });
 
 describe("SpectrumChart", () => {
+  it("retains independent layer choices for processing tabs and keeps zoom", () => {
+    const props = { rawDataset, preparedDataset, thresholdDataset, label: "Processing preview", sourceKey: "processing-layer-test" };
+    const { rerender } = render(<SpectrumChart {...props} layerViewKey="preparation" defaultVisibleLayers={["raw", "prepared"]} />);
+    fireEvent.click(screen.getByRole("button", { name: "Исходный" }));
+    act(() => echartsMock.events.get("datazoom")?.({ start: 20, end: 60 }));
+    rerender(<SpectrumChart {...props} layerViewKey="peaks" defaultVisibleLayers={["prepared", "threshold"]} />);
+    expect(screen.getByRole("button", { name: "Порог" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Исходный" }).getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(screen.getByRole("button", { name: "Порог" }));
+    rerender(<SpectrumChart {...props} layerViewKey="preparation" defaultVisibleLayers={["raw", "prepared"]} />);
+    expect(screen.getByRole("button", { name: "Исходный" }).getAttribute("aria-pressed")).toBe("false");
+    expect(screen.getByRole("button", { name: "Сбросить масштаб" })).toBeTruthy();
+    rerender(<SpectrumChart {...props} layerViewKey="peaks" defaultVisibleLayers={["prepared", "threshold"]} />);
+    expect(screen.getByRole("button", { name: "Порог" }).getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("previews a table peak without rebuilding the chart or changing selection and zoom", () => {
+    const props = { peaks: [peak], preparedDataset, selectedPeakId: peak.id, sourceKey: "hover-test", defaultVisibleLayers: ["prepared", "peaks"] as const, label: "Hover preview" };
+    const { rerender } = render(<SpectrumChart {...props} />);
+    const updates = echartsMock.chart.setOption.mock.calls.length;
+    rerender(<SpectrumChart {...props} hoveredPeakId={peak.id} />);
+    expect(echartsMock.chart.dispatchAction).toHaveBeenLastCalledWith({ type: "highlight", seriesId: "detected-peaks", dataIndex: 0 });
+    expect(echartsMock.chart.setOption.mock.calls.length).toBe(updates);
+    rerender(<SpectrumChart {...props} hoveredPeakId={null} />);
+    expect(echartsMock.chart.dispatchAction).toHaveBeenLastCalledWith({ type: "downplay", seriesId: "detected-peaks" });
+  });
+
+  it("formats intensity ticks compactly", () => {
+    expect(formatIntensityTick(250_000_000_000)).toBe("2.5e11");
+    expect(formatIntensityTick(0.00002)).toBe("2.0e-5");
+    expect(formatIntensityTick(0.5)).toBe("0.5");
+    expect(formatIntensityTick(0)).toBe("0");
+  });
+
   it("can keep a fixed layer while preserving zoom controls", () => {
     render(
       <SpectrumChart
@@ -338,7 +373,7 @@ describe("SpectrumChart", () => {
       start: 0,
       end: 100,
     });
-    expect(screen.queryByRole("button", { name: "Сбросить масштаб" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Сбросить масштаб" }).hasAttribute("disabled")).toBe(true);
 
     rerender(
       <SpectrumChart
@@ -356,6 +391,6 @@ describe("SpectrumChart", () => {
       dataZoom: Array<{ start: number; end: number }>;
     };
     expect(newSourceOption.dataZoom[0]).toMatchObject(FULL_SPECTRUM_ZOOM);
-    expect(screen.queryByRole("button", { name: "Сбросить масштаб" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Сбросить масштаб" }).hasAttribute("disabled")).toBe(true);
   });
 });

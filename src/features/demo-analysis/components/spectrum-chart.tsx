@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+
 import { LineChart, ScatterChart } from "echarts/charts";
 import {
   DataZoomInsideComponent,
@@ -47,14 +49,17 @@ registerCharts([
 const zoomRangesBySource = new Map<string, SpectrumZoomRange>();
 
 export interface SpectrumChartProps {
+  readonly rawIntensityUnit?: SpectrumChartData["rawIntensityUnit"];
   readonly rawDataset?: SpectrumDataset;
   readonly baselineDataset?: SpectrumDataset;
   readonly preparedDataset?: SpectrumDataset;
   readonly label: string;
   readonly sourceKey: string;
+  readonly layerViewKey?: string;
   readonly defaultVisibleLayers: readonly SpectrumChartLayer[];
   readonly peaks?: readonly AnalyzedPeak[];
   readonly selectedPeakId?: string | null;
+  readonly hoveredPeakId?: string | null;
   readonly onPeakSelect?: (peakId: string) => void;
   readonly thresholdDataset?: SpectrumDataset;
   readonly referenceLines?: readonly SpectrumReferenceLine[];
@@ -78,13 +83,16 @@ const layerLabels: Record<SpectrumChartLayer, string> = {
 
 export function SpectrumChart({
   rawDataset,
+  rawIntensityUnit,
   baselineDataset,
   preparedDataset,
   label,
   sourceKey,
   defaultVisibleLayers,
+  layerViewKey = "default",
   peaks,
   selectedPeakId,
+  hoveredPeakId,
   onPeakSelect,
   thresholdDataset,
   referenceLines,
@@ -100,12 +108,13 @@ export function SpectrumChart({
   const zoomRange = useRef<SpectrumZoomRange>(zoomRangesBySource.get(sourceKey) ?? FULL_SPECTRUM_ZOOM);
   const activeSourceKey = useRef(sourceKey);
   const onPeakSelectRef = useRef(onPeakSelect);
-  const [visibleLayers, setVisibleLayers] = useState<ReadonlySet<SpectrumChartLayer>>(
-    () => new Set(defaultVisibleLayers),
-  );
+  const [layerSelections, setLayerSelections] = useState<Readonly<Record<string, ReadonlySet<SpectrumChartLayer>>>>({});
+  const selectionKey = `${sourceKey}:${layerViewKey}`;
+  const visibleLayers = useMemo(() => layerSelections[selectionKey] ?? new Set(defaultVisibleLayers), [defaultVisibleLayers, layerSelections, selectionKey]);
   const [isZoomed, setIsZoomed] = useState(() => !isFullZoom(zoomRangesBySource.get(sourceKey) ?? FULL_SPECTRUM_ZOOM));
   const chartData: SpectrumChartData = useMemo(() => ({
     rawDataset,
+    rawIntensityUnit,
     baselineDataset,
     preparedDataset,
     peaks,
@@ -114,7 +123,7 @@ export function SpectrumChart({
     referenceLines,
     missingReferenceLines,
     highlightedRegions,
-  }), [baselineDataset, highlightedRegions, missingReferenceLines, peaks, preparedDataset, rawDataset, referenceLines, selectedPeakId, thresholdDataset]);
+  }), [baselineDataset, highlightedRegions, missingReferenceLines, peaks, preparedDataset, rawDataset, rawIntensityUnit, referenceLines, selectedPeakId, thresholdDataset]);
   const availableLayers = getAvailableLayers(chartData);
 
   useEffect(() => {
@@ -168,12 +177,20 @@ export function SpectrumChart({
     );
   }, [chartData, sourceKey, visibleLayers]);
 
+  useEffect(() => {
+    const chart = chartInstance.current;
+    if (!chart || !visibleLayers.has("peaks")) return;
+    chart.dispatchAction({ type: "downplay", seriesId: "detected-peaks" });
+    const index = peaks?.findIndex((peak) => peak.id === hoveredPeakId) ?? -1;
+    if (index >= 0) chart.dispatchAction({ type: "highlight", seriesId: "detected-peaks", dataIndex: index });
+  }, [hoveredPeakId, peaks, sourceKey, visibleLayers, chartData]);
+
   const toggleLayer = (layer: SpectrumChartLayer) => {
-    setVisibleLayers((current) => {
-      const next = new Set(current);
+    setLayerSelections((current) => {
+      const next = new Set(current[selectionKey] ?? defaultVisibleLayers);
       if (next.has(layer)) next.delete(layer);
       else next.add(layer);
-      return next;
+      return { ...current, [selectionKey]: next };
     });
   };
 
@@ -190,33 +207,33 @@ export function SpectrumChart({
 
   return (
     <div className={styles.chartWidget}>
-      <div className={`${styles.chartToolbar} ${showLayerControls ? "" : styles.chartToolbarEnd}`}>
+      {showLayerControls || isZoomed ? <div className={`${styles.chartToolbar} ${showLayerControls ? "" : styles.chartToolbarEnd}`}>
         {showLayerControls ? (
           <div className={styles.layerToggles} role="group" aria-label="Слои графика">
             {availableLayers.map((layer) => {
               const active = visibleLayers.has(layer);
               return (
-                <button
+                <Button size="compact"
                   key={layer}
                   type="button"
-                  className={`${styles.layerToggle} ${active ? styles.layerToggleActive : ""}`}
+                  className={styles.layerToggle}
                   aria-pressed={active}
                   onClick={() => toggleLayer(layer)}
                 >
                   <span className={`${styles.layerSwatch} ${styles[`layerSwatch_${layer}`]}`} aria-hidden="true" />
                   <span>{layerLabels[layer]}</span>
-                </button>
+                </Button>
               );
             })}
           </div>
         ) : null}
-        {isZoomed ? (
-          <button className={styles.zoomResetButton} type="button" onClick={resetZoom}>
+        {showLayerControls || isZoomed ? (
+          <Button size="compact" className={styles.zoomResetButton} type="button" disabled={!isZoomed} onClick={resetZoom}>
             <RotateCcw size={14} aria-hidden="true" />
             <span>Сбросить масштаб</span>
-          </button>
+          </Button>
         ) : null}
-      </div>
+      </div> : null}
       <div
         ref={chartElement}
         className={fill ? styles.chartFill : compact ? styles.chartCompact : styles.chart}

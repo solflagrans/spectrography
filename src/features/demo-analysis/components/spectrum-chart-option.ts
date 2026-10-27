@@ -17,6 +17,7 @@ export interface SpectrumHighlightedRegion {
 }
 
 export interface SpectrumChartData {
+  readonly rawIntensityUnit?: "отн. ед." | "отсчёты прибора";
   readonly rawDataset?: SpectrumDataset;
   readonly baselineDataset?: SpectrumDataset;
   readonly preparedDataset?: SpectrumDataset;
@@ -147,6 +148,7 @@ export function createSpectrumChartOption(
   if (peaksVisible && data.peaks) {
     series.push({
       id: "detected-peaks",
+      emphasis: { scale: 1.8, itemStyle: { borderColor: palette.reference, borderWidth: 3, shadowBlur: 8, shadowColor: palette.reference } },
       name: SPECTRUM_SERIES_NAMES.peaks,
       type: "scatter",
       data: data.peaks.map((peak) => {
@@ -283,7 +285,7 @@ export function createSpectrumChartOption(
       axisLine: { lineStyle: { color: palette.border } },
       splitLine: { show: false },
     },
-    yAxis: createYAxis(rawAxisRequired, preparedAxisRequired, dualAxis, palette),
+    yAxis: createYAxis(rawAxisRequired, preparedAxisRequired, dualAxis, palette, data.rawIntensityUnit),
     dataZoom: [
       {
         id: "spectrum-inside-zoom",
@@ -338,7 +340,7 @@ export function formatSpectrumTooltip(
 
   if (visibleLayers.has("raw") && data.rawDataset) {
     const index = findNearestSampleIndex(data.rawDataset.wavelengths, wavelength);
-    rows.push(formatTooltipRow(palette.raw, "Исходные отсчёты", data.rawDataset.intensities[index], 3));
+    rows.push(formatTooltipRow(palette.raw, rawIntensityLabel(data.rawIntensityUnit), data.rawDataset.intensities[index], 3));
   }
 
   if (visibleLayers.has("baseline") && data.baselineDataset) {
@@ -424,13 +426,14 @@ function createYAxis(
   preparedRequired: boolean,
   dualAxis: boolean,
   palette: SpectrumChartPalette,
+  rawIntensityUnit?: SpectrumChartData["rawIntensityUnit"],
 ): EChartsCoreOption["yAxis"] {
   const rawAxis = {
     type: "value" as const,
-    name: "Исходные отсчёты",
+    name: rawIntensityLabel(rawIntensityUnit),
     position: "left" as const,
     nameTextStyle: { color: palette.raw, fontSize: 12, fontWeight: 600 },
-    axisLabel: { color: palette.raw, fontSize: 12 },
+    axisLabel: { color: palette.raw, fontSize: 12, formatter: formatIntensityTick },
     axisLine: { show: true, lineStyle: { color: palette.raw, opacity: 0.7 } },
     splitLine: { lineStyle: { color: palette.border, opacity: 0.34 } },
     scale: true,
@@ -440,7 +443,7 @@ function createYAxis(
     name: "Подготовленная интенсивность",
     position: dualAxis ? "right" as const : "left" as const,
     nameTextStyle: { color: palette.prepared, fontSize: 12, fontWeight: 600 },
-    axisLabel: { color: palette.prepared, fontSize: 12 },
+    axisLabel: { color: palette.prepared, fontSize: 12, formatter: formatIntensityTick },
     axisLine: { show: true, lineStyle: { color: palette.prepared, opacity: 0.8 } },
     splitLine: { lineStyle: { color: palette.border, opacity: dualAxis ? 0 : 0.34 } },
     scale: true,
@@ -609,4 +612,16 @@ function withAlpha(color: string, alpha: number): string {
   const hex = color.match(/^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/iu);
   if (!hex) return color;
   return `rgba(${Number.parseInt(hex[1], 16)}, ${Number.parseInt(hex[2], 16)}, ${Number.parseInt(hex[3], 16)}, ${alpha})`;
+}
+
+function rawIntensityLabel(unit: SpectrumChartData["rawIntensityUnit"]): string {
+  return unit ? `Интенсивность, ${unit}` : "Интенсивность";
+}
+
+/** Compact axis labels only; tooltips retain the measurement precision. */
+export function formatIntensityTick(value: number): string {
+  const magnitude = Math.abs(value);
+  return magnitude >= 1_000_000 || (magnitude > 0 && magnitude < 0.001)
+    ? value.toExponential(1).replace("e+", "e")
+    : String(Number(value.toPrecision(5)));
 }
