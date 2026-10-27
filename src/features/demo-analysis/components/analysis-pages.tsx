@@ -831,6 +831,7 @@ function AnalysisPage({
 
   return (
     <div className={`${styles.page} ${title === "Данные" ? styles.dataPage : ""} ${peakLayout ? styles.peakPage : ""} ${showAnalysisModes && analysisView === "composition" ? styles.compositionPage : ""}`} aria-busy={calculationStatus === "calculating"}>
+      <div className={showAnalysisModes ? styles.analysisPageNavigation : styles.pageIntroduction}>
       <header className={styles.pageHeader}>
         <div>
           <h1>{title}</h1>
@@ -844,6 +845,7 @@ function AnalysisPage({
           <Button variant="ghost" type="button" role="tab" aria-selected={analysisView === "composition"} onClick={() => setAnalysisView("composition")}>Интерпретация</Button>
         </div>
       ) : null}
+      </div>
       <div className={calculationStatus === "calculating" ? styles.analysisUpdating : styles.analysisCurrent}>
         {calculationStatus === "calculating" ? (
           <div className={styles.analysisUpdatingNotice} role="status" aria-live="polite">

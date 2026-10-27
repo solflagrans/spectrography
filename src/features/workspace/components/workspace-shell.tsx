@@ -51,9 +51,9 @@ export function WorkspaceShell({ children }: Readonly<{ children: ReactNode }>) 
           ) : null}
         </header>
 
-        <div className={clsx(styles.workspace, sidePanel && !mobileInspector && styles.workspaceWithPanel, peakWorkspace && styles.analysisWorkspace, sidePanel && pathname.startsWith("/analysis") && analysisView === "composition" && styles.interpretationWorkspace, sidePanel && pathname.startsWith("/processing") && styles.processingWorkspace)}>
+        <div className={clsx(styles.workspace, sidePanel && !mobileInspector && styles.workspaceWithPanel, sidePanel && pathname.startsWith("/analysis") && styles.analysisWorkspace, sidePanel && pathname.startsWith("/processing") && styles.processingWorkspace)}>
           {sidePanel && !mobileInspector ? (
-            <aside className={clsx(styles.leftPanel, pathname.startsWith("/processing") && styles.processingPanel, pathname.startsWith("/analysis") && analysisView === "peaks" && styles.rightPanel, pathname.startsWith("/analysis") && analysisView === "composition" && styles.analysisLeftPanel)} aria-label="Панель текущего раздела">
+            <aside className={clsx(styles.leftPanel, pathname.startsWith("/processing") && styles.processingPanel, pathname.startsWith("/analysis") && styles.rightPanel, pathname.startsWith("/analysis") && analysisView === "composition" && styles.analysisLeftPanel)} aria-label="Панель текущего раздела">
               {sidePanel}
             </aside>
           ) : null}

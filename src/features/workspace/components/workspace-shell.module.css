@@ -454,3 +454,5 @@
 }
 
 @media (min-width: 1280px) { .workspaceWithPanel.interpretationWorkspace { grid-template-columns: 360px minmax(0, 1fr); } }
+
+@media (min-width: 821px) { .analysisWorkspace .analysisLeftPanel { padding: 20px; } }

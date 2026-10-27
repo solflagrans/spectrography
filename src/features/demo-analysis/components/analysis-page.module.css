@@ -3209,3 +3209,7 @@
 
 .channelCalibrationExplanation { margin: 0; color: var(--color-text-secondary); }
 .channelCalibrationExplanation strong { font-weight: 500; color: var(--color-text-primary); }
+
+.pageIntroduction { display: contents; }
+.analysisPageNavigation { position: sticky; top: -16px; z-index: 10; display: flex; flex-direction: column; align-items: stretch; gap: 12px; margin-top: -16px; padding-top: 16px; padding-bottom: 12px; background: var(--color-background-canvas); border-bottom: 1px solid var(--color-border-default); }
+.analysisPageNavigation .analysisModeTabs { flex-shrink: 0; }
